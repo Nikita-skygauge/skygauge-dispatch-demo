@@ -616,7 +616,7 @@ function onDbError(e,p){ console.error("db",p,e); if(String(e.code||e).includes(
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const P=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const S = { creating:null, note:null, user:null, admin:false, allow:DEFAULT_ALLOWLIST, schema:null, site:null, wos:[], assets:[], members:[], open:null, tab:"map", view:"board", sub:"wo", q:"", legendOff:new Set(), hidden:{board:new Set(),table:new Set()}, sort:null, unsub:[] };
-const LSK = { key:"sgd_gmaps_key", email:"sgd_email_for_link", view:"sgd9_view" };
+const LSK = { key:"sgdemo_gmaps_key", email:"sgdemo_email_for_link", view:"sgdemo_view" };   // demo: own keys, never the production app's cached key/view (same github.io origin)
 const domainOf = e => String(e||"").toLowerCase().split("@")[1]||"";
 
 function gateHTML(kind, extra=""){
@@ -1468,10 +1468,10 @@ function centroid(pts){ return { lat:pts.reduce((s,p)=>s+p.lat,0)/pts.length, ln
 function extentM(b){ const c=(b.north+b.south)/2; return { ns:(b.north-b.south)*111320, ew:(b.east-b.west)*111320*Math.cos(c*Math.PI/180) }; }
 function siteGeom(){
   const B=BOUNDARY(), b=bbox(B), c=centroid(B), e=extentM(b); const span=Math.max(e.ns,e.ew); const range=Math.round(span*1.45);
-  const padM=range*1.15; // `bounds` limits the camera position; a tilted camera sits ~range m outside the site
-  return { b,c,e,span,range,maxAlt:Math.round(range*1.5),padLat:padM/111320,padLng:padM/(111320*Math.cos(c.lat*Math.PI/180)) };
+  const padM=Math.max(range,650)*1.15; // `bounds` limits the camera position; a tilted camera sits ~range m outside the site
+  return { b,c,e,span,range,maxAlt:Math.round(Math.max(range,650)*1.5+GROUND_FALLBACK),padLat:padM/111320,padLng:padM/(111320*Math.cos(c.lat*Math.PI/180)) };
 }
-const siteCam=()=>{ const g=siteGeom(); return { center:{lat:g.c.lat,lng:g.c.lng,altitude:0}, range:g.range, tilt:55, heading:-15 }; };
+const siteCam=()=>{ const g=siteGeom(); return { center:{lat:g.c.lat,lng:g.c.lng,altitude:GROUND_FALLBACK}, range:Math.max(g.range,650), tilt:55, heading:-15 }; };
 function cameraLimits(){ const g=siteGeom(); return { bounds:{ north:g.b.north+g.padLat, south:g.b.south-g.padLat, east:g.b.east+g.padLng, west:g.b.west-g.padLng }, maxAltitude:g.maxAlt }; }
 function svgPin(fill,scale=1,stroke="#0B0F1F",label){ const NS="http://www.w3.org/2000/svg", s=document.createElementNS(NS,"svg"); s.setAttribute("viewBox","0 0 26 36"); s.setAttribute("width",Math.round(26*scale)); s.setAttribute("height",Math.round(36*scale)); const p=document.createElementNS(NS,"path"); p.setAttribute("d","M13 1C6.4 1 1 6.3 1 12.9c0 8.3 10.2 20.2 11.4 21.6a.8.8 0 0 0 1.2 0C14.8 33.1 25 21.2 25 12.9 25 6.3 19.6 1 13 1z"); p.setAttribute("fill",fill); p.setAttribute("stroke",stroke); p.setAttribute("stroke-width","1.6"); if(label!=null&&label!==""){ /* number baked into the pin: the engine's own `label` can linger after a marker is removed */ const t=document.createElementNS(NS,"text"); t.setAttribute("x","13"); t.setAttribute("y","16.6"); t.setAttribute("text-anchor","middle"); t.setAttribute("font-family","IBM Plex Mono,ui-monospace,Menlo,monospace"); t.setAttribute("font-weight","700"); t.setAttribute("font-size",String(label).length>2?"8.6":"10.5"); t.setAttribute("fill",stroke); t.textContent=String(label); s.append(p,t); return s; }
   const c=document.createElementNS(NS,"circle"); c.setAttribute("cx","13"); c.setAttribute("cy","13"); c.setAttribute("r","4.2"); c.setAttribute("fill",stroke); s.append(p,c); return s; }
