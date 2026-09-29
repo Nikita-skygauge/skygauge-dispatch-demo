@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Skygauge Dispatch — Demo</title>
 <script>window.DEMO=true;</script>
-<script src="config.js"></script>
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -421,6 +421,7 @@ body.creating #pbody{display:flex;flex-direction:column}.create{display:flex;fle
   .toast{bottom:calc(var(--sheet-peek) + 80px);max-width:92vw;text-align:center}
 }
 @media (prefers-reduced-motion: reduce){ #loading .bar i{animation:none;width:100%} #peek{transition:none} }
+#author-bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;padding:8px 10px 8px 14px;border-radius:12px;background:rgba(11,15,31,.94);border:1px solid rgba(213,194,255,.5);box-shadow:0 8px 28px rgba(0,0,0,.4);font-size:13px;color:#E9EFFF}#author-bar b{font-weight:600;color:#fff}#author-status{color:#B9C2E0}#author-status.bad{color:#FF8A7A}#demo-badge.author{background:rgba(213,194,255,.16);border-color:rgba(213,194,255,.6)}
 #demo-badge{font:600 11px/1 inherit;letter-spacing:.04em;padding:5px 9px;border-radius:999px;background:rgba(0,255,229,.14);color:var(--ink);border:1px solid rgba(0,255,229,.45);white-space:nowrap;cursor:help}
 @media (max-width:860px){ #demo-badge{display:none} }
 </style>
@@ -574,7 +575,7 @@ const SITE_ID="dofasco";                 // storage paths are per site from day 
 const FILE_MAX=50*1024*1024;
 function makeMock(){
   const store=new Map(), subs=new Set();
-  const notify=()=>subs.forEach(f=>{ try{ f(); }catch(e){ console.error(e); } });
+  let hook=null; const notify=()=>{ subs.forEach(f=>{ try{ f(); }catch(e){ console.error(e); } }); try{ hook?.(); }catch(e){ console.error(e); } };
   // mirror a Firestore constraint so tests catch it: arrays may not directly contain arrays
   const chk=(v,inArr)=>{ if(!inArr&&window.__failWrites>0){ window.__failWrites--; throw new Error("Simulated write failure"); } if(v===undefined) throw new Error("Unsupported field value: undefined"); if(Array.isArray(v)){ if(inArr) throw new Error("Nested arrays are not supported"); v.forEach(x=>chk(x,true)); } else if(v&&typeof v==="object") Object.values(v).forEach(x=>chk(x,false)); };
   const children=col=>[...store.entries()].filter(([k])=>k.startsWith(col+"/")&&!k.slice(col.length+1).includes("/")).map(([k,v])=>({id:k.slice(col.length+1),...structuredClone(v)}));
@@ -587,6 +588,9 @@ function makeMock(){
     async list(col){ return children(col); },
     watchDoc(p,cb){ const f=()=>cb(store.has(p)?{id:p.split("/").at(-1),...structuredClone(store.get(p))}:null); subs.add(f); f(); return ()=>subs.delete(f); },
     watchCol(col,cb){ const f=()=>cb(children(col)); subs.add(f); f(); return ()=>subs.delete(f); },
+    dump(){ return Object.fromEntries([...store.entries()].map(([k,v])=>[k,structuredClone(v)])); },   // demo author mode: whole store as plain JSON
+    load(obj){ store.clear(); for(const [k,v] of Object.entries(obj||{})) store.set(k,structuredClone(v)); notify(); },
+    onChange(f){ hook=f; },
     async nextSeq(){ const c=store.get("workspace/counters")||{wo:0}; c.wo=(c.wo||0)+1; store.set("workspace/counters",c); return c.wo; },
   };
   return api;
@@ -655,7 +659,7 @@ async function boot(){
     DB=trackDB(makeMock()); window.DB=DB; window.__migrate=()=>migrateToJobs();
     ST={ async upload(path,file,onProgress){ onProgress?.(1); const url=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(file); }); return { path, url }; }, async del(){ } };   // exposed for the headless test harness only
     AUTH={ google:async()=>{}, sendLink:async()=>{}, signOut:async()=>location.reload() };
-    if(DEMO){ await demoSeed(DB); await enter({ uid:"demo", email:"demo@skygauge.co", displayName:"Demo user", emailVerified:true }); return; }
+    if(DEMO){ await demoBoot(DB); await enter({ uid:"demo", email:"demo@skygauge.co", displayName:"Demo user", emailVerified:true }); return; }
     await enter({ uid:"mock-admin", email:ADMIN_EMAIL, displayName:"Nikita (mock)", emailVerified:true });
     return;
   }
@@ -1518,7 +1522,7 @@ function previewInit(){ if(!map||PV.svg||!matchMedia("(pointer:fine)").matches) 
 /* Hover over a placed point (desktop): Maps 3D has no marker hover, so the points are projected with the same camera model
    as the preview and the one under the cursor lights up; the next-point preview hides so the pin reads as the target. */
 function hoverCheck(){ const d=V.draw; let h=null, seg=null;
-  if(d&&PV.mouse&&!PV.overBox&&!d.moving&&PV.err<0.34){ const pinH=36*0.9; let bd=Infinity; const S=d.pts.map(p=>projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??0)+0.8 }));
+  if(d&&PV.mouse&&!PV.overBox&&!d.moving&&PV.err<0.34){ const pinH=36*0.9; let bd=Infinity; const S=d.pts.map(p=>projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??GROUND_FALLBACK)+0.8 }));
     S.forEach((s,i)=>{ if(!s) return; const dx=PV.mouse.x-s.x, dy=PV.mouse.y-(s.y-pinH/2); const dist=Math.hypot(dx,dy*0.8); if(dist<22&&dist<bd){ bd=dist; h=i; } });
     if(h==null&&d.pts.length>=2){ const n=d.pts.length, segs=n-1+(d.closed?1:0); let sd=Infinity; for(let i=0;i<segs;i++){ const a=S[i], b=S[(i+1)%n]; if(!a||!b) continue; const dx=b.x-a.x, dy=b.y-a.y, L=dx*dx+dy*dy||1; let t=((PV.mouse.x-a.x)*dx+(PV.mouse.y-a.y)*dy)/L; t=Math.max(0,Math.min(1,t)); const px=a.x+t*dx, py=a.y+t*dy; const dist=Math.hypot(PV.mouse.x-px,PV.mouse.y-py); if(dist<12&&dist<sd){ sd=dist; seg={ i, t, x:px, y:py, ax:a.x, ay:a.y, bx:b.x, by:b.y }; } } } }
   const segChanged=(seg?.i)!==(PV.seg?.i); PV.seg=seg; if(h!==PV.hover){ PV.hover=h; renderDraw(); } if(map) map.style.cursor=(h!=null||seg)?"pointer":""; }
@@ -1528,14 +1532,14 @@ function previewDraw(){ const s=PV.svg; if(!s) return; const d=V.draw; const hov
   const pin=s.querySelector("#pv-pin"); const line=s.querySelector("#pv-line"), len=s.querySelector("#pv-len"); let extra=s.querySelector("#pv-extra"); if(!extra){ extra=document.createElementNS("http://www.w3.org/2000/svg","g"); extra.id="pv-extra"; s.append(extra); } extra.innerHTML=""; line.style.display="none"; len.style.display="none";
   if(hoverUI){ pin.style.display="none"; const g=document.createElementNS("http://www.w3.org/2000/svg","g");
     if(PV.seg){ const q=PV.seg; g.innerHTML=`<line x1="${q.ax}" y1="${q.ay}" x2="${q.bx}" y2="${q.by}" stroke="#00FFE5" stroke-width="7" stroke-linecap="round" opacity="0.95"/><g transform="translate(${q.x-13*1.05},${q.y-36*1.05}) scale(1.05)" opacity="0.92"><path d="${PIN_D}" fill="#00FFE5" stroke="#0B0F1F" stroke-width="1.6"/><path d="M13 8v10M8 13h10" stroke="#0B0F1F" stroke-width="2.4" stroke-linecap="round"/></g>${tagSVG(q.x,q.y-58,"Add a point here",true)}`; }
-    else { const i=PV.hover, p=d.pts[i]; const sp=projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??0)+0.8 }); const ring=i===0&&d.pts.length>=3&&!d.closed; if(sp) g.innerHTML=tagSVG(sp.x,sp.y-(ring?62:70),ring?"Close the area":`${d.closed?"Corner":"Point"} ${i+1} · click to edit`,false); }
+    else { const i=PV.hover, p=d.pts[i]; const sp=projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??GROUND_FALLBACK)+0.8 }); const ring=i===0&&d.pts.length>=3&&!d.closed; if(sp) g.innerHTML=tagSVG(sp.x,sp.y-(ring?62:70),ring?"Close the area":`${d.closed?"Corner":"Point"} ${i+1} · click to edit`,false); }
     extra.append(g); return; }
   pin.style.display=""; pin.setAttribute("transform",`translate(${PV.mouse.x-13*0.9},${PV.mouse.y-36*0.9}) scale(0.9)`);
   const anchors=[]; const n=d.pts.length;
   if(d.moving&&d.sel!=null){ const i=d.sel; if(n>=2){ if(i>0) anchors.push(d.pts[i-1]); else if(d.closed) anchors.push(d.pts[n-1]); if(i<n-1) anchors.push(d.pts[i+1]); else if(d.closed) anchors.push(d.pts[0]); } }
   if(PV.err>=0.34||!anchors.length) return;
-  anchors.forEach((p,k)=>{ const from=projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??0)+0.8 }); if(!from) return;
-    const q=unprojectToPlane(PV.mouse.x,PV.mouse.y,p.ground??0); const txt=q?"≈ "+fmtDist(dist3(p,q)):"";
+  anchors.forEach((p,k)=>{ const from=projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??GROUND_FALLBACK)+0.8 }); if(!from) return;
+    const q=unprojectToPlane(PV.mouse.x,PV.mouse.y,p.ground??GROUND_FALLBACK); const txt=q?"≈ "+fmtDist(dist3(p,q)):"";
     const g=document.createElementNS("http://www.w3.org/2000/svg","g"); g.innerHTML=`<line x1="${from.x}" y1="${from.y}" x2="${PV.mouse.x}" y2="${PV.mouse.y}" stroke="#FF6A00" stroke-width="2.5" stroke-dasharray="7 6" stroke-linecap="round"/>${txt?`<g transform="translate(${(from.x+PV.mouse.x)/2},${(from.y+PV.mouse.y)/2-14})"><rect x="-28" y="-11" width="56" height="22" rx="11" fill="rgba(11,15,31,0.6)" stroke="#FF6A00" stroke-dasharray="3 3"/><text y="4" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#fff">${txt}</text></g>`:""}`; extra.append(g); }); }
 function previewCheck(p){ if(!PV.mouse||!map) return; const s=projectLL({ lat:p.lat, lng:p.lng, altitude:p.ground }); if(!s) return; const H=map.clientHeight||1; const err=Math.hypot(s.x-PV.mouse.x,s.y-PV.mouse.y)/H; PV.err=PV.err?PV.err*0.5+err*0.5:err; if(PARAMS.has("debug")) console.log("preview projection error",(err*100).toFixed(1)+"% of viewport"); }
 async function initMap(){
@@ -1567,16 +1571,16 @@ function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{
    stores the surface altitude `ground` from the click, and overlays use ABSOLUTE altitude from it. Legacy points without
    it fall back to RELATIVE_TO_MESH, which also sits on the surface. */
 function surf(P){ return P.every(p=>p.ground!=null)?"ABSOLUTE":"RELATIVE_TO_MESH"; }
-function atSurf(p,lift){ return { lat:p.lat, lng:p.lng, altitude:(p.ground!=null?p.ground:0)+lift }; }
+function atSurf(p,lift,mode){ return { lat:p.lat, lng:p.lng, altitude:(mode!=="RELATIVE_TO_MESH"&&p.ground!=null?p.ground:0)+lift }; }   // RELATIVE_TO_MESH = metres above the model surface, so a stored absolute ground is ignored (a shape mixing points with and without ground renders on the mesh)
 function addWOOverlay(w){
   const P=pts(w); if(!P.length||w.draft) return;
   const o={ sig:JSON.stringify(w.location||{}), m:null, pin:null, area:null, line:null, box:null, labels:[] };
   const c=woColor(w); const a=locAnchor(w); const h=locHeight(w); const kind=locKindW(w); const mode=surf(P);
   const topLift=kind==="point"?(a.alt||0)+0.3:kind==="line"?2:(h>0?h+1:1.5);
-  o.m=mk3("mi",{ position:atSurf(kind==="area"?{ ...a, ground:minGround(P) }:a,topLift), altitudeMode:mode, extruded:kind==="point" });
+  o.m=mk3("mi",{ position:atSurf(kind==="area"?{ ...a, ground:minGround(P) }:a,topLift,mode), altitudeMode:mode, extruded:kind==="point" });
   o.pin=pinTemplate(c,1.1,undefined,w.id.slice(-3)); setTpl(o.m,o.pin.tpl); o.m.__onClick=e=>{ if(V.draw||V.placing) return; e.stopPropagation?.(); enterWOView(w.id); };
-  if(kind==="line"){ o.line=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,1)) }); }
-  if(kind==="area"){ o.area=mk3("pg",{ altitudeMode:mode, drawsOccludedSegments:true, fillColor:`rgba(${rgb(c)},0.28)`, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:2, path:[...P,P[0]].map(p=>atSurf(p,0.8)) });
+  if(kind==="line"){ o.line=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,1,mode)) }); }
+  if(kind==="area"){ o.area=mk3("pg",{ altitudeMode:mode, drawsOccludedSegments:true, fillColor:`rgba(${rgb(c)},0.28)`, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:2, path:[...P,P[0]].map(p=>atSurf(p,0.8,mode)) });
     // height, when set, rises from the lowest corner's surface — an area on a roof grows from the roof
     if(h>0){ const g0=minGround(P); o.box=mk3("pg",{ altitudeMode:"ABSOLUTE", extruded:true, drawsOccludedSegments:false, fillColor:`rgba(${rgb(c)},0.18)`, strokeColor:`rgba(${rgb(c)},0.8)`, strokeWidth:1.5, path:[...P,P[0]].map(p=>({ lat:p.lat, lng:p.lng, altitude:g0+h })) }); } }
   OV.wo[w.id]=o; applyLegendTo(w); syncJobLabels();   // lengths / pin visibility follow the open state
@@ -1690,9 +1694,9 @@ function renderActs(){ actBoxInit(); const box=ACTBOX; const d=V.draw; if(!box) 
   const defs=ACT_DEFS.filter(([k])=>!(k==="reopen"&&!d.closed));
   box.innerHTML=defs.map(([k,l,cls])=>`<button type="button" class="${cls}" data-act="${k}" title="${l}" aria-label="${l}">${ACT_ICON[k]}</button>`).join(""); box.hidden=false; placeActBox(); }
 function placeActBox(){ const box=ACTBOX, d=V.draw; if(!box||box.hidden||!d||!d.pts.length||PV.overBox) return; const wrap=$("#canvas-wrap"); const W=wrap.clientWidth, H=wrap.clientHeight; const i=d.sel!=null?d.sel:d.pts.length-1; const p=d.pts[i];
-  const s=(PV.err<0.34)?projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??0)+0.8 }):null; const bw=box.offsetWidth||120, bh=box.offsetHeight||44;
+  const s=(PV.err<0.34)?projectLL({ lat:p.lat, lng:p.lng, altitude:(p.ground??GROUND_FALLBACK)+0.8 }):null; const bw=box.offsetWidth||120, bh=box.offsetHeight||44;
   let x=W-bw-16, y=16;
-  if(s){ const others=d.pts.map((q,k)=>k===i?null:projectLL({ lat:q.lat, lng:q.lng, altitude:(q.ground??0)+0.8 })).filter(Boolean);
+  if(s){ const others=d.pts.map((q,k)=>k===i?null:projectLL({ lat:q.lat, lng:q.lng, altitude:(q.ground??GROUND_FALLBACK)+0.8 })).filter(Boolean);
     const cands=[ [s.x-bw/2, s.y-bh-44], [s.x+22, s.y-bh/2-18], [s.x-bw-22, s.y-bh/2-18], [s.x-bw/2, s.y+14] ];
     const clamp=([cx,cy])=>[ Math.max(8,Math.min(W-bw-8,cx)), Math.max(8,Math.min(H-bh-8,cy)) ];
     const covers=([cx,cy])=>others.some(o=>o.x>cx-14&&o.x<cx+bw+14&&o.y>cy-40&&o.y<cy+bh+14)||(s.x>cx-6&&s.x<cx+bw+6&&s.y>cy-6&&s.y<cy+bh+6);
@@ -1700,28 +1704,28 @@ function placeActBox(){ const box=ACTBOX, d=V.draw; if(!box||box.hidden||!d||!d.
   box.style.left=x+"px"; box.style.top=y+"px"; }
 /* Segment lengths: a pill at the midpoint of every segment (3D length — the height difference between the ends counts).
    Part of the 3D selector's standard set; also drawn on saved job areas and model notes. */
-function dist3(a,b){ const lat0=(a.lat+b.lat)/2*Math.PI/180; const dx=(b.lng-a.lng)*111320*Math.cos(lat0), dy=(b.lat-a.lat)*111320, dz=(b.ground??0)-(a.ground??0); return Math.hypot(dx,dy,dz); }
+function dist3(a,b){ const lat0=(a.lat+b.lat)/2*Math.PI/180; const dx=(b.lng-a.lng)*111320*Math.cos(lat0), dy=(b.lat-a.lat)*111320, dz=(a.ground!=null&&b.ground!=null)?b.ground-a.ground:0; return Math.hypot(dx,dy,dz); }
 function fmtDist(m){ return m<100?m.toFixed(1)+" m":Math.round(m)+" m"; }
 function distLabelTemplate(text,muted){ const NS="http://www.w3.org/2000/svg", s=document.createElementNS(NS,"svg"); const w=Math.max(44,text.length*7+16); s.setAttribute("viewBox",`0 0 ${w} 22`); s.setAttribute("width",String(w)); s.setAttribute("height","22");
   s.innerHTML=`<rect x="0.5" y="0.5" width="${w-1}" height="21" rx="10.5" fill="rgba(11,15,31,${muted?0.55:0.85})" stroke="${muted?"#FF6A00":"rgba(255,255,255,0.25)"}" stroke-width="1" ${muted?'stroke-dasharray="3 3"':""}/><text x="${w/2}" y="15" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#fff">${text}</text>`;
   const t=document.createElement("template"); t.content.append(s); return t; }
 function segmentLabels(P,closed){ const out=[]; if(!map||!lib||P.length<2) return out; const mode=surf(P); const n=P.length; const segs=n-1+(closed&&n>=3?1:0);
   for(let i=0;i<segs;i++){ const a=P[i], c=P[(i+1)%n]; const mid={ lat:(a.lat+c.lat)/2, lng:(a.lng+c.lng)/2, ground:a.ground!=null&&c.ground!=null?(a.ground+c.ground)/2:undefined };
-    const m=mk3("m",{ position:atSurf(mid,1.6), altitudeMode:mode, tpl:distLabelTemplate(fmtDist(dist3(a,c))) }); out.push(m); }
+    const m=mk3("m",{ position:atSurf(mid,1.6,mode), altitudeMode:mode, tpl:distLabelTemplate(fmtDist(dist3(a,c))) }); out.push(m); }
   return out; }
 function renderDraw(){
   const d=V.draw; if(!d) return; if(OV.draw.length){ killAll(OV.draw); OV.draw=[]; mapRedraw(); }
   const n=d.pts.length, dm=surf(d.pts), canClose=n>=3&&!d.closed, sh=shapeKindOf(d.pts,d.closed);
   const movingI=d.moving&&d.sel!=null?d.sel:-1;
-  d.pts.forEach((p,i)=>{ const first=i===0&&canClose&&movingI!==0; const hov=PV.hover===i&&i!==movingI; const m=mk3("mi",{ position:atSurf(p,first?0.2:0.8), altitudeMode:dm, tpl:first?ringTemplate(hov):pinTemplate(i===movingI?"#8A93AD":d.sel===i?"#00FFE5":hov?"#FFB067":"#FF6A00",i===movingI?0.7:hov?1.2:0.9,hov?"#fff":undefined,i+1).tpl });
+  d.pts.forEach((p,i)=>{ const first=i===0&&canClose&&movingI!==0; const hov=PV.hover===i&&i!==movingI; const m=mk3("mi",{ position:atSurf(p,first?0.2:0.8,dm), altitudeMode:dm, tpl:first?ringTemplate(hov):pinTemplate(i===movingI?"#8A93AD":d.sel===i?"#00FFE5":hov?"#FFB067":"#FF6A00",i===movingI?0.7:hov?1.2:0.9,hov?"#fff":undefined,i+1).tpl });
     m.__onClick=e=>{ e.stopPropagation?.(); if(d.moving) return; if(first){ selClose(); return; } selSelect(i); }; OV.draw.push(m); });
   const ring=[...d.pts,...(d.closed?[d.pts[0]]:[])];
-  if(n>=2&&movingI<0){ const l=mk3("pli",{ altitudeMode:dm, strokeColor:"rgba(255,106,0,0.95)", strokeWidth:sh==="line"?7:5, drawsOccludedSegments:true, path:ring.map(p=>atSurf(p,0.8)) }); l.__seg=true;
+  if(n>=2&&movingI<0){ const l=mk3("pli",{ altitudeMode:dm, strokeColor:"rgba(255,106,0,0.95)", strokeWidth:sh==="line"?7:5, drawsOccludedSegments:true, path:ring.map(p=>atSurf(p,0.8,dm)) }); l.__seg=true;
     l.__onClick=e=>{ e.stopPropagation?.(); if(d.moving||!e.position) return; selInsertAt({ lat:e.position.lat, lng:e.position.lng, ground:Math.round((e.position.altitude||0)*10)/10 }); }; OV.draw.push(l); }
   if(n>=2&&movingI>=0){ // the moving point's own segments are left out; the preview supplies them
     const runs=[]; let cur=[]; ring.forEach((p,idx)=>{ const isMoving=p===d.pts[movingI]; if(isMoving){ if(cur.length>=2) runs.push(cur); cur=[]; } else cur.push(p); }); if(cur.length>=2) runs.push(cur);
-    runs.forEach(r=>{ const l=mk3("pl",{ altitudeMode:dm, strokeColor:"rgba(255,106,0,0.95)", strokeWidth:sh==="line"?5:3, drawsOccludedSegments:true, path:r.map(p=>atSurf(p,0.8)) }); OV.draw.push(l); }); }
-  if(d.closed&&n>=3){ const g=mk3("pg",{ altitudeMode:dm, fillColor:"rgba(255,106,0,0.22)", strokeColor:"rgba(255,106,0,0.9)", strokeWidth:1.5, drawsOccludedSegments:true, path:[...d.pts,d.pts[0]].map(p=>atSurf(p,0.8)) }); OV.draw.push(g); }
+    runs.forEach(r=>{ const l=mk3("pl",{ altitudeMode:dm, strokeColor:"rgba(255,106,0,0.95)", strokeWidth:sh==="line"?5:3, drawsOccludedSegments:true, path:r.map(p=>atSurf(p,0.8,dm)) }); OV.draw.push(l); }); }
+  if(d.closed&&n>=3){ const g=mk3("pg",{ altitudeMode:dm, fillColor:"rgba(255,106,0,0.22)", strokeColor:"rgba(255,106,0,0.9)", strokeWidth:1.5, drawsOccludedSegments:true, path:[...d.pts,d.pts[0]].map(p=>atSurf(p,0.8,dm)) }); OV.draw.push(g); }
   if(movingI<0) OV.draw.push(...segmentLabels(d.pts,d.closed)); else { const rest=d.pts.filter((_,i)=>i!==movingI); /* labels only on segments not touching the moving point */ const segs=[]; for(let i=0;i<d.pts.length-1+(d.closed?1:0);i++){ const a=i, c=(i+1)%d.pts.length; if(a!==movingI&&c!==movingI) segs.push([d.pts[a],d.pts[c]]); } segs.forEach(([a,c])=>OV.draw.push(...segmentLabels([a,c],false))); }
   setMode("draw",d.label,"",true); document.body.classList.add("drawing");
   $("#draw-acts").hidden=false; $("#draw-done").disabled=d.needClosed&&!d.closed;
@@ -1754,7 +1758,7 @@ function selectPoint(i,flyTo){ const id=S.open; const w=W(id); if(!w||!map) retu
 const PTH=[];
 function clearPointHandles(){ if(PTH.length){ killAll(PTH); PTH.length=0; mapRedraw(); } }
 function syncPointHandles(){ clearPointHandles(); if(!map||!lib||!S.open||V.draw) return; const w=W(S.open); if(!w) return; const P=pts(w); if(P.length<1) { if(!V.placing) resetMode(); return; }
-  const mode=surf(P); P.forEach((p,i)=>{ const focus=(typeof hoverPin!=="undefined"&&hoverPin)||(S.note||null); const m=mk3("mi",{ position:atSurf(p,P.length===1?(p.alt||0)+0.5:0.8), altitudeMode:mode, tpl:pinTemplate(focus?"#8A93AD":"#FF6A00",focus?0.7:0.85,undefined,i+1).tpl }); m.__onClick=e=>{ if(V.draw||V.placing) return; e.stopPropagation?.(); selectPoint(i); }; PTH.push(m); });
+  const mode=surf(P); P.forEach((p,i)=>{ const focus=(typeof hoverPin!=="undefined"&&hoverPin)||(S.note||null); const m=mk3("mi",{ position:atSurf(p,P.length===1?(p.alt||0)+0.5:0.8,mode), altitudeMode:mode, tpl:pinTemplate(focus?"#8A93AD":"#FF6A00",focus?0.7:0.85,undefined,i+1).tpl }); m.__onClick=e=>{ if(V.draw||V.placing) return; e.stopPropagation?.(); selectPoint(i); }; PTH.push(m); });
   if(!V.placing) resetMode(); }
 
 /* ---------- asset register editor — a register entry, no location (tag · name · area) ---------- */
@@ -2236,12 +2240,12 @@ function syncPinOverlays(){ if(!map||!lib||!S.open||!S.woView){ clearPinOverlays
     const parts=[]; parts.sig=sig;
     const col=lit?"#00FFE5":dim?"#8A93AD":PIN_NOTE_COLOR; const rgbc=lit?"0,255,229":dim?"138,147,173":"255,212,0"; const a=dim?0.55:1;
     const anc=noteAnchor(k); const tp=pinTemplate(col,lit?1.25:dim?0.75:0.95,undefined,noteNo(k.id)); if(dim) tp.tpl.content.firstChild?.setAttribute?.("opacity","0.45");
-    const m=mk3("mi",{ position:atSurf(anc,P.length===1?0.6:1.2), altitudeMode:mode, tpl:tp.tpl }); m.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); if(S.note===k.id&&P.length===1) selectAt(()=>drawNote(w.id,k.id),0); else openNote(k.id); }; parts.push(m);
-    if(sh==="line"&&P.length>=2){ const l=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,0.8)) }); parts.push(l); }
-    if(sh==="area"&&P.length>=3){ const g=mk3("pg",{ altitudeMode:mode, fillColor:`rgba(${rgbc},${0.25*a})`, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:3, drawsOccludedSegments:true, path:[...P,P[0]].map(p=>atSurf(p,0.8)) }); parts.push(g); }
+    const m=mk3("mi",{ position:atSurf(anc,P.length===1?0.6:1.2,mode), altitudeMode:mode, tpl:tp.tpl }); m.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); if(S.note===k.id&&P.length===1) selectAt(()=>drawNote(w.id,k.id),0); else openNote(k.id); }; parts.push(m);
+    if(sh==="line"&&P.length>=2){ const l=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,0.8,mode)) }); parts.push(l); }
+    if(sh==="area"&&P.length>=3){ const g=mk3("pg",{ altitudeMode:mode, fillColor:`rgba(${rgbc},${0.25*a})`, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:3, drawsOccludedSegments:true, path:[...P,P[0]].map(p=>atSurf(p,0.8,mode)) }); parts.push(g); }
     if(inView&&(sh==="line"||sh==="area")) parts.push(...segmentLabels(P,sh==="area"));   // lengths only inside this note's view
     if(inView&&P.length>1){ /* numbered handles inside the note's view: click one → selector with that point selected */
-      P.forEach((p,i)=>{ const h=mk3("mi",{ position:atSurf(p,0.8), altitudeMode:mode, tpl:pinTemplate("#FF6A00",0.85,undefined,i+1).tpl }); h.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); selectAt(()=>drawNote(w.id,k.id),i); }; parts.push(h); }); }
+      P.forEach((p,i)=>{ const h=mk3("mi",{ position:atSurf(p,0.8,mode), altitudeMode:mode, tpl:pinTemplate("#FF6A00",0.85,undefined,i+1).tpl }); h.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); selectAt(()=>drawNote(w.id,k.id),i); }; parts.push(h); }); }
     PINOV[k.id]=parts; });
   Object.keys(PINOV).forEach(id=>{ if(!want.has(id)){ killAll(PINOV[id]); delete PINOV[id]; } }); }
 
@@ -2503,6 +2507,53 @@ async function demoSeed(DB){
     [{ dir:"in", from:karen, t:ago(0,5), text:"That nozzle was re-gasketed in 2022. If the flange shows pitting, please add a close-up of the bolting too." }]);
   await th("t3",{ jobId:"J-26-002", n:1, addr:"j-26-002-t1@mail.skygauge.co", subject:"Clarifier outage window", about:{ kind:"job" }, participants:[marco], created:ago(1,2), createdBy:marco },
     [{ dir:"in", from:marco, t:ago(1,2), text:"We can drain C-2 for four hours on the 14th. Does that work for the drone flight?" }]);
+}
+
+/* =====================================================================
+   DEMO BASE FILE — what every visitor starts from.
+   • Visitors: the shipped base file (seed.json next to index.html) is loaded into memory; nothing persists, a reload resets.
+     No seed.json yet → the built-in sample (demoSeed above).
+   • Author mode (?author=1): the same data, but every change is kept in THIS browser (IndexedDB) across reloads, so the
+     base can be edited over several sessions. "Download base file" exports it; Skygauge ships it as the new seed.json.
+   • Dates travel: the file records when it was saved, and on load every timestamp shifts forward by the time since,
+     so "2 days ago" and upcoming deadlines stay relative instead of going stale.
+   • The Maps key is never part of the base file; it always comes from config.js.
+   ===================================================================== */
+const AUTHOR = DEMO && PARAMS.has("author");
+const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/");
+function baseOf(DB){ const all=DB.dump(); const store={}; for(const [k,v] of Object.entries(all)) if(!BASE_DROP(k)) store[k]=v; return { v:1, savedAt:new Date().toISOString(), store }; }
+function shiftDates(x,ms){
+  if(!ms) return x;
+  const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/, day=/^\d{4}-\d{2}-\d{2}$/;
+  const f=v=>{ if(typeof v==="string"){ if(iso.test(v)) return new Date(Date.parse(v)+ms).toISOString(); if(day.test(v)){ const d=new Date(v+"T12:00:00Z"); return new Date(d.getTime()+ms).toISOString().slice(0,10); } return v; }
+    if(Array.isArray(v)) return v.map(f); if(v&&typeof v==="object"){ const o={}; for(const k in v) o[k]=f(v[k]); return o; } return v; };
+  return f(x);
+}
+function loadBase(DB,base){ const ms=Math.max(0,Date.now()-Date.parse(base.savedAt||new Date().toISOString())); DB.load(shiftDates(base.store,ms)); }
+const IDB={ db:null,
+  open(){ return this.db||(this.db=new Promise((res,rej)=>{ const r=indexedDB.open("sgdemo-author",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); },
+  async get(k){ const d=await this.open(); return new Promise((res,rej)=>{ const q=d.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); },
+  async set(k,v){ const d=await this.open(); return new Promise((res,rej)=>{ const t=d.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+  async del(k){ const d=await this.open(); return new Promise((res,rej)=>{ const t=d.transaction("kv","readwrite"); t.objectStore("kv").delete(k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); } };
+async function shippedBase(){ try{ const r=await fetch("seed.json",{ cache:"no-cache" }); if(r.ok){ const j=await r.json(); if(j&&j.store) return j; } }catch{} return null; }
+async function demoBoot(DB){
+  if(AUTHOR){ let saved=null; try{ saved=await IDB.get("base"); }catch(e){ console.warn("author store",e); }
+    if(saved) loadBase(DB,saved); else { const b=await shippedBase(); if(b) loadBase(DB,b); else await demoSeed(DB); }
+    let t=null, busy=false; const save=async()=>{ if(busy){ t=setTimeout(save,400); return; } busy=true; try{ await IDB.set("base",baseOf(DB)); authorStatus("Saved in this browser · "+new Date().toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })); }catch(e){ authorStatus("Could not save: "+(e.message||e),true); } busy=false; };
+    DB.onChange(()=>{ clearTimeout(t); authorStatus("Saving…"); t=setTimeout(save,700); });
+    authorBar();
+  } else { const b=await shippedBase(); if(b) loadBase(DB,b); else await demoSeed(DB); }
+  if(window.DEMO_MAPS_KEY&&!/PASTE/i.test(window.DEMO_MAPS_KEY)) await DB.set("config/maps",{ key:window.DEMO_MAPS_KEY });
+}
+function authorStatus(txt,bad){ const s=document.querySelector("#author-status"); if(s){ s.textContent=txt; s.classList.toggle("bad",!!bad); } }
+function authorBar(){
+  const badge=document.querySelector("#demo-badge"); if(badge){ badge.textContent="Author mode · editing the base file"; badge.title="Changes are kept in this browser until you download the base file. Visitors never see this mode."; badge.classList.add("author"); }
+  const bar=document.createElement("div"); bar.id="author-bar";
+  bar.innerHTML=`<b>Editing the demo base file</b><span id="author-status">Changes are kept in this browser</span><button class="btn sm" id="author-dl">Download base file</button><button class="btn sm" id="author-reset" title="Throw away this browser's edits and start again from the shipped base file">Start over</button>`;
+  document.body.append(bar);
+  bar.querySelector("#author-dl").onclick=()=>{ const b=baseOf(DB); const blob=new Blob([JSON.stringify(b)],{ type:"application/json" }); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="dispatch-demo-base-"+b.savedAt.slice(0,10)+".json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); };
+  bar.querySelector("#author-reset").onclick=async()=>{ if(!confirm("Throw away the edits saved in this browser and start again from the shipped base file?")) return; await IDB.del("base"); location.reload(); };
+  window.__author={ base:()=>baseOf(DB), json:()=>JSON.stringify(baseOf(DB)) };
 }
 
 boot();
