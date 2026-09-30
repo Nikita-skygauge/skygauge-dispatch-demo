@@ -443,7 +443,7 @@ body.creating #pbody{display:flex;flex-direction:column}.create{display:flex;fle
     <button role="tab" aria-selected="true" data-tab="map">Viewer</button>
     <button role="tab" aria-selected="false" data-tab="wo">Jobs<b id="tab-open"></b></button>
     <button role="tab" aria-selected="false" data-tab="inbox">Inbox<b id="tab-inbox"></b></button>
-    <button role="tab" aria-selected="false" data-tab="auto">Automations<b id="tab-auto" style="color:var(--accent)"></b></button>
+    <button role="tab" aria-selected="false" data-tab="auto" aria-haspopup="menu">Automations<b id="tab-auto" style="color:var(--accent)"></b> <span aria-hidden="true" style="font-size:10px;opacity:.7">▾</span></button>
   </div>
   <div id="search"><input id="q" type="search" placeholder="Search jobs…" autocomplete="off" aria-label="Search"></div>
   <button class="btn" id="search-toggle" aria-label="Search" hidden>🔍</button>
@@ -1371,7 +1371,7 @@ function wireUI(){
   dragSheet($("#peek .ph"),$("#peek"),h=>{ const f=h/innerHeight; setSheet(f<0.3?"peek":f<0.78?"half":"full"); });
   $("#search-toggle").onclick=()=>{ document.body.classList.toggle("search-open"); if(document.body.classList.contains("search-open")) $("#q").focus(); };
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.body.classList.contains("search-open")&&!S.q){ document.body.classList.remove("search-open"); } });
-  $$("#bar [data-tab]").forEach(b=>b.onclick=()=>{ if(S.creating&&b.dataset.tab!=="map") cancelCreate(); setTab(b.dataset.tab); });
+  $$("#bar [data-tab]:not([data-tab=\"auto\"])").forEach(b=>b.onclick=()=>{ if(S.creating&&b.dataset.tab!=="map") cancelCreate(); setTab(b.dataset.tab); });
   $$("#reg .sub button").forEach(b=>b.onclick=()=>{ S.sub=b.dataset.sub; $$("#reg .sub button").forEach(x=>x.setAttribute("aria-selected",x===b)); renderTree(); });
   $$("#viewsw button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; saveView(); renderViews(); });
   $("#q").oninput=e=>{ S.q=e.target.value; renderAll(); };
@@ -2713,7 +2713,7 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
    ===================================================================== */
 const AU_COL="workspace/automations", ZONE_COL="workspace/zones";
 let AU=[], ZONES=[], AU_DENIED=false, AU_BUSY=false, auTimer=null, auUnsub=[];
-const AUV={ sel:null, f:"all" };
+const AUV={ sel:null, f:"rule" };   // f = the page: "schedule" or "rule"
 var ZOV=[];
 const auCanEdit=()=>!!S.admin||(typeof DEMO!=="undefined"&&!!DEMO);
 const AUTO_BY=a=>({ uid:"automation", name:"Automation", email:"", auto:a.id, autoName:a.name });
@@ -2734,6 +2734,7 @@ function startAuto(){
   S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
 }
+document.addEventListener("click",e=>{ const b=e.target.closest('#bar [data-tab="auto"]'); if(!b) return; e.preventDefault(); e.stopPropagation(); autoMenu(b); },true);
 function renderAutoBadge(){ const b=$("#tab-auto"); if(b) b.textContent=AU.filter(a=>a.on).length||""; }
 
 /* ---------- conditions ---------- */
@@ -2918,21 +2919,27 @@ function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
 const BOLT=`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"></path></svg>`;
 function autoCardBits(w){ const b=[]; const a=w.series?AUX(w.series.auto):null; if(a) b.push(`<span class="aub rep" title="${P(a.name)}">↻ ${P(rhythm(a))}</span>`);
   const rs=rulesFor(w).filter(r=>(r.rule.conds||[]).length); if(rs.length) b.push(`<span class="aub rule" title="${P(rs.map(r=>r.name).join(", "))}">${BOLT}${rs.length} rule${rs.length===1?"":"s"}</span>`); return b; }   // rules that apply to every job (reminders) are left off the card; the panel lists them
-function openAuto(id){ AUV.sel=id; if(S.woView) exitWOView(); else if(S.open) closePeek(); setTab("auto"); }
+function openAuto(id){ const a=AUX(id); if(a) AUV.f=a.kind; AUV.sel=id; if(S.woView) exitWOView(); else if(S.open) closePeek(); setTab("auto"); }
+function openAutoPage(kind){ AUV.f=kind; const cur=AUX(AUV.sel); if(!cur||cur.kind!==kind) AUV.sel=null; if(S.creating) cancelCreate(); setTab("auto"); }
+/* the top-bar "Automations ▾" button is a menu: Schedules and Rules are separate pages */
+function autoMenu(anchor){ const n=k=>AU.filter(a=>a.kind===k).length, on=k=>AU.filter(a=>a.kind===k&&a.on).length;
+  const cur=S.tab==="auto"?AUV.f:null;
+  const el=openPop(anchor,`<div class="mi" data-aup="schedule"><span class="au-ic schedule sm">↻</span><span style="flex:1"><b style="font-weight:600">Schedules</b><br><span class="hint">jobs that repeat on their own</span></span><span class="r">${on("schedule")}/${n("schedule")} on${cur==="schedule"?" ✓":""}</span></div><div class="mi" data-aup="rule"><span class="au-ic rule sm">${BOLT}</span><span style="flex:1"><b style="font-weight:600">Rules</b><br><span class="hint">when this happens to a job, do that</span></span><span class="r">${on("rule")}/${n("rule")} on${cur==="rule"?" ✓":""}</span></div>`,{ width:300, noFocus:true });
+  el.querySelectorAll("[data-aup]").forEach(m=>m.onclick=()=>{ closePop(); openAutoPage(m.dataset.aup); }); }
 
 /* ---------- the Automations tab ---------- */
 function renderAuto(){ const root=$("#auto-root"); if(!root) return;
   if(AU_DENIED){ root.innerHTML=`<div class="au-empty">Automations are not available: this workspace's database rules don't allow them yet.</div>`; return; }
-  const sch=AU.filter(a=>a.kind==="schedule"), rul=AU.filter(a=>a.kind==="rule");
-  if(!AUV.sel||!AUX(AUV.sel)) AUV.sel=(rul[0]||sch[0])?.id||null;
-  const f=AUV.f; const ed=auCanEdit();
+  const f=AUV.f==="schedule"?"schedule":"rule"; AUV.f=f; const ed=auCanEdit();
+  const sch=AU.filter(a=>a.kind==="schedule"), rul=AU.filter(a=>a.kind==="rule"), mine=f==="schedule"?sch:rul;
+  if(!AUV.sel||AUX(AUV.sel)?.kind!==f) AUV.sel=mine[0]?.id||null;
   const row=a=>{ const meta=a.kind==="schedule"?(a.on?(a.schedule?.mode==="after"&&seriesJobs(a).some(isOpen)?`after ${seriesJobs(a).find(isOpen).id}`:`next ${nextLabel(a)}`):"off"):(a.runCount?`${a.runCount}× · ${fmtDate(a.lastRun)}`:"not run yet");
     const line=a.kind==="schedule"?`${rhythmLong(a)}${a.schedule?.template?.from?` · copy of ${a.schedule.template.from}`:""}`:`${trigText(a.rule.trigger)} → ${(a.rule.actions||[]).map(actPhrase).join(", ")||"no actions yet"}`;
     return `<div class="au-row ${AUV.sel===a.id?"sel":""} ${a.on?"":"off"}" data-au="${a.id}"><button class="au-main" data-au-pick="${a.id}"><span class="au-ic ${a.kind}">${a.kind==="schedule"?"↻":BOLT}</span><span class="au-txt"><b>${P(a.name)}</b><span>${P(line)}</span></span><span class="au-meta mono">${P(meta)}</span></button><button class="au-sw ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn ${P(a.name)} on or off" ${ed?"":"disabled"}><i></i></button></div>`; };
-  const list=`${f!=="rule"?`<section class="au-sec"><h3>Schedules <span>make a new job on a calendar</span></h3>${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Open a job you repeat and use ＋ New schedule.</div>`}</section>`:""}${f!=="schedule"?`<section class="au-sec"><h3>Rules <span>when this happens to a job, do that</span></h3>${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}${ZONES.length&&f!=="schedule"?`<section class="au-sec"><h3>Zones <span>areas drawn on the model that rules can check</span></h3>${ZONES.map(z=>`<div class="au-zone"><i></i><b>${P(z.name)}</b><span class="hint">${(z.points||[]).length} corners · ${live().filter(w=>jobInZone(w,z)).length} jobs touch it</span></div>`).join("")}</section>`:""}`;
-  root.innerHTML=`<div class="au-head"><div><h2>Automations</h2><div class="hint">Jobs that repeat on their own, and rules that act when something happens to a job.${ed?"":" Only admins can change them."}</div></div><span class="sp"></span>
-    <div class="tabs" id="au-f">${[["all","All",AU.length],["schedule","Schedules",sch.length],["rule","Rules",rul.length]].map(([k,l,n])=>`<button data-auf="${k}" aria-selected="${f===k}">${l} <span class="mono">${n}</span></button>`).join("")}</div>
-    ${ed?`<button class="btn" id="au-new-s">＋ New schedule</button><button class="btn primary" id="au-new-r">＋ New rule</button>`:""}</div>
+  const list=`${f==="schedule"?`<section class="au-sec">${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Use ＋ New schedule and pick a job you repeat.</div>`}</section>`:""}${f==="rule"?`<section class="au-sec">${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}${ZONES.length&&f==="rule"?`<section class="au-sec"><h3>Zones <span>areas drawn on the model that rules can check</span></h3>${ZONES.map(z=>`<div class="au-zone"><i></i><b>${P(z.name)}</b><span class="hint">${(z.points||[]).length} corners · ${live().filter(w=>jobInZone(w,z)).length} jobs touch it</span></div>`).join("")}</section>`:""}`;
+  root.innerHTML=`<div class="au-head"><div><div class="au-crumb">Automations <span>›</span> <button class="link" id="au-switch" aria-label="Switch between Schedules and Rules">${f==="schedule"?"Schedules":"Rules"} ▾</button></div><h2>${f==="schedule"?"Schedules":"Rules"}</h2><div class="hint">${f==="schedule"?"Jobs that repeat on their own: on a calendar, or a set time after the last one was completed.":"Things Dispatch does the moment something happens to a job."}${ed?"":" Only admins can change them."}</div></div><span class="sp"></span>
+    <span class="hint mono">${mine.filter(a=>a.on).length} of ${mine.length} on</span>
+    ${ed?(f==="schedule"?`<button class="btn primary" id="au-new-s">＋ New schedule</button>`:`<button class="btn primary" id="au-new-r">＋ New rule</button>`):""}</div>
     <div class="au-body"><div class="au-list">${list}</div><div class="au-detail" id="au-detail">${auDetailHTML(AUX(AUV.sel))}</div></div>`;
   wireAuto(root); }
 function auDetailHTML(a){ if(!a) return `<div class="hint">Nothing selected.</div>`; const ed=auCanEdit();
@@ -2960,7 +2967,7 @@ function auDetailHTML(a){ if(!a) return `<div class="hint">Nothing selected.</di
     <div class="au-foot"><span class="hint" style="flex:1">${a.createdBy?.name?`Created by ${P(a.createdBy.name)}`:""}</span>${ed&&(a.kind==="schedule"||a.rule?.trigger?.type==="deadline")?`<button class="btn" id="au-run">${a.kind==="schedule"?"Create the next one now":"Check now"}</button>`:""}${a.kind==="rule"?`<button class="btn" id="au-try">Try it on a job…</button>`:""}${ed?`<button class="btn" id="au-dup">Duplicate</button><button class="btn danger" id="au-del">Delete</button>`:""}</div>`; }
 let auRunsUnsub=null;
 function wireAuto(root){ const a=AUX(AUV.sel);
-  root.querySelectorAll("[data-auf]").forEach(b=>b.onclick=()=>{ AUV.f=b.dataset.auf; renderAuto(); });
+  $("#au-switch")?.addEventListener("click",e=>autoMenu(e.currentTarget));
   root.querySelectorAll("[data-au-pick]").forEach(b=>b.onclick=()=>{ AUV.sel=b.dataset.auPick; renderAuto(); });
   root.querySelectorAll("[data-au-toggle]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const x=AUX(b.dataset.auToggle); if(!x||!auCanEdit()) return; x.on=!x.on; renderAuto(); renderAutoBadge(); DB.update(AU_COL+"/"+x.id,{ on:x.on, edited:now(), editedBy:userRef() }); });
   root.querySelectorAll("[data-au-job]").forEach(b=>b.onclick=()=>openWO(b.dataset.auJob));
@@ -3031,8 +3038,8 @@ function newSchedulePicker(anchor){ jobPicker(anchor,"Which job should repeat?",
   const values=structuredClone(w.values||{}); delete values.deadline; delete values.photos; delete values.documents;
   const a={ kind:"schedule", name:w.title||w.id, on:true, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null,
     schedule:{ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", last:now(), template:{ from:w.id, title:w.title||"", values, location:structuredClone(w.location||{}) }, history:[] } };
-  const id=await DB.add(AU_COL,a); if(!w.series) await DB.update(WO_COL+"/"+w.id,{ series:{ auto:id, n:1 } }); AUV.sel=id; AUV.f="all"; toast(`${P(w.id)} now repeats monthly · change the rhythm in the schedule.`); }); }
-async function newRule(){ const id=await DB.add(AU_COL,{ kind:"rule", name:"New rule", on:false, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null, rule:{ trigger:{ type:"status", to:"complete" }, conds:[], actions:[] } }); AUV.sel=id; AUV.f="all"; renderAuto(); }
+  const id=await DB.add(AU_COL,a); if(!w.series) await DB.update(WO_COL+"/"+w.id,{ series:{ auto:id, n:1 } }); AUV.sel=id; AUV.f="schedule"; toast(`${P(w.id)} now repeats monthly · change the rhythm in the schedule.`); }); }
+async function newRule(){ const id=await DB.add(AU_COL,{ kind:"rule", name:"New rule", on:false, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null, rule:{ trigger:{ type:"status", to:"complete" }, conds:[], actions:[] } }); AUV.sel=id; AUV.f="rule"; renderAuto(); }
 function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ if(!w) return; const r=a.rule; const miss=(r.conds||[]).filter(c=>!condMatch(c,w));
   const ok=!miss.length; const acts=(r.actions||[]).map(actPhrase).join(", ")||"nothing (no actions yet)";
   const el=openPop(anchor,`<div class="sec">${P(w.id)} · ${P(w.title||"Untitled")}</div><div style="padding:4px 8px 8px">${ok?`<b>It applies.</b> ${P(whenPhrase(r.trigger))}: ${P(acts)}.`:`<b>It doesn't apply</b> because ${miss.map(c=>P(condText(c).replace(" includes "," doesn't include "))).join(" and ")}.`}<div class="hint" style="margin-top:6px">Nothing was changed — this is a preview.</div></div>`,{width:320,noFocus:true}); void el; }); }
@@ -3046,7 +3053,9 @@ if(MOCK) window.__auto={ get AU(){ return AU; }, get ZONES(){ return ZONES; }, t
 (()=>{ const st=document.createElement("style"); st.textContent=`
 #view-auto{overflow:auto;background:var(--ground)}
 #auto-root{max-width:1320px;margin:0 auto;padding:14px 16px 24px}
-.au-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.au-head h2{margin:0;font-size:20px;font-weight:600}.au-head .sp{flex:1}
+.au-head{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:12px}.au-head h2{margin:0;font-size:20px;font-weight:600}.au-head .sp{flex:1}
+.au-crumb{font-size:12px;color:var(--ink-3)}.au-crumb span{margin:0 2px}.au-crumb .link{font-size:12px}
+.au-ic.sm{width:26px;height:26px;font-size:14px;border-radius:7px}.au-ic.sm svg{width:13px;height:13px}
 .au-head .tabs button .mono{font-size:11px;opacity:.7;margin-left:2px}
 .au-body{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:16px;align-items:start}
 .au-list{display:flex;flex-direction:column;gap:12px}
