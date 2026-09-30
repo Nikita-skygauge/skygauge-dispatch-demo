@@ -2774,6 +2774,7 @@ function actText(x){ switch(x.type){
   case "cc": return `Add ${personLabel(x.person)} to the job's email threads`;
   case "email": return `Email ${x.to==="people"?"the people on the job":personLabel(x.person)} ${WHAT[x.what]||""}${x.hold?` · wait ${x.hold} min so it can be cancelled`:""}`;
   case "permit": return `Add permit: ${x.value}`;
+  case "addopt": return `Add ${prop(x.pid)?.name||x.pid}: ${x.value}`;
   case "deadline": return `Set the deadline ${x.days} days out`;
   case "ask": return `Ask “${x.q}” first`;
   default: return x.type; } }
@@ -2782,6 +2783,7 @@ function actPhrase(x){ switch(x.type){
   case "cc": return `${personLabel(x.person)} joins the email threads`;
   case "email": return `${x.to==="people"?"the people on it get":personLabel(x.person)+" gets"} ${WHAT[x.what]||"an email"}`;
   case "permit": return `permit “${x.value}” is added`;
+  case "addopt": return `${prop(x.pid)?.name||x.pid} gets “${x.value}”`;
   case "deadline": return `the deadline is set ${x.days} days out`;
   case "ask": return `you're asked “${x.q}”`;
   default: return x.type; } }
@@ -2835,6 +2837,7 @@ async function doAction(a,x,w){
     if(!n) return null; auLog(w,a,`added ${personLabel(x.person)} to ${n} email thread${n===1?"":"s"}`); return { text:`added ${personLabel(x.person)} to ${n} thread${n===1?"":"s"}` }; }
   if(x.type==="permit"){ let o=optByName("permits",x.value); if(!o){ const p=prop("permits"); if(!p) return null; o={ id:uid(), name:x.value, color:"red" }; p.options.push(o); await saveSchema(); }
     const cur=w.values?.permits||[]; if(cur.includes(o.id)) return null; const nv=[...cur,o.id]; w.values??={}; w.values.permits=nv; await DB.update(path,{ "values.permits":nv }); auLog(w,a,`added permit ${x.value} (${a.name})`); return { text:`added permit ${x.value}` }; }
+  if(x.type==="addopt"){ const p=prop(x.pid); if(!p) return null; let o=optByName(x.pid,x.value); if(!o) return null; const cur=p.type==="select"?[]:(w.values?.[x.pid]||[]); if(p.type==="select"?w.values?.[x.pid]===o.id:cur.includes(o.id)) return null; const nv=p.type==="select"?o.id:[...cur,o.id]; w.values??={}; w.values[x.pid]=nv; await DB.update(path,{ ["values."+x.pid]:nv }); auLog(w,a,`set ${p.name} to include ${x.value} (${a.name})`); return { text:`added ${p.name} ${x.value}` }; }
   if(x.type==="deadline"){ const d=ymd(addDays(new Date(),x.days||7)); w.values??={}; w.values.deadline={ start:d }; await DB.update(path,{ "values.deadline":{ start:d } }); auLog(w,a,`set the deadline to ${fmtDate(d)}`); return { text:`deadline ${fmtDate(d)}` }; }
   if(x.type==="email"){ const m=await queueEmail(a,w,x); if(!m) return null; auLog(w,a,`will email ${m.names} ${WHAT[x.what]||""} at ${new Date(m.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})} (${a.name})`); return { text:`emailed ${m.names}`, mail:{ ...m, what:x.what } }; }
   return null; }
@@ -2847,7 +2850,7 @@ function emailBody(what,w,x,a){ const st=status(w.statusId)?.name||""; const nPh
 async function queueEmail(a,w,x){
   const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email).map(p=>({ email:p.email.toLowerCase(), name:p.name||"" }));
   if(!to.length) return null;
-  const b=emailBody(x.what,w,x,a); const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
+  const b=emailBody(x.what,w,x,a); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
   const n=Math.max(0,...jobThreads(w.id).map(t=>t.n||0))+1; const from={ email:jobAddr(w.id), name:"Dispatch automation" };
   const t={ jobId:w.id, n, addr:threadAddr(w.id,n), subject:b.subject, about:{ kind:"auto", label:a.name, auto:a.id }, participants:to, created:now(), createdBy:AUTO_BY(a), last:{ t:now(), from, snippet:snippet(b.text) }, count:1, readBy:{} };
   const tid=await DB.add(MAIL_COL,t);
@@ -2892,7 +2895,7 @@ async function autoTick(){ if(AU_BUSY||!S.schema) return; AU_BUSY=true;
   try{
     for(const t of TH) if(t.pending?.at&&t.pending.at<=now()) await releaseEmail(t);
     for(const a of AU){ if(!a.on) continue;
-      if(a.kind==="schedule"){ const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
+      if(a.kind==="schedule"){ if(!a.schedule?.template?.from) continue; const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
       else if(a.rule?.trigger?.type==="deadline"){ for(const w of live().filter(isOpen)){ const d=w.values?.deadline?.start; if(!d) continue; const left=daysUntil(d); const key=a.id+"_"+d.replace(/-/g,"");
         if(left<=a.rule.trigger.days&&!(w.autoDone||{})[key]&&condsMatch(a,w)){ await DB.update(WO_COL+"/"+w.id,{ ["autoDone."+key]:true }); w.autoDone={ ...(w.autoDone||{}), [key]:true }; await runRule(a,w,{}); } } } }
   } finally { AU_BUSY=false; } }
@@ -2908,7 +2911,7 @@ function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
     if(t.type==="ready") return waitsOnIds(w).length>0&&isOpen(w);
     if(t.type==="restore") return !!w.enabling&&!w.enabling.restored&&!!enKind(w)?.restore&&isOpen(w);
     if(t.type==="deadline") return !!w.values?.deadline?.start&&isOpen(w);
-    if(t.type==="change"||t.type==="area") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value)));
+    if(t.type==="change"||t.type==="area") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
     return false; })()); }
 function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
   const a=w.series?AUX(w.series.auto):null;
@@ -2934,7 +2937,7 @@ function renderAuto(){ const root=$("#auto-root"); if(!root) return;
   const sch=AU.filter(a=>a.kind==="schedule"), rul=AU.filter(a=>a.kind==="rule"), mine=f==="schedule"?sch:rul;
   if(!AUV.sel||AUX(AUV.sel)?.kind!==f) AUV.sel=mine[0]?.id||null;
   const row=a=>{ const meta=a.kind==="schedule"?(a.on?(a.schedule?.mode==="after"&&seriesJobs(a).some(isOpen)?`after ${seriesJobs(a).find(isOpen).id}`:`next ${nextLabel(a)}`):"off"):(a.runCount?`${a.runCount}× · ${fmtDate(a.lastRun)}`:"not run yet");
-    const line=a.kind==="schedule"?`${rhythmLong(a)}${a.schedule?.template?.from?` · copy of ${a.schedule.template.from}`:""}`:`${trigText(a.rule.trigger)} → ${(a.rule.actions||[]).map(actPhrase).join(", ")||"no actions yet"}`;
+    const line=(a.text||[]).length&&segText(a.text).trim()?segText(a.text):a.kind==="schedule"?`${rhythmLong(a)}${a.schedule?.template?.from?` · copy of ${a.schedule.template.from}`:""}`:`${trigText(a.rule.trigger)} → ${(a.rule.actions||[]).map(actPhrase).join(", ")||"nothing yet — write it"}`;
     return `<div class="au-row ${AUV.sel===a.id?"sel":""} ${a.on?"":"off"}" data-au="${a.id}"><button class="au-main" data-au-pick="${a.id}"><span class="au-ic ${a.kind}">${a.kind==="schedule"?"↻":BOLT}</span><span class="au-txt"><b>${P(a.name)}</b><span>${P(line)}</span></span><span class="au-meta mono">${P(meta)}</span></button><button class="au-sw ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn ${P(a.name)} on or off" ${ed?"":"disabled"}><i></i></button></div>`; };
   const list=`${f==="schedule"?`<section class="au-sec">${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Use ＋ New schedule and pick a job you repeat.</div>`}</section>`:""}${f==="rule"?`<section class="au-sec">${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}${ZONES.length&&f==="rule"?`<section class="au-sec"><h3>Zones <span>areas drawn on the model that rules can check</span></h3>${ZONES.map(z=>`<div class="au-zone"><i></i><b>${P(z.name)}</b><span class="hint">${(z.points||[]).length} corners · ${live().filter(w=>jobInZone(w,z)).length} jobs touch it</span></div>`).join("")}</section>`:""}`;
   root.innerHTML=`<div class="au-head"><div><div class="au-crumb">Automations <span>›</span> <button class="link" id="au-switch" aria-label="Switch between Schedules and Rules">${f==="schedule"?"Schedules":"Rules"} ▾</button></div><h2>${f==="schedule"?"Schedules":"Rules"}</h2><div class="hint">${f==="schedule"?"Jobs that repeat on their own: on a calendar, or a set time after the last one was completed.":"Things Dispatch does the moment something happens to a job."}${ed?"":" Only admins can change them."}</div></div><span class="sp"></span>
@@ -2942,113 +2945,183 @@ function renderAuto(){ const root=$("#auto-root"); if(!root) return;
     ${ed?(f==="schedule"?`<button class="btn primary" id="au-new-s">＋ New schedule</button>`:`<button class="btn primary" id="au-new-r">＋ New rule</button>`):""}</div>
     <div class="au-body"><div class="au-list">${list}</div><div class="au-detail" id="au-detail">${auDetailHTML(AUX(AUV.sel))}</div></div>`;
   wireAuto(root); }
-function auDetailHTML(a){ if(!a) return `<div class="hint">Nothing selected.</div>`; const ed=auCanEdit();
-  const chip=(t,attrs="",rm="")=>`<span class="au-chip"><button class="au-chip-b" ${attrs} ${ed?"":"disabled"}>${P(t)}${ed&&attrs?` <span class="car">▾</span>`:""}</button>${ed&&rm?`<button class="au-x" ${rm} aria-label="Remove">×</button>`:""}</span>`;
-  const add=(t,attrs)=>ed?`<button class="au-add" ${attrs}>${t}</button>`:"";
-  let body="";
-  if(a.kind==="schedule"){ const s=a.schedule||{}, tpl=s.template||{};
-    body=`<div class="au-sent"><div class="au-l">REPEAT</div><div class="au-c">${chip(rhythmLong(a),'data-au-edit="rhythm"')}${chip(s.mode==="after"?`create ${s.leadDays||0} days before it's due`:`deadline ${s.dueDays??7} days after it's created`,'data-au-edit="rhythm"')}</div>
-      <div class="au-l">COPIES</div><div class="au-c">${chip(`${tpl.from||"—"} · ${tpl.title||a.name}`,tpl.from?`data-au-job="${tpl.from}"`:"")}${chip(`area, properties, people${(tpl.values?.people||[]).length?` (${(tpl.values.people).map(personLabel).join(", ")})`:""}`)}</div>
-      <div class="au-l">IF OPEN</div><div class="au-c">${chip(s.mode==="after"?"waits until the current one is completed":s.ifOpen==="skip"?"skip this time and note it on the open one":"create anyway and note it on the open one",s.mode==="after"?"":'data-au-edit="rhythm"')}</div>
-      ${s.enabling?`<div class="au-l">ALSO</div><div class="au-c">${chip(`create its enabling work: ${EN_KINDS[s.enabling]?.name||s.enabling}, linked`)}</div>`:""}</div>`;
+/* ---------- writing automations: a sentence with /tokens, read back in plain words ----------
+   An automation's `text` is a list of segments: { t:"plain words" } or { tok:{ k, ... }, label }.
+   Tokens: opt {pid,value} · status {id} · person {name,email} · zone {id} · job {id}. The words around them are read
+   by compileRule / compileSchedule below into the same trigger / conditions / actions the engine already runs, and the
+   panel shows that reading back so nobody has to trust a guess. */
+const segText=(segs=[])=>segs.map(s=>s.tok?s.label:s.t).join("");
+const tokLabel=tok=>tok.k==="opt"?tok.value:tok.k==="status"?(status(tok.id)?.name||tok.id):tok.k==="person"?personLabel(tok):tok.k==="zone"?(ZONES.find(z=>z.id===tok.id)?.name||tok.id):tok.k==="job"?tok.id:"?";
+/* the sentence as a string with ⟦i⟧ where token i sits, lower-cased words */
+function segFlat(segs){ const toks=[]; let s=""; for(const g of segs||[]){ if(g.tok){ s+=` ⟦${toks.length}⟧ `; toks.push(g.tok); } else s+=String(g.t||"").toLowerCase().replace(/[’`]/g,"'"); } return { s:s.replace(/\s+/g," "), toks }; }
+const EMAILV=/\b(notify|notifies|notified|email|emails|e-mail|tell|tells|send|sends|message|messages|let|lets|inform|informs|alert|alerts|remind|reminds|ping|pings|update|updates)\b/g;
+const TAGV=/\b(tag|tags|include|includes|loop|loops|cc|ccs|assign|assigns|involve|involves)\b/g;
+const ADDV=/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b/g;
+function lastVerb(txt){ let best=null; for(const [re,kind] of [[EMAILV,"email"],[TAGV,"tag"],[ADDV,"add"]]){ re.lastIndex=0; let m; while((m=re.exec(txt))) if(!best||m.index>best.i) best={ i:m.index, kind, w:m[1] }; } return best; }
+function compileRule(segs){
+  const { s, toks }=segFlat(segs); const err=[], note=[];
+  const at=i=>s.indexOf(`⟦${i}⟧`); const before=i=>s.slice(0,at(i));
+  const statusToks=toks.map((t,i)=>({ t, i })).filter(x=>x.t.k==="status");
+  let trigger=null; let m;
+  if(/\bbefore\b/.test(s)&&(statusToks.length||/\b(in progress|starts?|starting|begins?|work begins|goes live)\b/.test(s))){ const st=statusToks[0]?.t; trigger={ type:"before", to:st?st.id:"progress" }; }
+  else if((m=s.match(/(\d+)\s*(?:working\s*|business\s*)?days?\s*(?:before|ahead of|prior to|out from)\s*(?:the\s*|its\s*)?(?:deadline|due)/))) trigger={ type:"deadline", days:+m[1] };
+  else if(/\b(ready to start|released|unblocked|free to start)\b/.test(s)) trigger={ type:"ready" };
+  else if(/\b(restore|strip(?:ped)?[- ]down|reinstate(?:ment)?|come down)\b/.test(s)&&/\bdue\b/.test(s)) trigger={ type:"restore" };
+  else if(statusToks.length) trigger={ type:"status", to:statusToks[0].t.id };
+  else if(/\b(completed|complete|done|finished|closed|signed off)\b/.test(s)) trigger={ type:"status", to:"complete" };
+  else if(/\b(in progress|started|starts|begins|kicks off|gets going)\b/.test(s)) trigger={ type:"status", to:"progress" };
+  else if(/\bon hold\b/.test(s)){ const h=statuses().find(o=>/hold/i.test(o.name)); trigger={ type:"status", to:h?.id||"todo" }; }
+  else if(toks.some(t=>t.k==="zone")&&/\b(drawn|draw|placed|marked|inside|within|in|touches|touching|crosses|crossing|enters|near|on)\b/.test(s)) trigger={ type:"area" };
+  else trigger={ type:"change" };
+  const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="restore"?"restore":trigger.type==="deadline"?"reminder":"note";
+  const hold=/\b(right away|immediately|straight away|at once|without waiting|instantly)\b/.test(s)?0:(m=s.match(/wait(?:ing)?\s*(\d+)\s*min/))?+m[1]:trigger.type==="deadline"?0:5;
+  toks.forEach((t,i)=>{ const v=lastVerb(before(i));
+    if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); if(/include|loop|cc/.test(v.w)) actions.push({ type:"cc", person:{ name:t.name||"", email:t.email } }); }
+      else actions.push({ type:"email", to:"person", person:{ name:t.name||"", email:t.email }, what, hold }); }
+    else if(t.k==="opt"){ const lead=before(i).slice(-40); if(v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
+    else if(t.k==="zone") conds.push({ type:"zone", zone:t.id });
+    else if(t.k==="job") note.push(`${t.id} is ignored here: rules apply to every job that matches.`); });
+  if(/\b(the people on it|people on the job|people on it|the crew|everyone on (?:it|the job)|tagged people|the people tagged|assignees|whoever is (?:on|tagged))\b/.test(s)) actions.unshift({ type:"email", to:"people", what, hold });
+  const q=s.match(/\bask(?:s|ing)?\b\s*(?:them\s*|the user\s*|people\s*)?(?:"([^"]+)"|“([^”]+)”|(?:if|whether)\s+([^.⟦]+))/); if(q){ const raw=(q[1]||q[2]||q[3]||"").trim(); const src=segText(segs); const exact=src.match(/[“"]([^”"]+)[”"]/); let qt=exact?exact[1]:raw; qt=qt.charAt(0).toUpperCase()+qt.slice(1); if(!/\?$/.test(qt)) qt+="?"; actions.push({ type:"ask", q:qt }); }
+  if((m=s.match(/\b(?:set|move|push)\s*(?:the\s*|its\s*)?deadline\s*(?:to\s*)?(\d+)\s*days?/))||(m=s.match(/\bdue in (\d+) days?/))) actions.push({ type:"deadline", days:+m[1] });
+  if(trigger.type==="before"&&!actions.some(x=>x.type==="ask")) err.push("A rule that runs before a status change can only ask a question — write it in quotes after “ask”.");
+  if(trigger.type!=="before"&&actions.some(x=>x.type==="ask")) note.push("Questions are only asked by rules that start with “Before …”; this one will ignore it.");
+  if(!actions.length) err.push("Say what should happen: for example “notify /someone”, “tag /someone” or “gets /a permit”.");
+  if(!segs?.some(g=>g.tok)&&!actions.length) err.push("Type / to pull in a person, property, status or zone.");
+  return { rule:{ trigger, conds, actions }, err, note }; }
+const MONTHS=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+function compileSchedule(segs,prev={}){
+  const { s, toks }=segFlat(segs); const err=[], note=[]; let m;
+  const job=toks.find(t=>t.k==="job"); if(!job) err.push("Type / and pick the job to repeat.");
+  const sch={ ...(prev||{}) }; sch.ifOpen=/\bskip\b/.test(s)?"skip":"create";
+  const en=s.match(/\bwith (?:its |the |an? )?(insulation|scaffold|isolation|lockout|excavation|surface prep|cleaning)/); sch.enabling=en?({ insulation:"insulation", scaffold:"scaffold", isolation:"isolation", lockout:"isolation", excavation:"excavation", "surface prep":"cleaning", cleaning:"cleaning" })[en[1]]:null;
+  const lead=(m=s.match(/(\d+)\s*(days?|weeks?)\s*(?:ahead|early|in advance|before (?:it'?s|it is) due|before the due date)/))?(+m[1])*(/week/.test(m[2])?7:1):null;
+  if((m=s.match(/(\d+|a|one|two|three|five|ten)\s*(months?|years?)\s*after\b/))&&/\b(complet|done|finish|clos|last one)/.test(s)){ const n={ a:1, one:1, two:2, three:3, five:5, ten:10 }[m[1]]??+m[1]; sch.mode="after"; sch.months=/year/.test(m[2])?n*12:n; sch.leadDays=lead??30; delete sch.unit; delete sch.every; delete sch.dates; }
+  else { sch.mode="calendar"; sch.leadDays=lead??0;
+    const dates=[]; const re=/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{1,2})\b/g; while((m=re.exec(s))) dates.push({ m:MONTHS.indexOf(m[1])+1, d:+m[2] });
+    const ev=s.match(/\bevery\s*(other|second|\d+)?\s*(day|week|fortnight|month|quarter|year)s?\b/); const word=s.match(/\b(daily|weekly|fortnightly|monthly|quarterly|yearly|annually|annual|twice a year|every six months)\b/);
+    let unit="month", every=1;
+    if(ev){ const k=ev[1]==="other"||ev[1]==="second"?2:ev[1]?+ev[1]:1; ({ day:()=>{ unit="week"; every=1; note.push("Daily isn't supported yet; using weekly."); }, week:()=>{ unit="week"; every=k; }, fortnight:()=>{ unit="week"; every=2; }, month:()=>{ unit="month"; every=k; }, quarter:()=>{ unit="month"; every=3*k; }, year:()=>{ unit="year"; every=k; } })[ev[2]](); }
+    else if(word){ ({ daily:()=>{ unit="week"; note.push("Daily isn't supported yet; using weekly."); }, weekly:()=>{ unit="week"; }, fortnightly:()=>{ unit="week"; every=2; }, monthly:()=>{}, quarterly:()=>{ every=3; }, yearly:()=>{ unit="year"; }, annually:()=>{ unit="year"; }, annual:()=>{ unit="year"; }, "twice a year":()=>{ unit="year"; if(!dates.length) dates.push({ m:4, d:1 },{ m:10, d:1 }); }, "every six months":()=>{ every=6; } })[word[1]](); }
+    else if(dates.length) unit="year";
+    else if(!err.length) err.push("Say how often: “every month”, “every 2 weeks”, “every year on Apr 15”, or “12 months after it's completed”.");
+    if(unit==="year"&&!dates.length){ const d=new Date(); dates.push({ m:d.getMonth()+1, d:d.getDate() }); note.push(`No date given; using ${MON[dates[0].m-1]} ${dates[0].d}.`); }
+    sch.unit=unit; sch.every=every; if(unit==="year") sch.dates=dates; else delete sch.dates;
+    sch.dueDays=(m=s.match(/\bdue\s*(?:in\s*)?(\d+)\s*days?/))||(m=s.match(/(\d+)\s*days?\s*(?:later|after (?:it'?s|it is) created|to (?:do|finish|complete) it)/))?+m[1]:(prev?.dueDays??7);
+    const dm=s.match(/\bon the (\d{1,2})(?:st|nd|rd|th)\b/); if(dm&&unit==="month"){ const day=+dm[1]; const d=new Date(); let x=new Date(d.getFullYear(),d.getMonth(),Math.min(day,28),6); if(x>d) x=addMonths(x,-1); sch.last=x.toISOString(); }
+    if(!sch.last) sch.last=now(); }
+  if(job){ const w=W(job.id); if(w){ const values=structuredClone(w.values||{}); delete values.deadline; delete values.photos; delete values.documents; sch.template={ from:w.id, title:w.title||"", values, location:structuredClone(w.location||{}) }; } else if(prev?.template?.from!==job.id) err.push(`${job.id} isn't a job on this site.`); }
+  return { schedule:sch, err, note }; }
+/* plain-words reading of a compiled automation */
+function readbackHTML(a,c){ const L=(l,v)=>`<div class="au-rl">${l}</div><div class="au-rv">${v}</div>`; let h="";
+  if(a.kind==="rule"){ const r=c.rule; h=L("When",P(trigText(r.trigger)))+L("Only if",r.conds.length?r.conds.map(x=>P(condText(x))).join("<br>"):`<span class="hint">any job</span>`)+L("Then",r.actions.length?r.actions.map(x=>P(actText(x))).join("<br>"):`<span class="hint">nothing yet</span>`); }
+  else { const x={ ...a, schedule:c.schedule }; const sc=c.schedule; h=L("Repeat",P(rhythmLong(x)))+L(sc.mode==="after"?"Created":"Due",P(sc.mode==="after"?`${sc.leadDays||0} days before it's due`:`${sc.dueDays??7} days after it's created${sc.leadDays?`, created ${sc.leadDays} days ahead`:""}`))+L("Copies",sc.template?.from?`${P(sc.template.from)} · ${P(sc.template.title||"")}`:`<span class="hint">no job yet</span>`)+L("If open",P(sc.mode==="after"?"waits until the current one is completed":sc.ifOpen==="skip"?"skips that time":"creates it anyway"))+(sc.enabling?L("Also",P(`creates its enabling work (${EN_KINDS[sc.enabling]?.name||sc.enabling}), linked`)):""); }
+  return `<div class="au-read">${h}</div>${c.err.slice(0,1).map(e=>`<div class="au-issue bad">${P(e)}</div>`).join("")}${c.note.map(e=>`<div class="au-issue">${P(e)}</div>`).join("")}`; }
+const compileFor=(a,segs)=>a.kind==="rule"?compileRule(segs):compileSchedule(segs,a.schedule);
+/* token markup (list rows and the composer) */
+const tokClass=k=>({ opt:"opt", status:"st", person:"pe", zone:"zo", job:"jo" })[k]||"opt";
+function segsHTML(segs,editable){ return (segs||[]).map(g=>g.tok?`<span class="au-tok ${tokClass(g.tok.k)}" ${editable?`contenteditable="false" data-tok="${P(JSON.stringify(g.tok))}"`:""}>${P(g.label||tokLabel(g.tok))}</span>`:P(g.t)).join(""); }
+function readSegs(el){ const out=[]; const push=t=>{ if(!t) return; const l=out[out.length-1]; if(l&&!l.tok) l.t+=t; else out.push({ t }); };
+  const walk=n=>{ n.childNodes.forEach(c=>{ if(c.nodeType===3) push(c.nodeValue.replace(/ /g," ")); else if(c.dataset?.tok){ try{ out.push({ tok:JSON.parse(c.dataset.tok), label:c.textContent }); }catch{} } else if(c.nodeName==="BR") push(" "); else walk(c); }); };
+  walk(el); return out; }
+/* things "/" can pull in */
+function slashItems(kind,q){ q=(q||"").toLowerCase().trim(); const items=[];
+  const people=new Map(); const addP=p=>{ if(p?.email&&!people.has(p.email.toLowerCase())) people.set(p.email.toLowerCase(),{ name:p.name||"", email:p.email.toLowerCase() }); };
+  (S.members||[]).forEach(addP); S.wos.forEach(w=>(w.values?.people||[]).forEach(addP)); AU.forEach(a=>(a.text||[]).forEach(g=>g.tok?.k==="person"&&addP(g.tok)));
+  if(kind==="schedule") live().filter(w=>!w.draft).forEach(w=>items.push({ group:"Jobs", label:`${w.id} · ${w.title||"Untitled"}`, tok:{ k:"job", id:w.id } }));
+  [...people.values()].forEach(p=>items.push({ group:"People", label:p.name||p.email, sub:p.email, tok:{ k:"person", ...p } }));
+  if(kind==="rule"){ props().filter(p=>(p.type==="multi"||p.type==="select")&&p.options?.length).forEach(p=>p.options.forEach(o=>items.push({ group:p.name, label:o.name, tok:{ k:"opt", pid:p.id, value:o.name } })));
+    statuses().forEach(o=>items.push({ group:"Status", label:o.name, tok:{ k:"status", id:o.id } }));
+    ZONES.forEach(z=>items.push({ group:"Zones", label:z.name, tok:{ k:"zone", id:z.id } })); }
+  const hit=items.filter(x=>!q||(x.label+" "+(x.sub||"")+" "+x.group).toLowerCase().includes(q));
+  if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q)&&!people.has(q)) hit.unshift({ group:"New person", label:q, tok:{ k:"person", name:"", email:q } });
+  return hit.slice(0,40); }
+
+function auDetailHTML(a){ if(!a) return `<div class="au-empty">Nothing here yet. Use ＋ New ${AUV.f==="schedule"?"schedule":"rule"} and write what should happen.</div>`; const ed=auCanEdit();
+  const segs=AUD.id===a.id&&AUD.segs?AUD.segs:(a.text||[]); const c=compileFor(a,segs);
+  let series="";
+  if(a.kind==="schedule"&&a.schedule?.template?.from){ const s=a.schedule;
     const hist=(s.history||[]).map(h=>`<div class="au-occ ${h.state}"><b>${P(h.when)}</b><span>${P(h.label)}</span></div>`);
     const jobs=seriesJobs(a).map(w=>{ const late=isDone(w)&&w.values?.deadline?.start&&w.completedAt&&w.completedAt.slice(0,10)>w.values.deadline.start; return `<button class="au-occ ${isDone(w)?(late?"late":"done"):"cur"}" data-au-job="${w.id}"><b>${P(fmtDate(String(w.created).slice(0,10)))}</b><span>${w.id} · ${isDone(w)?"completed"+(late?" late":""):P(status(w.statusId)?.name||"")}</span></button>`; });
     const up=[]; if(a.on){ if(s.mode==="after"){ const f=nextFire(a); up.push(`<div class="au-occ next"><b>${f?P(fmtDate(ymd(f))):"next"}</b><span>${f?"will create":P(nextLabel(a))}</span></div>`); } else { let o=nextOcc(a); for(let i=0;i<3;i++){ up.push(`<div class="au-occ ${i?"":"next"}"><b>${P(fmtDate(ymd(addDays(o,-(s.leadDays||0)))))}</b><span>will create</span></div>`); o=nextOcc(a,o); } } }
-    body+=`<div><div class="au-lab">SERIES</div><div class="au-series">${[...hist,...jobs,...up].join("")}</div></div>`;
-  } else { const r=a.rule;
-    body=`<div class="au-sent"><div class="au-l">WHEN</div><div class="au-c">${chip(trigText(r.trigger),'data-au-edit="trigger"')}</div>
-      <div class="au-l">IF</div><div class="au-c">${(r.conds||[]).map((c,i)=>chip(condText(c),"",`data-au-rmc="${i}"`)).join("")}${add("＋ Condition",'data-au-edit="cond"')}${(r.conds||[]).length?"":`<span class="hint" style="align-self:center">any job</span>`}</div>
-      <div class="au-l">THEN</div><div class="au-c col">${(r.actions||[]).map((x,i)=>chip(actText(x),"",`data-au-rma="${i}"`)).join("")}${add("＋ Action",'data-au-edit="action"')}</div></div>`;
-    const mm=live().filter(isOpen).filter(w=>rulesFor(w).some(x=>x.id===a.id));
-    body+=`<div><div class="au-lab">OPEN JOBS THIS WILL ACT ON</div><div class="au-c">${mm.map(w=>`<button class="au-jobchip" data-au-job="${w.id}"><span class="mono">${w.id}</span>${P(w.title||"Untitled")}</button>`).join("")||`<span class="hint">None right now.</span>`}</div></div>`; }
-  return `<div class="au-dh"><div style="flex:1;min-width:0"><div class="au-lab">${a.kind==="schedule"?"SCHEDULE · REPEATING JOB":"RULE"}</div><h2 class="au-name" ${ed?`data-au-rename="1" title="Click to rename"`:""}>${P(a.name)}</h2><div class="hint">${a.on?"On":"Off"} · ${a.kind==="schedule"?"checks every minute while Dispatch is open":"runs the moment a job changes"}</div></div><button class="au-sw big ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn this automation on or off" ${ed?"":"disabled"}><i></i></button></div>
-    ${body}
+    series=`<div><div class="au-lab">SERIES</div><div class="au-series">${[...hist,...jobs,...up].join("")}</div></div>`; }
+  const acting=a.kind==="rule"&&a.rule?live().filter(isOpen).filter(w=>rulesFor(w).some(x=>x.id===a.id)):[];
+  return `<div class="au-dh"><div style="flex:1;min-width:0"><div class="au-lab">${a.kind==="schedule"?"SCHEDULE":"RULE"}</div><h2 class="au-name" ${ed?`data-au-rename="1" title="Click to rename"`:""}>${P(a.name)}</h2><div class="hint">${a.on?"On":"Off"} · ${a.kind==="schedule"?"checks every minute while Dispatch is open":"runs the moment a job changes"}</div></div><button class="au-sw big ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn this automation on or off" ${ed?"":"disabled"}><i></i></button></div>
+    <div><div class="au-lab">WRITE IT</div><div class="au-write ${ed?"":"ro"}" id="au-write" ${ed?`contenteditable="true" role="textbox" aria-multiline="true" aria-label="Write the ${a.kind}" spellcheck="true"`:""} data-ph="${a.kind==="schedule"?"e.g. Repeat /J-26-001 every month, due 7 days later":"e.g. Every /UT thickness job notifies /Karen Liu when it's completed"}">${segsHTML(segs,ed)}</div>
+      <div class="au-hint">${ed?`Type <b>/</b> to pull in ${a.kind==="schedule"?"a job or a person":"a person, a property value, a status or a zone"}. ${a.kind==="schedule"?"Say how often (“every month”, “every year on Apr 15”, “12 months after it's completed”), when it's due and how far ahead to create it.":"Say when (“when it's completed”, “3 days before the deadline”, “before it goes /In progress”) and what to do (“notify”, “tag”, “gets /Track protection”, “ask “…?””)."}`:""}</div></div>
+    <div><div class="au-lab">DISPATCH READS THIS AS</div><div id="au-readback">${readbackHTML(a,c)}</div>
+      ${ed?`<div class="au-savebar" id="au-savebar" ${AUD.id===a.id&&AUD.dirty?"":"hidden"}><span class="hint">Not saved yet</span><button class="btn" id="au-revert">Undo changes</button><button class="btn primary" id="au-save" ${c.err.length?"disabled":""}>Save</button></div>`:""}</div>
+    ${series}
+    ${a.kind==="rule"?`<div><div class="au-lab">OPEN JOBS THIS WILL ACT ON</div><div class="au-c">${acting.map(w=>`<button class="au-jobchip" data-au-job="${w.id}"><span class="mono">${w.id}</span>${P(w.title||"Untitled")}</button>`).join("")||`<span class="hint">None right now.</span>`}</div></div>`:""}
     <div><div class="au-lab">RECENT RUNS</div><div id="au-runs" class="au-runs"><div class="hint">Loading…</div></div></div>
-    <div class="au-foot"><span class="hint" style="flex:1">${a.createdBy?.name?`Created by ${P(a.createdBy.name)}`:""}</span>${ed&&(a.kind==="schedule"||a.rule?.trigger?.type==="deadline")?`<button class="btn" id="au-run">${a.kind==="schedule"?"Create the next one now":"Check now"}</button>`:""}${a.kind==="rule"?`<button class="btn" id="au-try">Try it on a job…</button>`:""}${ed?`<button class="btn" id="au-dup">Duplicate</button><button class="btn danger" id="au-del">Delete</button>`:""}</div>`; }
+    <div class="au-foot"><span class="hint" style="flex:1">${a.createdBy?.name?`Created by ${P(a.createdBy.name)}`:""}</span>${ed&&a.on&&(a.kind==="schedule"&&a.schedule?.template?.from||a.rule?.trigger?.type==="deadline")?`<button class="btn" id="au-run">${a.kind==="schedule"?"Create the next one now":"Check now"}</button>`:""}${a.kind==="rule"&&a.rule?`<button class="btn" id="au-try">Try it on a job…</button>`:""}${ed?`<button class="btn" id="au-dup">Duplicate</button><button class="btn danger" id="au-del">Delete</button>`:""}</div>`; }
+const AUD={ id:null, segs:null, dirty:false };   // the sentence being edited (kept across re-renders)
 let auRunsUnsub=null;
 function wireAuto(root){ const a=AUX(AUV.sel);
-  $("#au-switch")?.addEventListener("click",e=>autoMenu(e.currentTarget));
-  root.querySelectorAll("[data-au-pick]").forEach(b=>b.onclick=()=>{ AUV.sel=b.dataset.auPick; renderAuto(); });
-  root.querySelectorAll("[data-au-toggle]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const x=AUX(b.dataset.auToggle); if(!x||!auCanEdit()) return; x.on=!x.on; renderAuto(); renderAutoBadge(); DB.update(AU_COL+"/"+x.id,{ on:x.on, edited:now(), editedBy:userRef() }); });
+  root.querySelectorAll("[data-au-pick]").forEach(b=>b.onclick=()=>{ if(AUD.dirty&&AUD.id!==b.dataset.auPick){ AUD.id=null; AUD.segs=null; AUD.dirty=false; } AUV.sel=b.dataset.auPick; renderAuto(); });
+  root.querySelectorAll("[data-au-toggle]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const x=AUX(b.dataset.auToggle); if(!x||!auCanEdit()) return; if(!x.on&&!(x.kind==="rule"?x.rule?.actions?.length:x.schedule?.template?.from)){ toast("Write it and save it first.",true); return; } x.on=!x.on; renderAuto(); renderAutoBadge(); DB.update(AU_COL+"/"+x.id,{ on:x.on, edited:now(), editedBy:userRef() }); });
   root.querySelectorAll("[data-au-job]").forEach(b=>b.onclick=()=>openWO(b.dataset.auJob));
-  $("#au-new-s")?.addEventListener("click",e=>newSchedulePicker(e.currentTarget));
-  $("#au-new-r")?.addEventListener("click",()=>newRule());
+  $("#au-new-s")?.addEventListener("click",()=>newAuto("schedule"));
+  $("#au-new-r")?.addEventListener("click",()=>newAuto("rule"));
+  $("#au-switch")?.addEventListener("click",e=>autoMenu(e.currentTarget));
   auRunsUnsub?.(); auRunsUnsub=null;
   if(!a) return;
   auRunsUnsub=DB.watchCol(AU_COL+"/"+a.id+"/runs",rows=>{ const el=$("#au-runs"); if(!el) return; rows.sort((x,y)=>String(y.t).localeCompare(String(x.t)));
     el.innerHTML=rows.slice(0,8).map(r=>`<div class="au-run"><span class="mono t">${P(fmtDate(r.t,true))}</span><span class="mono j">${P(r.job||"")}</span><span class="d">${P(r.did)}</span><span class="r ${r.result==="Done"?"ok":""}">${P(r.result)}</span></div>`).join("")||`<div class="hint">Hasn't run yet.</div>`; });
   root.querySelector("[data-au-rename]")?.addEventListener("click",e=>{ const el=openPop(e.currentTarget,`<input type="text" id="au-nm" value="${P(a.name)}"><div class="fr" style="justify-content:flex-end"><button class="btn sm primary" id="au-nm-ok">Rename</button></div>`,{width:320,select:true}); const ok=()=>{ const v=el.querySelector("#au-nm").value.trim(); closePop(); if(v&&v!==a.name) DB.update(AU_COL+"/"+a.id,{ name:v, edited:now(), editedBy:userRef() }); }; el.querySelector("#au-nm-ok").onclick=ok; el.querySelector("#au-nm").onkeydown=e=>{ if(e.key==="Enter") ok(); }; });
-  root.querySelectorAll('[data-au-edit="rhythm"]').forEach(b=>b.onclick=e=>rhythmEditor(a,e.currentTarget));
-  root.querySelector('[data-au-edit="trigger"]')?.addEventListener("click",e=>triggerEditor(a,e.currentTarget));
-  root.querySelector('[data-au-edit="cond"]')?.addEventListener("click",e=>condEditor(a,e.currentTarget));
-  root.querySelector('[data-au-edit="action"]')?.addEventListener("click",e=>actionEditor(a,e.currentTarget));
-  root.querySelectorAll("[data-au-rmc]").forEach(b=>b.onclick=()=>{ const c=[...(a.rule.conds||[])]; c.splice(+b.dataset.auRmc,1); DB.update(AU_COL+"/"+a.id,{ "rule.conds":c, edited:now() }); });
-  root.querySelectorAll("[data-au-rma]").forEach(b=>b.onclick=()=>{ const c=[...(a.rule.actions||[])]; c.splice(+b.dataset.auRma,1); DB.update(AU_COL+"/"+a.id,{ "rule.actions":c, edited:now() }); });
+  const box=$("#au-write"); if(box&&box.isContentEditable) wireWriter(a,box);
+  $("#au-save")?.addEventListener("click",()=>saveWriting(a));
+  $("#au-revert")?.addEventListener("click",()=>{ AUD.id=null; AUD.segs=null; AUD.dirty=false; renderAuto(); });
   $("#au-run")?.addEventListener("click",async()=>{ if(a.kind==="schedule"){ const id=await fireSchedule(a,true); if(id) toast(`${id} created · <button class="link" id="au-go">Open it</button>`); $("#au-go")?.addEventListener("click",()=>openWO(id)); } else { await autoTick(); toast("Checked every open job's deadline."); } });
   $("#au-try")?.addEventListener("click",e=>tryPicker(a,e.currentTarget));
   $("#au-dup")?.addEventListener("click",async()=>{ const c=structuredClone(a); delete c.id; c.name=a.name+" (copy)"; c.on=false; c.runCount=0; c.lastRun=null; c.created=now(); c.createdBy=userRef(); c.order=(a.order||0)+0.5; const id=await DB.add(AU_COL,c); AUV.sel=id; });
-  $("#au-del")?.addEventListener("click",e=>{ const el=openPop(e.currentTarget,`<div style="padding:6px 8px">Delete “${P(a.name)}”? Jobs it made stay.</div><div class="fr" style="justify-content:flex-end"><button class="btn sm" id="au-del-no">Keep</button><button class="btn sm danger" id="au-del-yes">Delete</button></div>`,{width:260,noFocus:true}); el.querySelector("#au-del-no").onclick=closePop; el.querySelector("#au-del-yes").onclick=async()=>{ closePop(); AUV.sel=null; await DB.del(AU_COL+"/"+a.id); toast("Automation deleted."); }; });
+  $("#au-del")?.addEventListener("click",e=>{ const el=openPop(e.currentTarget,`<div style="padding:6px 8px">Delete “${P(a.name)}”? Jobs it made stay.</div><div class="fr" style="justify-content:flex-end"><button class="btn sm" id="au-del-no">Keep</button><button class="btn sm danger" id="au-del-yes">Delete</button></div>`,{width:260,noFocus:true}); el.querySelector("#au-del-no").onclick=closePop; el.querySelector("#au-del-yes").onclick=async()=>{ closePop(); AUV.sel=null; AUD.id=null; await DB.del(AU_COL+"/"+a.id); toast("Automation deleted."); }; });
 }
-/* ---------- editors ---------- */
-function rhythmEditor(a,anchor){ const s=a.schedule||{};
-  const el=openPop(anchor,`<div class="sec">Repeat</div>
-    <div class="fr"><label><input type="radio" name="au-mode" value="calendar" ${s.mode!=="after"?"checked":""}> On a calendar</label></div>
-    <div class="fr" style="padding-left:26px">Every <input type="number" id="au-ev" min="1" value="${s.every||1}" style="width:56px"> <select id="au-un"><option value="month" ${s.unit==="month"||!s.unit?"selected":""}>month(s)</option><option value="week" ${s.unit==="week"?"selected":""}>week(s)</option><option value="year" ${s.unit==="year"?"selected":""}>year, on the dates below</option></select></div>
-    <div class="fr" style="padding-left:26px">Deadline <input type="number" id="au-due" min="0" value="${s.dueDays??7}" style="width:56px"> days after it's created</div>
-    <div class="fr"><label><input type="radio" name="au-mode" value="after" ${s.mode==="after"?"checked":""}> After the last one is completed</label></div>
-    <div class="fr" style="padding-left:26px"><input type="number" id="au-mo" min="1" value="${s.months||12}" style="width:56px"> months later, created <input type="number" id="au-lead" min="0" value="${s.leadDays??30}" style="width:56px"> days before it's due</div>
-    <div class="sec">If the last one is still open</div>
-    <div class="fr"><label><input type="radio" name="au-io" value="create" ${s.ifOpen!=="skip"?"checked":""}> Create anyway</label><label><input type="radio" name="au-io" value="skip" ${s.ifOpen==="skip"?"checked":""}> Skip this time</label></div>
-    <div class="fr" style="justify-content:flex-end"><button class="btn sm primary" id="au-rh-ok">Save</button></div>`,{width:380,noFocus:true});
-  el.querySelector("#au-rh-ok").onclick=()=>{ const mode=el.querySelector('[name="au-mode"]:checked').value; const patch={ "schedule.mode":mode, "schedule.ifOpen":el.querySelector('[name="au-io"]:checked').value, edited:now() };
-    if(mode==="after"){ patch["schedule.months"]=Math.max(1,+el.querySelector("#au-mo").value||12); patch["schedule.leadDays"]=Math.max(0,+el.querySelector("#au-lead").value||0); }
-    else { patch["schedule.every"]=Math.max(1,+el.querySelector("#au-ev").value||1); patch["schedule.unit"]=el.querySelector("#au-un").value; patch["schedule.dueDays"]=Math.max(0,+el.querySelector("#au-due").value||0); if(patch["schedule.unit"]!=="year"&&(s.leadDays||0)>0&&s.mode!=="after") patch["schedule.leadDays"]=s.leadDays; if(!s.last) patch["schedule.last"]=now(); if(patch["schedule.unit"]==="year"&&!(s.dates||[]).length){ const d=new Date(); patch["schedule.dates"]=[{ m:d.getMonth()+1, d:d.getDate() }]; } }
-    closePop(); DB.update(AU_COL+"/"+a.id,patch); };
+/* the writing box: "/" opens a picker at the caret; picking inserts a token */
+function wireWriter(a,box){
+  let slash=null, sel=0, items=[];
+  const refresh=()=>{ AUD.id=a.id; AUD.segs=readSegs(box); AUD.dirty=true; const c=compileFor(a,AUD.segs); const rb=$("#au-readback"); if(rb) rb.innerHTML=readbackHTML(a,c); const sb=$("#au-savebar"); if(sb) sb.hidden=false; const sv=$("#au-save"); if(sv) sv.disabled=!!c.err.length; };
+  const caretQuery=()=>{ const s=getSelection(); if(!s.rangeCount) return null; const r=s.getRangeAt(0); const n=r.startContainer; if(n.nodeType!==3||!box.contains(n)) return null; const txt=n.nodeValue.slice(0,r.startOffset); const m=txt.match(/(?:^|[\s(“"])\/([^\/\n]{0,40})$/); if(!m) return null; return { node:n, start:r.startOffset-m[1].length-1, end:r.startOffset, q:m[1] }; };
+  const close=()=>{ if(slash){ slash=null; if(POP?.classList.contains("au-slash")) closePop(); } };
+  const draw=()=>{ const el=POP; if(!el||!slash) return; items=slashItems(a.kind,slash.q); if(sel>=items.length) sel=Math.max(0,items.length-1);
+    let g=""; el.innerHTML=items.map((x,i)=>{ const h=x.group!==g?`<div class="sec">${P(x.group)}</div>`:""; g=x.group; return h+`<div class="mi ${i===sel?"k":""}" data-si="${i}"><span class="au-tok ${tokClass(x.tok.k)}">${P(x.label)}</span>${x.sub?`<span class="r">${P(x.sub)}</span>`:""}</div>`; }).join("")||`<div class="hint" style="padding:6px 8px">Nothing matches “${P(slash.q)}”. Type an email address to add a new person.</div>`;
+    el.querySelectorAll("[data-si]").forEach(m=>{ m.onmousedown=e=>e.preventDefault(); m.onclick=()=>pick(+m.dataset.si); }); el.querySelector(".mi.k")?.scrollIntoView({ block:"nearest" }); };
+  const open=q=>{ const r=getSelection().getRangeAt(0).cloneRange(); const rect=r.getBoundingClientRect(); const anchor={ getBoundingClientRect:()=>rect.width||rect.height?rect:box.getBoundingClientRect() };
+    if(!slash||!POP?.classList.contains("au-slash")){ const el=openPop(anchor,"",{ width:300, noFocus:true, onClose:()=>{ slash=null; } }); el.classList.add("au-slash"); }
+    slash=q; draw(); };
+  const pick=i=>{ const x=items[i]; if(!x||!slash) return; const { node, start, end }=slash; const after=node.splitText(end); node.nodeValue=node.nodeValue.slice(0,start);
+    const span=document.createElement("span"); span.className=`au-tok ${tokClass(x.tok.k)}`; span.contentEditable="false"; span.dataset.tok=JSON.stringify(x.tok); span.textContent=x.tok.k==="job"?x.tok.id:x.label;
+    const sp=document.createTextNode(" "); after.parentNode.insertBefore(span,after); after.parentNode.insertBefore(sp,after);
+    const r=document.createRange(); r.setStart(sp,1); r.collapse(true); const s=getSelection(); s.removeAllRanges(); s.addRange(r); close(); box.focus(); refresh(); };
+  box.addEventListener("input",()=>{ const q=caretQuery(); if(q){ open(q); } else close(); refresh(); });
+  box.addEventListener("keydown",e=>{ if(slash&&POP?.classList.contains("au-slash")){ if(e.key==="ArrowDown"){ e.preventDefault(); sel=Math.min(items.length-1,sel+1); draw(); return; } if(e.key==="ArrowUp"){ e.preventDefault(); sel=Math.max(0,sel-1); draw(); return; } if(e.key==="Enter"||e.key==="Tab"){ if(items.length){ e.preventDefault(); pick(sel); } return; } if(e.key==="Escape"){ e.preventDefault(); close(); return; } }
+    if(e.key==="Enter"){ e.preventDefault(); if(e.metaKey||e.ctrlKey) saveWriting(a); } });
+  box.addEventListener("paste",e=>{ e.preventDefault(); const t=(e.clipboardData||window.clipboardData).getData("text/plain"); document.execCommand("insertText",false,t.replace(/\s+/g," ")); });
+  box.addEventListener("blur",()=>setTimeout(()=>{ if(!POP?.classList.contains("au-slash")) slash=null; },150));
+  if(AUD.id===a.id&&AUD.focus){ AUD.focus=false; box.focus(); const r=document.createRange(); r.selectNodeContents(box); r.collapse(false); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
 }
-function triggerEditor(a,anchor){ const t=a.rule.trigger;
-  const opts=[["change",TRIG.change.label],["status","Status changes to …"],["before","Before status changes to … (ask first)"],["ready",TRIG.ready.label],["restore",TRIG.restore.label],["area",TRIG.area.label],["deadline","N days before the deadline"]];
-  const el=openPop(anchor,`<div class="sec">When</div>${opts.map(([k,l])=>`<div class="mi" data-tr="${k}">${P(l)}<span class="r">${t.type===k?"✓":""}</span></div>`).join("")}
-    <div class="hr"></div><div class="fr">Status <select id="au-to">${Object.keys(GROUPS).map(g=>`<option value="${g}" ${t.to===g?"selected":""}>${GROUPS[g]}</option>`).join("")}${statuses().map(o=>`<option value="${o.id}" ${t.to===o.id?"selected":""}>${P(o.name)} (exactly)</option>`).join("")}</select></div>
-    <div class="fr">Days before deadline <input type="number" id="au-days" min="0" value="${t.days??3}" style="width:56px"></div>`,{width:340,noFocus:true});
-  el.querySelectorAll("[data-tr]").forEach(m=>m.onclick=()=>{ const type=m.dataset.tr; const nt={ type }; if(type==="status"||type==="before") nt.to=el.querySelector("#au-to").value; if(type==="deadline") nt.days=Math.max(0,+el.querySelector("#au-days").value||3); closePop(); DB.update(AU_COL+"/"+a.id,{ "rule.trigger":nt, edited:now() }); }); }
-function condEditor(a,anchor){ const multis=props().filter(p=>p.type==="multi"||p.type==="select");
-  const el=openPop(anchor,`<div class="sec">Only when</div><div class="fr"><select id="au-cp">${multis.map(p=>`<option value="${p.id}">${P(p.name)}</option>`).join("")}</select> includes <select id="au-cv"></select></div><div class="fr" style="justify-content:flex-end"><button class="btn sm primary" id="au-c-ok">Add</button></div>${ZONES.length?`<div class="hr"></div><div class="sec">Or: job area touches a zone</div>${ZONES.map(z=>`<div class="mi" data-cz="${z.id}">${P(z.name)}</div>`).join("")}`:""}`,{width:340,noFocus:true});
-  const fill=()=>{ const p=prop(el.querySelector("#au-cp").value); el.querySelector("#au-cv").innerHTML=(p?.options||[]).map(o=>`<option>${P(o.name)}</option>`).join(""); }; el.querySelector("#au-cp").onchange=fill; fill();
-  const push=c=>{ closePop(); DB.update(AU_COL+"/"+a.id,{ "rule.conds":[...(a.rule.conds||[]),c], edited:now() }); };
-  el.querySelector("#au-c-ok").onclick=()=>push({ type:"prop", pid:el.querySelector("#au-cp").value, value:el.querySelector("#au-cv").value });
-  el.querySelectorAll("[data-cz]").forEach(m=>m.onclick=()=>push({ type:"zone", zone:m.dataset.cz })); }
-function actionEditor(a,anchor){
-  const el=openPop(anchor,`<div class="sec">Then</div><div class="fr"><select id="au-at"><option value="tag">Tag a person on the job</option><option value="email">Email a person</option><option value="email-people">Email the people on the job</option><option value="cc">Add a person to the job's email threads</option><option value="permit">Add a permit</option><option value="deadline">Set the deadline N days out</option><option value="ask">Ask a question first (before-status rules)</option></select></div>
-    <div class="fr" id="au-a-person"><input type="text" id="au-an" placeholder="Name"><input type="email" id="au-ae" placeholder="email@company.com"></div>
-    <div class="fr" id="au-a-what"><select id="au-aw"><option value="results">the results, photos and files</option><option value="ready">a ready-to-start notice</option><option value="restore">a restore request</option><option value="reminder">a deadline reminder</option></select> hold <input type="number" id="au-ah" min="0" value="5" style="width:52px"> min</div>
-    <div class="fr" id="au-a-val"><input type="text" id="au-av" placeholder="Permit name, days, or the question"></div>
-    <div class="fr" style="justify-content:flex-end"><button class="btn sm primary" id="au-a-ok">Add</button></div>`,{width:380,noFocus:true});
-  const sync=()=>{ const t=el.querySelector("#au-at").value; el.querySelector("#au-a-person").hidden=!["tag","email","cc"].includes(t); el.querySelector("#au-a-what").hidden=!t.startsWith("email"); el.querySelector("#au-a-val").hidden=!["permit","deadline","ask"].includes(t); }; el.querySelector("#au-at").onchange=sync; sync();
-  el.querySelector("#au-a-ok").onclick=()=>{ const t=el.querySelector("#au-at").value; const person={ name:el.querySelector("#au-an").value.trim(), email:el.querySelector("#au-ae").value.trim().toLowerCase() }; const v=el.querySelector("#au-av").value.trim(); let x=null;
-    if(["tag","cc","email"].includes(t)){ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(person.email)){ toast("Enter a valid email address.",true); return; } x={ type:t, person }; if(t==="email"){ x.to="person"; x.what=el.querySelector("#au-aw").value; x.hold=Math.max(0,+el.querySelector("#au-ah").value||0); } }
-    else if(t==="email-people") x={ type:"email", to:"people", what:el.querySelector("#au-aw").value, hold:Math.max(0,+el.querySelector("#au-ah").value||0) };
-    else if(t==="permit"){ if(!v) return; x={ type:"permit", value:v }; }
-    else if(t==="deadline") x={ type:"deadline", days:Math.max(0,+v||7) };
-    else if(t==="ask"){ if(!v) return; x={ type:"ask", q:v }; }
-    closePop(); if(x) DB.update(AU_COL+"/"+a.id,{ "rule.actions":[...(a.rule.actions||[]),x], edited:now() }); }; }
+async function saveWriting(a){ const segs=AUD.id===a.id&&AUD.segs?AUD.segs:(a.text||[]); const c=compileFor(a,segs); if(c.err.length){ toast(P(c.err[0]),true); return; }
+  const patch={ text:segs, edited:now(), editedBy:userRef() };
+  if(a.kind==="rule") patch.rule=c.rule; else patch.schedule=c.schedule;
+  const first=a.fresh; if(first){ patch.fresh=false; patch.on=true; if(/^New (rule|schedule)$/.test(a.name)) patch.name=autoName(a,segs); }
+  if(a.kind==="schedule"&&c.schedule.template?.from){ const w=W(c.schedule.template.from); if(w&&!w.series) await DB.update(WO_COL+"/"+w.id,{ series:{ auto:a.id, n:Math.max(1,(a.schedule?.history||[]).length+1) } }); }
+  AUD.id=null; AUD.segs=null; AUD.dirty=false; await DB.update(AU_COL+"/"+a.id,patch); toast(first?`Saved — “${P(patch.name||a.name)}” is on.`:"Saved."); }
+function autoName(a,segs){ if(a.kind==="schedule"){ const j=(segs||[]).find(g=>g.tok?.k==="job"); const w=j&&W(j.tok.id); if(w) return w.title||w.id; } const t=segText(segs).replace(/^(i want|we want|please|make sure)\s+/i,"").trim(); return (t.length>52?t.slice(0,50).replace(/\s+\S*$/,"")+"…":t)||"Untitled"; }
+async function newAuto(kind){ const doc={ kind, name:kind==="schedule"?"New schedule":"New rule", on:false, fresh:true, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null, text:kind==="schedule"?[{ t:"Repeat " }]:[{ t:"" }] };
+  if(kind==="rule") doc.rule={ trigger:{ type:"change" }, conds:[], actions:[] }; else doc.schedule={ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", history:[] };
+  const id=await DB.add(AU_COL,doc); AUV.sel=id; AUV.f=kind; AUD.id=id; AUD.segs=null; AUD.dirty=false; AUD.focus=true; renderAuto(); }
 function jobPicker(anchor,title,onPick){ const el=openPop(anchor,`<div class="sec">${P(title)}</div><input class="pin" placeholder="Find a job"><div class="au-pl"></div>`,{width:320});
   const draw=()=>{ const q=el.querySelector(".pin").value.toLowerCase(); el.querySelector(".au-pl").innerHTML=live().filter(w=>!w.draft&&(!q||textOf(w).includes(q))).map(w=>`<div class="mi" data-pk="${w.id}"><span class="mono">${w.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(w.title||"Untitled")}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No jobs match</div>`; el.querySelectorAll("[data-pk]").forEach(m=>m.onclick=()=>{ closePop(); onPick(W(m.dataset.pk)); }); };
   el.querySelector(".pin").oninput=draw; draw(); }
-function newSchedulePicker(anchor){ jobPicker(anchor,"Which job should repeat?",async w=>{ if(!w) return;
-  const values=structuredClone(w.values||{}); delete values.deadline; delete values.photos; delete values.documents;
-  const a={ kind:"schedule", name:w.title||w.id, on:true, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null,
-    schedule:{ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", last:now(), template:{ from:w.id, title:w.title||"", values, location:structuredClone(w.location||{}) }, history:[] } };
-  const id=await DB.add(AU_COL,a); if(!w.series) await DB.update(WO_COL+"/"+w.id,{ series:{ auto:id, n:1 } }); AUV.sel=id; AUV.f="schedule"; toast(`${P(w.id)} now repeats monthly · change the rhythm in the schedule.`); }); }
-async function newRule(){ const id=await DB.add(AU_COL,{ kind:"rule", name:"New rule", on:false, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null, rule:{ trigger:{ type:"status", to:"complete" }, conds:[], actions:[] } }); AUV.sel=id; AUV.f="rule"; renderAuto(); }
 function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ if(!w) return; const r=a.rule; const miss=(r.conds||[]).filter(c=>!condMatch(c,w));
   const ok=!miss.length; const acts=(r.actions||[]).map(actPhrase).join(", ")||"nothing (no actions yet)";
-  const el=openPop(anchor,`<div class="sec">${P(w.id)} · ${P(w.title||"Untitled")}</div><div style="padding:4px 8px 8px">${ok?`<b>It applies.</b> ${P(whenPhrase(r.trigger))}: ${P(acts)}.`:`<b>It doesn't apply</b> because ${miss.map(c=>P(condText(c).replace(" includes "," doesn't include "))).join(" and ")}.`}<div class="hint" style="margin-top:6px">Nothing was changed — this is a preview.</div></div>`,{width:320,noFocus:true}); void el; }); }
+  openPop(anchor,`<div class="sec">${P(w.id)} · ${P(w.title||"Untitled")}</div><div style="padding:4px 8px 8px">${ok?`<b>It applies.</b> ${P(whenPhrase(r.trigger))}: ${P(acts)}.`:`<b>It doesn't apply</b> because ${miss.map(c=>P(condText(c).replace(" includes "," doesn't include "))).join(" and ")}.`}<div class="hint" style="margin-top:6px">Nothing was changed — this is a preview.</div></div>`,{width:320,noFocus:true}); }); }
 
 /* ---------- wiring outside the tab ---------- */
 document.addEventListener("click",e=>{ const o=e.target.closest("[data-au-open]"); if(o){ e.preventDefault(); openAuto(o.dataset.auOpen); return; }
   const c=e.target.closest("[data-au-cancel]"); if(c){ e.preventDefault(); cancelEmail(c.dataset.auCancel,c.dataset.mid); } });
 
-if(MOCK) window.__auto={ get AU(){ return AU; }, get ZONES(){ return ZONES; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), jobInZone:(id,z)=>jobInZone(W(id),ZONES.find(x=>x.id===z)), cancelEmail, get ZOV(){ return ZOV; }, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
+if(MOCK) window.__auto={ get AU(){ return AU; }, get ZONES(){ return ZONES; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), jobInZone:(id,z)=>jobInZone(W(id),ZONES.find(x=>x.id===z)), cancelEmail, get ZOV(){ return ZOV; }, compileRule, compileSchedule, segText, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
 #view-auto{overflow:auto;background:var(--ground)}
@@ -3087,6 +3160,17 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 .au-run{display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid var(--panel-2);font-size:12.5px}.au-run:last-child{border-bottom:0}.au-run .t{width:118px;flex:none;font-size:11.5px;color:var(--ink-3)}.au-run .j{width:70px;flex:none;font-size:11.5px}.au-run .d{flex:1;color:var(--ink-2)}.au-run .r{font-size:11.5px;font-weight:600;color:var(--ink-3)}.au-run .r.ok{color:var(--ok)}
 .au-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--panel-2);padding-top:10px}
 .au-empty{padding:40px;text-align:center;color:var(--ink-3)}
+.au-write{min-height:74px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:16px;line-height:1.9;background:var(--panel);color:var(--ink);outline:none;white-space:pre-wrap;word-wrap:break-word}
+.au-write:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(75,30,171,.18)}.au-write.ro{background:var(--panel-2)}
+.au-write:empty:before{content:attr(data-ph);color:var(--ink-3)}
+.au-tok{display:inline-block;border-radius:6px;padding:0 7px;line-height:1.55;font-size:.92em;font-weight:600;white-space:nowrap;margin:0 1px;vertical-align:baseline}
+.au-tok.pe{background:#E3D6FA;color:#331466}.au-tok.opt{background:#CFE1FB;color:#0D3A73}.au-tok.st{background:#FBD9BF;color:#5A2E00}.au-tok.zo{background:#F7E7A9;color:#4A3900}.au-tok.jo{background:#CFEBD9;color:#0F4A2C;font-family:var(--mono);font-weight:500}
+.au-hint{font-size:12px;color:var(--ink-3);margin-top:6px}.au-hint b{color:var(--accent);font-family:var(--mono)}
+.au-read{display:grid;grid-template-columns:78px minmax(0,1fr);gap:6px 12px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel-2);font-size:13.5px}
+.au-rl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);padding-top:2px}.au-rv{color:var(--ink)}
+.au-issue{margin-top:8px;font-size:12.5px;color:var(--ink-2);padding:6px 10px;border-radius:8px;background:var(--panel-2)}.au-issue.bad{color:#8A2A00;background:#FBD9BF}
+.au-savebar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px}.au-savebar .hint{flex:1}
+.pop.au-slash{max-height:320px;overflow:auto}.pop.au-slash .mi .au-tok{font-size:12.5px}
 .au-pl{max-height:300px;overflow:auto}
 .aub{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}.aub.rep{background:#CFE1FB;color:#0D3A73;font-weight:500}.aub.rule{border:1px solid var(--line);color:var(--ink-2)}
 .austrip .val b{font-weight:600;color:var(--ink)}
@@ -3203,31 +3287,33 @@ async function demoSeed(DB){
 
   // ---------- automations: the six repeating jobs become schedules; seven rules; one zone ----------
   const tplOf=n=>{ const j=J.find(x=>x.n===n); const v=structuredClone(j.values); delete v.deadline; return { from:ID(n), title:j.title, values:v, location:{ points:j.pts, height:j.height||0, closed:!!j.closed } }; };
+  const T=t=>({ t }), PE=p=>({ tok:{ k:"person", name:p.name, email:p.email }, label:p.name }), OP=(pid,v)=>({ tok:{ k:"opt", pid, value:v }, label:v }), ST=(id,l)=>({ tok:{ k:"status", id }, label:l }), ZO=(id,l)=>({ tok:{ k:"zone", id }, label:l }), JO=n=>({ tok:{ k:"job", id:ID(n) }, label:ID(n) });
   const at6=(d)=>{ const x=new Date(Date.now()-d*86400000); x.setHours(6,0,0,0); return x.toISOString(); };
   const AUTO=[
-    { id:"s1", kind:"schedule", name:"Tank T-1 monthly external walkdown", on:true, schedule:{ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", last:at6(9), template:tplOf(1),
+    { id:"s1", kind:"schedule", text:[T("Repeat "),JO(1),T(" every month, due 7 days after it's created.")], name:"Tank T-1 monthly external walkdown", on:true, schedule:{ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", last:at6(9), template:tplOf(1),
       history:[{ when:"3 months ago", state:"done", label:"completed on time" },{ when:"2 months ago", state:"done", label:"completed on time" },{ when:"last month", state:"late", label:"completed 4 days late" }] },
       runs:[[9,"J-26-001","created J-26-001, assigned Marco Bellini"],[39,"","created, assigned Marco Bellini"],[70,"","created, assigned Marco Bellini"]] },
-    { id:"s2", kind:"schedule", name:"Clarifier C-2 annual mechanism inspection", on:true, schedule:{ mode:"after", months:12, leadDays:30, ifOpen:"create", lastDone:new Date(Date.now()-350*86400000).toISOString(), template:tplOf(4),
+    { id:"s2", kind:"schedule", text:[T("Repeat "),JO(4),T(" 12 months after the last one is completed, created 30 days ahead.")], name:"Clarifier C-2 annual mechanism inspection", on:true, schedule:{ mode:"after", months:12, leadDays:30, ifOpen:"create", lastDone:new Date(Date.now()-350*86400000).toISOString(), template:tplOf(4),
       history:[{ when:"2 years ago", state:"done", label:"completed" },{ when:"last year", state:"done", label:"completed" }] }, runs:[[6,"J-26-004","created J-26-004, 30 days before due"]] },
-    { id:"s3", kind:"schedule", name:"Tank T-1 external inspection + shell UT", on:true, schedule:{ mode:"after", months:60, leadDays:90, ifOpen:"create", lastDone:new Date(Date.now()-1780*86400000).toISOString(), template:tplOf(2),
+    { id:"s3", kind:"schedule", text:[T("Repeat "),JO(2),T(" 5 years after the last one is completed, created 90 days ahead.")], name:"Tank T-1 external inspection + shell UT", on:true, schedule:{ mode:"after", months:60, leadDays:90, ifOpen:"create", lastDone:new Date(Date.now()-1780*86400000).toISOString(), template:tplOf(2),
       history:[{ when:"10 years ago", state:"done", label:"completed" },{ when:"5 years ago", state:"done", label:"completed" }] }, runs:[[14,"J-26-002","created J-26-002, 90 days before due"]] },
-    { id:"s4", kind:"schedule", name:"Roof inspection + drain clearing", on:true, schedule:{ mode:"calendar", unit:"year", dates:[{m:4,d:15},{m:10,d:15}], dueDays:14, leadDays:20, ifOpen:"create", last:(()=>{ const d=new Date(); const y=d.getMonth()+1>10||(d.getMonth()+1===10&&d.getDate()>15)?d.getFullYear():d.getFullYear(); return new Date(y,9,15,6).toISOString(); })(), template:tplOf(9),
+    { id:"s4", kind:"schedule", text:[T("Repeat "),JO(9),T(" every year on Apr 15 and Oct 15, created 20 days ahead, due 14 days later.")], name:"Roof inspection + drain clearing", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:4,d:15},{m:10,d:15}], dueDays:14, leadDays:20, ifOpen:"create", last:(()=>{ const d=new Date(); const y=d.getMonth()+1>10||(d.getMonth()+1===10&&d.getDate()>15)?d.getFullYear():d.getFullYear(); return new Date(y,9,15,6).toISOString(); })(), template:tplOf(9),
       history:[{ when:"spring", state:"done", label:"completed on time" }] }, runs:[[5,"J-26-009","created J-26-009, 20 days ahead"]] },
-    { id:"s5", kind:"schedule", name:"Fire hydrant annual flow + lubrication", on:true, schedule:{ mode:"calendar", unit:"year", dates:[{m:6,d:1}], dueDays:30, leadDays:0, ifOpen:"create", last:new Date(new Date().getFullYear()-(new Date().getMonth()<5?1:0),5,1,6).toISOString(), template:tplOf(11),
+    { id:"s5", kind:"schedule", text:[T("Repeat "),JO(11),T(" every year on Jun 1, due 30 days later.")], name:"Fire hydrant annual flow + lubrication", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:6,d:1}], dueDays:30, leadDays:0, ifOpen:"create", last:new Date(new Date().getFullYear()-(new Date().getMonth()<5?1:0),5,1,6).toISOString(), template:tplOf(11),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[[30,"J-26-011","created J-26-011"]] },
-    { id:"s6", kind:"schedule", name:"Pipe bridge PR-3 CUI inspection", on:false, schedule:{ mode:"after", months:12, leadDays:45, ifOpen:"create", enabling:"insulation", lastDone:new Date(Date.now()-380*86400000).toISOString(), template:tplOf(6),
+    { id:"s6", kind:"schedule", text:[T("Repeat "),JO(6),T(" 12 months after the last one is completed, created 45 days ahead, with its insulation removal.")], name:"Pipe bridge PR-3 CUI inspection", on:false, schedule:{ mode:"after", months:12, leadDays:45, ifOpen:"create", enabling:"insulation", lastDone:new Date(Date.now()-380*86400000).toISOString(), template:tplOf(6),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[] },
-    { id:"r1", kind:"rule", name:"Scaffold requests include Priya Nair", on:true, rule:{ trigger:{ type:"change" }, conds:[{ type:"prop", pid:"access", value:"Scaffold" }], actions:[{ type:"tag", person:priya },{ type:"cc", person:priya }] },
+    { id:"r1", kind:"rule", name:"Scaffold requests include Priya Nair", on:true, text:[T("Every "),OP("access","Scaffold"),T(" job includes "),PE(priya),T(" and loops her into the job's email.")],
       runs:[[12,"J-26-013","tagged Priya Nair"],[12,"J-26-010","tagged Priya Nair"],[8,"J-26-006","tagged Priya Nair"]] },
-    { id:"r2", kind:"rule", name:"UT results go to Karen Liu", on:true, rule:{ trigger:{ type:"status", to:"complete" }, conds:[{ type:"prop", pid:"worktype", value:"UT thickness" }], actions:[{ type:"email", to:"person", person:karen, what:"results", hold:5 }] }, runs:[] },
-    { id:"r3", kind:"rule", name:"Tell the crew when a job is ready to start", on:true, rule:{ trigger:{ type:"ready" }, conds:[], actions:[{ type:"email", to:"people", what:"ready", hold:5 }] }, runs:[] },
-    { id:"r4", kind:"rule", name:"Book the strip-down when restore is due", on:true, rule:{ trigger:{ type:"restore" }, conds:[], actions:[{ type:"email", to:"person", person:priya, what:"restore", hold:5 },{ type:"deadline", days:7 }] }, runs:[] },
-    { id:"r5", kind:"rule", name:"Rail corridor jobs need track protection", on:true, rule:{ trigger:{ type:"area" }, conds:[{ type:"zone", zone:"rail" }], actions:[{ type:"permit", value:"Track protection" },{ type:"tag", person:railops }] },
+    { id:"r2", kind:"rule", name:"UT results go to Karen Liu", on:true, text:[T("I want every "),OP("worktype","UT thickness"),T(" job to notify "),PE(karen),T(" when it's completed for her review.")], runs:[] },
+    { id:"r3", kind:"rule", name:"Tell the crew when a job is ready to start", on:true, text:[T("When a job is ready to start, email the people on it.")], runs:[] },
+    { id:"r4", kind:"rule", name:"Book the strip-down when restore is due", on:true, text:[T("When a restore is due, email "),PE(priya),T(" to book it and set the deadline 7 days out.")], runs:[] },
+    { id:"r5", kind:"rule", name:"Rail corridor jobs need track protection", on:true, text:[T("Every job drawn in the "),ZO("rail","Rail corridor"),T(" gets "),OP("permits","Track protection"),T(" and tags "),PE(railops),T(".")],
       runs:[[3,"J-26-012","added permit Track protection · tagged Rail operations"]] },
-    { id:"r6", kind:"rule", name:"Deadline reminders", on:true, rule:{ trigger:{ type:"deadline", days:3 }, conds:[], actions:[{ type:"email", to:"people", what:"reminder", hold:0 }] }, runs:[[0.2,"J-26-008","emailed Marco Bellini"]] },
-    { id:"r7", kind:"rule", name:"Hot work check before starting", on:true, rule:{ trigger:{ type:"before", to:"progress" }, conds:[{ type:"prop", pid:"permits", value:"Hot work" }], actions:[{ type:"ask", q:"Is the hot work permit issued and posted?" }] }, runs:[] },
+    { id:"r6", kind:"rule", name:"Deadline reminders", on:true, text:[T("3 days before the deadline, remind the people on it.")], runs:[[0.2,"J-26-008","emailed Marco Bellini"]] },
+    { id:"r7", kind:"rule", name:"Hot work check before starting", on:true, text:[T("Before a "),OP("permits","Hot work"),T(" job goes "),ST("in_progress","In progress"),T(", ask “Is the hot work permit issued and posted?”")], runs:[] },
   ];
+  for(const a of AUTO) if(a.kind==="rule"){ const c=compileRule(a.text); if(c.err.length) console.warn("seed rule",a.id,c.err); a.rule=c.rule; }
   for(const [i,a] of AUTO.entries()){ const { id, runs, ...doc }=a; const rs=runs||[];
     await DB.set(AU_COL+"/"+id,{ ...doc, order:i, created:ago(20), createdBy:me, runCount:rs.length, lastRun:rs.length?ago(Math.min(...rs.map(r=>r[0]))):null });
     for(const [k,[d,job,did]] of rs.entries()) await DB.set(AU_COL+"/"+id+"/runs/x"+k,{ t:ago(d), job, did, result:"Done" }); }
