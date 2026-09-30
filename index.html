@@ -2700,6 +2700,10 @@ async function demoSeed(DB){
   const at=(px,py)=>({ lat:+(P0.lat-(py-P0.py)*MPP/111100).toFixed(6), lng:+(P0.lng+(px-P0.px)*MPP/81260).toFixed(6) });
   const ring=(cx,cy,r,n)=>[...Array(n)].map((_,i)=>{ const a=i/n*2*Math.PI-Math.PI/2; return at(cx+r*Math.cos(a),cy+r*Math.sin(a)); });
   const rect=(x0,y0,x1,y1)=>[at(x0,y0),at(x1,y0),at(x1,y1),at(x0,y1)];
+  // sharper positions: pixels on Nikita's full-resolution satellite screenshot (0.226 m per pixel), mapped onto the frame above
+  const U=(X,Y)=>at(X/1.189-338.5,Y/1.189-521.1);
+  const ringU=(X,Y,r,n)=>[...Array(n)].map((_,i)=>{ const a=i/n*2*Math.PI-Math.PI/2; return U(X+r*Math.cos(a),Y+r*Math.sin(a)); });
+  const polyU=(...xy)=>xy.map(([X,Y])=>U(X,Y));
   const me={ uid:"demo", name:"Demo user", email:"demo@skygauge.co" };
   const dave={ email:"dave.moreau@example.com", name:"Dave Moreau" }, karen={ email:"karen.liu@example.com", name:"Karen Liu" }, marco={ email:"marco.bellini@example.com", name:"Marco Bellini" }, priya={ email:"priya.nair@example.com", name:"Priya Nair" };
 
@@ -2716,32 +2720,32 @@ async function demoSeed(DB){
     await DB.set("workspace/main/assets/"+a[0],{ tag:a[0], name:a[1], area:a[2] });
 
   const WK=n=>opt("worktype",n), AC=n=>opt("access",n), PM=n=>opt("permits",n);
-  const PR3=[at(478,199),at(600,221),at(693,240),at(800,262),at(876,277)];   // along the rack north of the clarifier, then across the tracks to T-1
-  const TBE=rect(560,540,614,612);                                             // east wing of the treatment building
+  const PR3=polyU([970,853],[1100,877],[1225,902],[1330,922],[1445,950]);   // along the rack north of the clarifier, then across the tracks to T-1
+  const TBE=polyU([1043,1263],[1133,1276],[1121,1357],[1035,1345]);                                             // east wing of the treatment building
   const J=[
-    { n:1, title:"Tank T-1 monthly external walkdown", st:"completed", pts:[at(868,308)], created:ago(9), completedAt:ago(2),
+    { n:1, title:"Tank T-1 monthly external walkdown", st:"completed", pts:[U(1448,992)], created:ago(9), completedAt:ago(2),
       values:{ jobtype:jt("Inspection"), asset:["T-1"], worktype:[WK("Visual")], access:[AC("Grade / platform")], people:[marco], repeats:"Monthly", reference:"Leaks, foundation, coating and containment check" } },
-    { n:2, title:"Tank T-1 5-yearly external inspection + shell UT", st:"in_progress", pts:ring(957,227,92,12), closed:true, created:ago(14),
+    { n:2, title:"Tank T-1 5-yearly external inspection + shell UT", st:"in_progress", pts:ringU(1541,892,106,12), closed:true, created:ago(14),
       values:{ jobtype:jt("Inspection"), asset:["T-1"], worktype:[WK("UT thickness"),WK("Visual")], access:[AC("Drone")], permits:[PM("Working at height")], people:[dave,karen], deadline:{ start:ahead(9) }, repeats:"Every 5 years", po:"4500218871", reference:"Shell + roof visual, UT on all courses, settlement survey" } },
-    { n:3, title:"Tank T-1 nozzle N3 flange repair", st:"outstanding", pts:[at(880,279)], created:ago(4), waitsOn:[2],
+    { n:3, title:"Tank T-1 nozzle N3 flange repair", st:"outstanding", pts:[U(1447,951)], created:ago(4), waitsOn:[2],
       values:{ jobtype:jt("Corrective"), asset:["T-1"], worktype:[WK("Other")], access:[AC("Lift")], permits:[PM("Hot work"),PM("Electrical isolation")], people:[karen], reference:"Replace gasket + 4 corroded studs found in J-26-002. Needs ops to drop the tank level." } },
-    { n:4, title:"Clarifier C-2 annual mechanism inspection (drained)", st:"outstanding", pts:ring(572,323,86,12), closed:true, created:ago(6),
+    { n:4, title:"Clarifier C-2 annual mechanism inspection (drained)", st:"outstanding", pts:ringU(1082,1001,104,12), closed:true, created:ago(6),
       values:{ jobtype:jt("Inspection"), asset:["C-2"], worktype:[WK("Visual")], access:[AC("Grade / platform")], permits:[PM("Confined space")], people:[marco], deadline:{ start:ahead(16) }, repeats:"Annual", reference:"Squeegees, rake arms, seals, coating touch-up" } },
     { n:5, title:"Pipe bridge PR-3 insulation removal + reinstatement", st:"in_progress", pts:PR3, created:ago(8), enabling:{ kind:"insulation", ready:false },
       values:{ jobtype:jt("Enabling"), asset:["PR-3"], worktype:[WK("Insulation / CUI")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[priya], reference:"Strip 12 windows, fit inspection ports; reinstate after J-26-006" } },
     { n:6, title:"Pipe bridge PR-3 CUI inspection", st:"on_hold", pts:PR3, created:ago(8), waitsOn:[5], holdReason:"Waiting on insulation removal (J-26-005)",
       values:{ jobtype:jt("Inspection"), asset:["PR-3"], worktype:[WK("Insulation / CUI"),WK("UT thickness")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[dave], repeats:"Annual", reference:"Visual + UT at 12 windows: low elbows, tee bottoms, hanger penetrations" } },
-    { n:7, title:"Pipe bridge PR-3 baseplate repair", st:"completed", pts:[at(540,210),at(640,229),at(745,251),at(840,270)], created:ago(21), completedAt:ago(11),
+    { n:7, title:"Pipe bridge PR-3 baseplate repair", st:"completed", pts:polyU([1010,861],[1160,889],[1280,912],[1400,938]), created:ago(21), completedAt:ago(11),
       values:{ jobtype:jt("Corrective"), asset:["PR-3"], worktype:[WK("Other")], access:[AC("Grade / platform")], permits:[PM("Hot work")], reference:"Clean + recoat 4 corroded baseplates, replace 2 anchor nuts" } },
     { n:8, title:"Pump P-402 mechanical seal replacement", st:"in_progress", pts:[at(436,280)], created:ago(1,5),
       values:{ jobtype:jt("Corrective"), asset:["PH-4","P-402"], worktype:[WK("Other")], access:[AC("Grade / platform")], permits:[PM("Electrical isolation")], people:[marco], deadline:{ start:ahead(1) }, reference:"Reactive: seal leaking. Replace seal, check bearings, realign. Parts on site." } },
-    { n:9, title:"Fall roof inspection + drain clearing", st:"outstanding", pts:rect(420,523,503,596), closed:true, created:ago(5),
+    { n:9, title:"Fall roof inspection + drain clearing", st:"outstanding", pts:polyU([913,1240],[1000,1257],[994,1328],[901,1314]), closed:true, created:ago(5),
       values:{ jobtype:jt("Preventive"), asset:["TB-5","PH-4"], worktype:[WK("Visual")], access:[AC("Drone")], permits:[PM("Working at height")], deadline:{ start:ahead(24) }, repeats:"Twice a year", reference:"Drains, flashing, seams, penetrations on every building roof" } },
     { n:10, title:"Treatment building TB-5 wall sheeting + girt repair", st:"on_hold", pts:TBE, closed:true, height:9, created:ago(12), waitsOn:[13], holdReason:"Waiting on scaffold (J-26-013)",
       values:{ jobtype:jt("Corrective"), asset:["TB-5"], worktype:[WK("Other")], access:[AC("Scaffold")], permits:[PM("Working at height"),PM("Hot work")], people:[dave], reference:"East wall: replace torn sheeting panels and one corroded girt" } },
     { n:11, title:"Fire hydrant annual flow + lubrication", st:"completed", pts:[at(668,468)], created:ago(30), completedAt:ago(17),
       values:{ jobtype:jt("Preventive"), asset:["FH"], worktype:[WK("Visual")], access:[AC("Grade / platform")], repeats:"Annual (full flow test every 5 years)", reference:"Open and flow each hydrant, lubricate stems and caps" } },
-    { n:12, title:"Rail spur RS-8 tie replacement + crossing drainage", st:"outstanding", pts:[at(800,290),at(748,400),at(700,545),at(645,690)], created:ago(3),
+    { n:12, title:"Rail spur RS-8 tie replacement + crossing drainage", st:"outstanding", pts:polyU([1330,840],[1325,930],[1310,1040],[1290,1120],[1260,1200],[1230,1280]), created:ago(3),
       values:{ jobtype:jt("Corrective"), asset:["RS-8"], worktype:[WK("Other")], access:[AC("Grade / platform")], people:[priya], reference:"Replace decayed ties, clear fouled ballast, restore drainage at the road crossing. Needs a rail operations outage." } },
     { n:13, title:"Erect scaffold · treatment building TB-5 east wall", st:"outstanding", pts:TBE, closed:true, height:9, created:ago(12), enabling:{ kind:"scaffold", ready:false },
       values:{ jobtype:jt("Enabling"), asset:["TB-5"], worktype:[WK("Access build")], access:[AC("Scaffold")], permits:[PM("Working at height")], deadline:{ start:ahead(5) }, reference:"Independent scaffold along the east wall, 9 m, tagged before J-26-010 starts" } },
@@ -2760,15 +2764,15 @@ async function demoSeed(DB){
   await DB.set("workspace/counters",{ wo:J.length });
 
   const nc={}; const n=(jid,nid,d)=>{ nc[jid]=(nc[jid]||0)+(d.parent?0:1); return DB.set(WO_COL+"/"+jid+"/notes/"+nid,{ parent:null, title:"", text:"", files:[], by:"Demo user", ...d }); };
-  await n("J-26-002","roof",{ kind:"model", title:"Roof inspection", points:ring(957,227,72,12), closed:true, height:0, text:"Full roof grid, 1 m spacing. Flag anything under 6.0 mm.", t:ago(5,4) });
-  await n("J-26-002","nozzle",{ kind:"model", parent:"roof", title:"Corrosion at nozzle N3", points:[at(880,279)], closed:false, height:0, text:"Pitting on the flange face and four studs necked down. Raised as J-26-003.", t:ago(4,3) });
+  await n("J-26-002","roof",{ kind:"model", title:"Roof inspection", points:ringU(1541,892,84,12), closed:true, height:0, text:"Full roof grid, 1 m spacing. Flag anything under 6.0 mm.", t:ago(5,4) });
+  await n("J-26-002","nozzle",{ kind:"model", parent:"roof", title:"Corrosion at nozzle N3", points:[U(1447,951)], closed:false, height:0, text:"Pitting on the flange face and four studs necked down. Raised as J-26-003.", t:ago(4,3) });
   await n("J-26-002","scope",{ kind:"text", title:"Scope from the reliability team", text:"UT readings on the roof grid and all shell courses. Previous survey (2021) showed 7.1 mm minimum on the roof.", t:ago(5,5) });
-  await n("J-26-004","launder",{ kind:"model", title:"Launder weir — east side", points:[at(651,290),at(657,335)], closed:false, height:0, text:"Operators report uneven overflow along this stretch.", t:ago(2,6) });
-  for(const [i,[x,y]] of [[500,203],[560,214],[650,232],[740,250],[840,270]].entries())
-    await n("J-26-006","w"+(i+1),{ kind:"model", title:`Window ${i+1}${i===1?" · low elbow":i===3?" · hanger penetration":""}`, points:[at(x,y)], closed:false, height:0, text:"", t:ago(8,6-i) });
+  await n("J-26-004","launder",{ kind:"model", title:"Launder weir — east side", points:[U(1178,950),U(1186,1005)], closed:false, height:0, text:"Operators report uneven overflow along this stretch.", t:ago(2,6) });
+  for(const [i,[X,Y]] of [[995,858],[1070,871],[1180,893],[1290,915],[1400,938]].entries())
+    await n("J-26-006","w"+(i+1),{ kind:"model", title:`Window ${i+1}${i===1?" · low elbow":i===3?" · hanger penetration":""}`, points:[U(X,Y)], closed:false, height:0, text:"", t:ago(8,6-i) });
   await n("J-26-009","roofs",{ kind:"text", title:"Buildings in scope", text:"Treatment building TB-5 west block (marked), TB-5 east wing, pump house PH-4, the shed by the rail crossing. Mark each roof as a note when the drone plan is set.", t:ago(5) });
   await n("J-26-011","hyd",{ kind:"text", title:"Results", text:"All four hydrants flowed and drained. H-3 cap threads damaged, replaced. Next full flow test due 2029.", t:ago(17) });
-  await n("J-26-012","xing",{ kind:"model", title:"Road crossing — drainage", points:rect(688,543,722,578), closed:true, height:0, text:"Ponding on both sides of the crossing after rain; ballast fouled.", t:ago(3) });
+  await n("J-26-012","xing",{ kind:"model", title:"Road crossing — drainage", points:polyU([1208,1262],[1252,1262],[1252,1302],[1208,1302]), closed:true, height:0, text:"Ponding on both sides of the crossing after rain; ballast fouled.", t:ago(3) });
   for(const [jid,c] of Object.entries(nc)) await DB.update(WO_COL+"/"+jid,{ noteCount:c });
 
   const th=async(tid,t,msgs)=>{ const last=msgs[msgs.length-1]; await DB.set(MAIL_COL+"/"+tid,{ ...t, count:msgs.length, last:{ t:last.t, from:last.from, snippet:last.text.slice(0,90) }, readBy:{}, lastMessageId:"<"+tid+"-"+msgs.length+"@demo>" });
