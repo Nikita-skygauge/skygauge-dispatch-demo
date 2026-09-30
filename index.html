@@ -486,6 +486,7 @@ body.creating #pbody{display:flex;flex-direction:column}.create{display:flex;fle
     <div class="toolbar">
       <div class="tabs" id="viewsw"><button aria-selected="true" data-v="board">Board</button><button aria-selected="false" data-v="table">Table</button><button aria-selected="false" data-v="trash">Trash</button></div>
       <span class="count" id="vcount"></span>
+      <div class="tabs" id="lkf"></div>
       <span class="sp"></span>
       <button class="btn" id="b-props">Properties</button>
       <button class="btn" id="b-export">Export JSON</button>
@@ -778,6 +779,7 @@ async function createWO(init={}){
   const id=`J-${yy}-${String(seq).padStart(3,"0")}`;
   const st=init.statusId||defaultStatus("todo")?.id;
   const w={ seq, title:init.title||"", statusId:st, values:init.values||{}, location:init.location||{points:[],height:0,closed:false}, created:now(), createdBy:userRef(), edited:now(), editedBy:userRef(), trashed:false, draft:!!init.draft, completedAt:status(st)?.group==="complete"?now():null };
+  if(init.links) w.links=init.links; if(init.enabling) w.enabling=init.enabling; if(init.holdReason) w.holdReason=init.holdReason;
   await DB.set(WO_COL+"/"+id,w);
   if(!init.draft) log(id,"created the job");
   return id;
@@ -798,13 +800,14 @@ function log(id,text){ return DB.add(WO_COL+"/"+id+"/activity",{ t:now(), by:use
 function stamp(){ return { edited:now(), editedBy:userRef() }; }
 async function setTitle(id,title){ const w=W(id); if(!w||w.title===title) return; w.title=title; await flashSaved("#ptitle",()=>DB.update(WO_COL+"/"+id,{ title, ...stamp() })); log(id,`renamed to “${title||"Untitled"}”`); }
 async function setStatus(id,sid){
-  const w=W(id); if(!w||w.statusId===sid) return; const from=status(w.statusId)?.name, to=status(sid)?.name;
+  const w=W(id); if(!w||w.statusId===sid) return; const prevSid=w.statusId; const from=status(w.statusId)?.name, to=status(sid)?.name;
   const patch={ statusId:sid, ...stamp() };
   const wasDone=isDone(w), nowDone=status(sid)?.group==="complete";
   if(nowDone&&!wasDone) patch.completedAt=now(); if(!nowDone&&wasDone) patch.completedAt=null;
   Object.assign(w,patch); refreshWOOverlay(w); renderAll();
   await flashSaved($("#pbody [data-status]")||$(`#views tr[data-id="${id}"] [data-pid="status"]`),()=>DB.update(WO_COL+"/"+id,patch)); log(id,`changed Status from ${from} to ${to}`);
   if((w.values?.people||[]).some(p=>p.email)) { toast(`Status → ${P(to)} · <button class="link" id="st-mail">Email the people on this job</button>`); $("#st-mail")?.addEventListener("click",()=>newThreadFrom(id,{kind:"status"},{ body:`${id} · ${w.title||"Untitled"} is now ${to}.` })); }
+  if(typeof linksAfterStatus==="function") linksAfterStatus(w,prevSid,sid,wasDone,nowDone);
 }
 async function setValue(id,pid,v){
   const w=W(id); if(!w) return; const p=prop(pid); if(!p) return;
@@ -902,6 +905,8 @@ function openPop(anchor, html, opts={}){
   document.body.append(el); POP=el; el.onclose=opts.onClose;
   const r=anchor.getBoundingClientRect(); const pw=el.offsetWidth, ph=el.offsetHeight;
   let x=Math.min(r.left, innerWidth-pw-8), y=r.bottom+4; if(y+ph>innerHeight-8) y=Math.max(8,r.top-ph-4); el.style.left=Math.max(8,x)+"px"; el.style.top=y+"px";
+  // pickers fill themselves after opening: if the content then runs off the bottom, move it up (flip above the anchor if that fits)
+  if(typeof ResizeObserver==="function"){ const ro=new ResizeObserver(()=>{ if(!el.isConnected){ ro.disconnect(); return; } const b=el.getBoundingClientRect(); if(b.bottom<=innerHeight-8) return; const h=b.height; const top=r.top-h-4>=8?r.top-h-4:Math.max(8,innerHeight-8-h); el.style.top=top+"px"; }); ro.observe(el); }
   const first=el.querySelector("input,textarea"); if(first&&!opts.noFocus) setTimeout(()=>{ first.focus(); if(opts.select) first.select?.(); },10);
   return el;
 }
@@ -1180,6 +1185,7 @@ function renderRecord(){
   const areaTxt=P0.length?P(shapeLabel(locShape(w))+(locKindW(w)==="area"&&locHeight(w)>0?" · "+locHeight(w)+" m high":"")):"";
   $("#pbody").innerHTML=`
     <div class="trow"><textarea class="ptitle" id="ptitle" rows="1" placeholder="Untitled">${P(w.title||"")}</textarea><div class="pv" data-status>${statusPill(w)}</div></div>
+    ${typeof linkBannerHTML==="function"?linkBannerHTML(w):""}
     ${custom.length?`<div class="chips">${custom.map(p=>`<div class="pv chip" data-edit="${p.id}" title="${P(p.name)}">${renderValue(p,w.values?.[p.id],w)}</div>`).join("")}</div>`:""}
     <div class="metaline">${P(w.createdBy?.name||"")} · ${P(fmtDate(w.created,true))}${w.edited?` · edited ${P(rel(w.edited))}`:""}${w.completedAt?` · completed ${P(fmtDate(w.completedAt,true))}`:""}</div>
     ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span style="color:var(--crit)">required — mark it on the model</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
@@ -1187,6 +1193,7 @@ function renderRecord(){
       ${P0.length?`<div class="ptlist">${P0.map((p,i)=>`<div class="ptrow ${V.draw?.sel===i?"sel":""}" data-i="${i}"><span class="ptn">${i+1}</span><span class="mono">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><button class="btn sm" data-mv="${i}" title="Click the model to move this point">Move</button><button class="btn sm" data-rm="${i}" title="Remove this point">✕</button></div>`).join("")}</div>`:`<div class="hint">${isMobile()?"Tap":"Click"} the model: one point, more for a line, then point ① to close an area.</div>`}
       <div class="acts">${locKindW(w)==="area"?`<label class="hint" style="display:flex;align-items:center;gap:4px">Height <input class="in mono" id="l-h" type="number" min="0" value="${locHeight(w)}" style="width:64px;padding:2px 6px"> m <span class="hint">(0 = flat)</span></label>`:""}
       <button class="btn sm teal" id="l-done" style="margin-left:auto">Done</button></div></div></section>`}
+    ${typeof linksStripHTML==="function"?linksStripHTML(w):""}
     <div class="addprop" id="toggle-details">${showDetails?"▾":"▸"} Details${empty.length?` · ${empty.length} empty propert${empty.length===1?"y":"ies"}`:""}</div>
     ${showDetails?`<div class="props details">
       ${filled.map(rowHTML).join("")}
@@ -1199,7 +1206,7 @@ function renderRecord(){
     ${galleryHTML()}
     ${filesHTML()}
     <section class="ps"><h3 id="act-h">${showAct?"▾":"▸"} Activity <span class="mono" style="font-weight:400" id="act-n">${ACT.length}</span></h3><div id="act" ${showAct?"":"hidden"}></div></section>`;
-  renderActivity(); wireGallery(); wireNotes(); wireFiles(); wireMailSection(w); syncPinOverlays();
+  renderActivity(); wireGallery(); wireNotes(); wireFiles(); wireMailSection(w); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
   const t=$("#ptitle"); const fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
   t.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); t.blur(); } if(e.key==="Escape"){ t.value=w.title||""; fit(); t.blur(); e.stopPropagation(); } };
   t.onblur=()=>setTitle(w.id,t.value.trim());
@@ -1248,7 +1255,7 @@ function renderCreate(w){
 /* =====================================================================
    VIEWS — Board, Table, Trash + register + top bar
    ===================================================================== */
-function filtered(){ const q=S.q.trim().toLowerCase(); return live().filter(w=>!q||textOf(w).includes(q)); }
+function filtered(){ const q=S.q.trim().toLowerCase(); return live().filter(w=>(!q||textOf(w).includes(q))&&(typeof lkPass!=="function"||lkPass(w))); }
 function renderAll(){
   if(!S.schema) return;
   const open=live().filter(isOpen); $("#tab-open").textContent=open.length||"";
@@ -1260,13 +1267,13 @@ function renderAll(){
 function renderViews(){
   const rows=filtered(); $("#vcount").textContent=S.view==="trash"?`${trashed().length} in Trash`:`${rows.length} job${rows.length===1?"":"s"}`;
   $$("#viewsw button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===S.view));
-  $("#b-props").hidden=S.view==="trash";
+  $("#b-props").hidden=S.view==="trash"; if(typeof lkfRender==="function") lkfRender();
   if(S.view==="board") renderBoard(rows); else if(S.view==="table") renderTable(rows); else renderTrash();
 }
 function cardHTML(w){
   const vis=props().filter(p=>(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id));
   const bits=vis.map(p=>{ const v=w.values?.[p.id]; return isEmpty(v)&&!p.system?"":renderValue(p,v,w,true); }).filter(Boolean);
-  const nph=(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`);
+  const nph=(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w));
   return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${w.id}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${w.id}</span>${bits.join("")}</div></div>`;
 }
 function renderBoard(rows){
@@ -1455,13 +1462,14 @@ function sceneSchedule(){ if(SCENE.pending) return; SCENE.pending=true; requestA
 function sceneKnown(){ const k=new Set(); const add=x=>{ if(x) k.add(x); };
   Object.values(OV.wo).forEach(o=>{ if(o.hidden) return; if(!o.pinHidden) add(o.m); add(o.area); add(o.line); add(o.box); (o.labels||[]).forEach(add); }); add(OV.site); (OV.draw||[]).forEach(add);
   if(typeof PTH!=="undefined") PTH.forEach(add); if(typeof PINOV!=="undefined") Object.values(PINOV).forEach(a=>a.forEach(add)); if(typeof PHOV!=="undefined") Object.values(PHOV).forEach(o=>{ add(o.m); (o.sight||[]).forEach(add); });
+  if(typeof LKOV!=="undefined") LKOV.els.forEach(add);
   Object.values(POOL.free).forEach(l=>l.forEach(add));
   return k; }
 function sceneChildren(){ if(!map) return []; const c=map.children; return Array.isArray(c)?c.slice():[...c].filter(el=>/^GMP-/i.test(el.tagName||"")); }
 function sceneSweepNow(){ const known=sceneKnown(); const stray=sceneChildren().filter(el=>!known.has(el)); if(stray.length){ console.warn("scene sweep parked",stray.length); SCENE.swept+=stray.length; stray.forEach(poolPut); } }
 function sceneSweep(){ SCENE.sweep=true; sceneSchedule(); }
 /* Every way out of a job's view ends here: stop the camera, drop the job-only layers, then sweep. */
-function leaveJobScene(){ stopFlight(); if(typeof clearDraw==="function") clearDraw(); if(typeof clearPointHandles==="function") clearPointHandles(); if(typeof clearPinOverlays==="function") clearPinOverlays(); if(typeof clearPhotoOverlays==="function") clearPhotoOverlays(); sceneSweep(); }
+function leaveJobScene(){ stopFlight(); if(typeof clearDraw==="function") clearDraw(); if(typeof clearPointHandles==="function") clearPointHandles(); if(typeof clearPinOverlays==="function") clearPinOverlays(); if(typeof clearPhotoOverlays==="function") clearPhotoOverlays(); if(typeof clearLinkOverlays==="function") clearLinkOverlays(); sceneSweep(); }
 function mapRedraw(){ /* intentionally nothing */ }
 const BOUNDARY=()=>S.site?.boundary||DEFAULT_BOUNDARY;
 function inPoly(p,poly){ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const a=poly[i],b=poly[j]; if(((a.lat>p.lat)!==(b.lat>p.lat))&&(p.lng<(b.lng-a.lng)*(p.lat-a.lat)/(b.lat-a.lat)+a.lng)) c=!c; } return c; }
@@ -1569,19 +1577,20 @@ function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const
 function syncAssetOverlays(){ /* assets carry no location (register only) */ }
 const rgb = hex => { const n=parseInt(hex.slice(1),16); return `${n>>16},${(n>>8)&255},${n&255}`; };
 function woColor(w){ return col(status(w.statusId)?.color).map; }
-function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); }
+function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 /* Points stay where they were clicked on the model (roof, platform, shell) instead of dropping to the ground: each point
    stores the surface altitude `ground` from the click, and overlays use ABSOLUTE altitude from it. Legacy points without
    it fall back to RELATIVE_TO_MESH, which also sits on the surface. */
+const woSig = w => JSON.stringify(w.location||{})+(typeof linkPinState==="function"?"|"+linkPinState(w):"");   // pin is rebuilt when the location or its link badge changes
 function surf(P){ return P.every(p=>p.ground!=null)?"ABSOLUTE":"RELATIVE_TO_MESH"; }
 function atSurf(p,lift,mode){ return { lat:p.lat, lng:p.lng, altitude:(mode!=="RELATIVE_TO_MESH"&&p.ground!=null?p.ground:0)+lift }; }   // RELATIVE_TO_MESH = metres above the model surface, so a stored absolute ground is ignored (a shape mixing points with and without ground renders on the mesh)
 function addWOOverlay(w){
   const P=pts(w); if(!P.length||w.draft) return;
-  const o={ sig:JSON.stringify(w.location||{}), m:null, pin:null, area:null, line:null, box:null, labels:[] };
+  const o={ sig:woSig(w), m:null, pin:null, area:null, line:null, box:null, labels:[] };
   const c=woColor(w); const a=locAnchor(w); const h=locHeight(w); const kind=locKindW(w); const mode=surf(P);
   const topLift=kind==="point"?(a.alt||0)+0.3:kind==="line"?2:(h>0?h+1:1.5);
   o.m=mk3("mi",{ position:atSurf(kind==="area"?{ ...a, ground:minGround(P) }:a,topLift,mode), altitudeMode:mode, extruded:kind==="point" });
-  o.pin=pinTemplate(c,1.1,undefined,w.id.slice(-3)); setTpl(o.m,o.pin.tpl); o.m.__onClick=e=>{ if(V.draw||V.placing) return; e.stopPropagation?.(); enterWOView(w.id); };
+  o.pin=pinTemplate(c,1.1,undefined,w.id.slice(-3)); if(typeof linkPinDecorate==="function") linkPinDecorate(o.pin,w); setTpl(o.m,o.pin.tpl); o.m.__onClick=e=>{ if(V.draw||V.placing) return; e.stopPropagation?.(); enterWOView(w.id); };
   if(kind==="line"){ o.line=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,1,mode)) }); }
   if(kind==="area"){ o.area=mk3("pg",{ altitudeMode:mode, drawsOccludedSegments:true, fillColor:`rgba(${rgb(c)},0.28)`, strokeColor:`rgba(${rgb(c)},0.95)`, strokeWidth:2, path:[...P,P[0]].map(p=>atSurf(p,0.8,mode)) });
     // height, when set, rises from the lowest corner's surface — an area on a roof grows from the roof
@@ -1590,9 +1599,9 @@ function addWOOverlay(w){
 }
 /* segment lengths belong to the open job only: strip them from every other job, add them to the open one */
 function syncJobLabels(){ if(!map) return; Object.entries(OV.wo).forEach(([id,o])=>{ const open=S.woView&&S.open===id, on=open&&!S.note; const w=W(id); if(!on&&o.labels?.length){ killAll(o.labels); o.labels=[]; mapRedraw(); } if(on&&!(o.labels?.length)){ if(w&&locKindW(w)!=="point") o.labels=segmentLabels(pts(w),locKindW(w)==="area"); }
-  const hidePin=open&&w&&locKindW(w)!=="point"; if(hidePin&&!o.pinHidden&&o.m){ poolPut(o.m); o.m=null; o.pinHidden=true; } else if(!hidePin&&o.pinHidden){ o.pinHidden=false; if(w&&!w.trashed) refreshWOOverlay(w,true); } }); }
+  const hidePin=open&&w&&locKindW(w)!=="point"; if(hidePin&&!o.pinHidden&&o.m){ poolPut(o.m); o.m=null; o.pinHidden=true; } else if(!hidePin&&o.pinHidden){ o.pinHidden=false; if(w&&!w.trashed) refreshWOOverlay(w,true); } }); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 function minGround(P){ const g=P.map(p=>p.ground).filter(x=>x!=null); return g.length?Math.min(...g):GROUND_FALLBACK; }
-function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(w.trashed||force||o.sig!==JSON.stringify(w.location||{})){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
+function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(w.trashed||force||o.sig!==woSig(w)){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
 function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId); if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); o.hidden=true; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
 function renderLegend(){ if(!S.schema) return; $("#legend").innerHTML=statuses().map(o=>`<span data-s="${o.id}" class="${S.legendOff.has(o.id)?"off":""}"><i style="background:${col(o.color).map}"></i>${P(o.name)} <span class="mono">${live().filter(w=>w.statusId===o.id).length}</span></span>`).join(""); }
 $("#legend").addEventListener("click",e=>{ const s=e.target.closest("[data-s]"); if(!s) return; S.legendOff.has(s.dataset.s)?S.legendOff.delete(s.dataset.s):S.legendOff.add(s.dataset.s); renderLegend(); live().forEach(applyLegendTo); });
@@ -2452,10 +2461,236 @@ function wireMailSection(w){ $$("#pbody [data-copy]").forEach(b=>b.onclick=async
 function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el||S.note||S.creating) return; const tmp=document.createElement("div"); tmp.innerHTML=mailSectionHTML(w); el.replaceWith(tmp.firstElementChild); wireMailSection(w); }
 
 /* =====================================================================
+   LINKS — "waits on" between jobs, enabling work (scaffold, insulation, isolation…), hold reasons
+   A job stores only what it waits on (w.links.waitsOn); "blocks" is worked out from the other side.
+   A blocker releases its dependents when it is complete, or — for enabling work — as soon as it is marked ready
+   (scaffold up and tagged); the enabling job itself stays open until its restore step (strip, reinstate) is done.
+   ===================================================================== */
+const EN_KINDS={
+  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", restore:"Strip scaffold" },
+  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        restore:"Reinstate insulation" },
+  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     restore:"Remove isolation" },
+  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        restore:"Backfill" },
+  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          restore:null },
+};
+const HOLD_REASONS=["Waiting on scaffold","Waiting on insulation removal","Waiting on parts / materials","Waiting on a shutdown window","Waiting on a permit","Waiting on engineering"];
+const enKind = w => w?.enabling?EN_KINDS[w.enabling.kind]||{ name:"Enabling work", title:"Enabling work", ready:"Ready", restore:null }:null;
+const waitsOnIds = w => (w?.links?.waitsOn||[]).filter(id=>{ const b=W(id); return b&&!b.trashed&&!b.draft; });
+const blocksOf = w => live().filter(x=>!x.draft&&(x.links?.waitsOn||[]).includes(w.id));
+const released = b => isDone(b)||!!b?.enabling?.ready;
+const blockersOf = w => waitsOnIds(w).map(W).filter(b=>!released(b));
+const isBlocked = w => isOpen(w)&&blockersOf(w).length>0;
+const readyToStart = w => isOpen(w)&&waitsOnIds(w).length>0&&!blockersOf(w).length&&status(w.statusId)?.group==="todo";
+const restoreDue = e => !!(e?.enabling?.ready&&!isDone(e)&&enKind(e).restore&&blocksOf(e).length&&blocksOf(e).every(isDone));
+const onHold = w => /hold/i.test(status(w.statusId)?.name||"");
+const shortId = id => String(id).slice(-3);
+function linkPinState(w){ return restoreDue(w)?"d":isBlocked(w)?"b":readyToStart(w)?"r":""; }
+/* would "a waits on b" close a loop? true if b already (directly or through others) waits on a */
+function wouldCycle(a,b){ const seen=new Set(); const st=[b]; while(st.length){ const x=st.pop(); if(x===a) return true; if(seen.has(x)) continue; seen.add(x); (W(x)?.links?.waitsOn||[]).forEach(y=>st.push(y)); } return false; }
+
+/* ---------- writes ---------- */
+async function saveLinks(w){ const links={ waitsOn:[...new Set(w.links?.waitsOn||[])] }; w.links=links; syncOverlays(); renderAll(); await DB.update(WO_COL+"/"+w.id,{ links, ...stamp() }); }
+async function linkJobs(aId,bId){   // a waits on b
+  const a=W(aId), b=W(bId); if(!a||!b||aId===bId) return false;
+  if((a.links?.waitsOn||[]).includes(bId)) return false;
+  if(wouldCycle(aId,bId)){ toast(`Can't link: ${bId} already waits on ${aId}, so this would make a loop.`,true); return false; }
+  a.links={ waitsOn:[...(a.links?.waitsOn||[]),bId] }; await saveLinks(a);
+  log(aId,`now waits on ${bId} · ${b.title||"Untitled"}`); log(bId,`now blocks ${aId} · ${a.title||"Untitled"}`);
+  return true;
+}
+async function unlinkJobs(aId,bId){
+  const a=W(aId); if(!a||!(a.links?.waitsOn||[]).includes(bId)) return;
+  a.links={ waitsOn:a.links.waitsOn.filter(x=>x!==bId) }; await saveLinks(a);
+  log(aId,`no longer waits on ${bId}`); log(bId,`no longer blocks ${aId}`);
+  if(isOpen(a)&&waitsOnIds(a).length&&!blockersOf(a).length) log(aId,"is ready to start — nothing it waits on is outstanding");
+}
+async function addEnabling(forId,kind){
+  const w=W(forId), k=EN_KINDS[kind]; if(!w||!k) return null;
+  const values={}; if(w.values?.asset?.length) values.asset=structuredClone(w.values.asset);
+  const id=await createWO({ title:`${k.title} · ${w.title||w.id}`, values, location:structuredClone(w.location||{points:[],height:0,closed:false}), enabling:{ kind, ready:false } });
+  log(id,`created as enabling work (${k.name}) for ${forId}`);
+  const cur=W(forId); cur.links={ waitsOn:[...(cur.links?.waitsOn||[]),id] }; await saveLinks(cur);
+  log(forId,`added enabling work ${id} · ${k.title}`);
+  toast(`${id} · ${P(k.title)} created and linked · <button class="link" id="en-open">Open it</button>`); $("#en-open")?.addEventListener("click",()=>goJob(id));
+  return id;
+}
+async function markReady(id,ready=true){
+  const e=W(id); if(!e?.enabling) return; const k=enKind(e); const before=blocksOf(e).filter(isBlocked).map(d=>d.id);
+  e.enabling={ ...e.enabling, ready, readyAt:ready?now():null, readyBy:ready?userRef():null }; syncOverlays(); renderAll();
+  await DB.update(WO_COL+"/"+id,{ enabling:e.enabling, ...stamp() });
+  log(id,ready?`marked ${k.ready}`:`un-marked ${k.ready}`);
+  if(ready&&!k.restore){ await setStatus(id,defaultStatus("complete")?.id); }
+  else if(ready&&status(e.statusId)?.group==="todo"){ await setStatus(id,defaultStatus("progress")?.id); }
+  const freed=before.filter(d=>!isBlocked(W(d)));
+  freed.forEach(d=>log(d,`is ready to start — ${id} ${k.ready.toLowerCase()}`));
+  const again=blocksOf(e).filter(isBlocked).map(d=>d.id).filter(d=>!before.includes(d)); again.forEach(d=>log(d,`is waiting again — ${id} is no longer ${k.ready.toLowerCase()}`));
+  if(freed.length) toast(`${freed.join(", ")} ${freed.length===1?"is":"are"} ready to start`);
+}
+async function markRestored(id){
+  const e=W(id); if(!e?.enabling) return; const k=enKind(e);
+  e.enabling={ ...e.enabling, restored:true, restoredAt:now(), restoredBy:userRef() };
+  await DB.update(WO_COL+"/"+id,{ enabling:e.enabling, ...stamp() }); log(id,`marked ${k.restore||"restore"} done`);
+  if(!isDone(e)) await setStatus(id,defaultStatus("complete")?.id); else renderAll();
+}
+async function setHold(id,reason){ const w=W(id); if(!w) return; const r=(reason||"").trim()||null; if((w.holdReason||null)===r) return; w.holdReason=r; renderAll(); await DB.update(WO_COL+"/"+id,{ holdReason:r, ...stamp() }); if(r) log(id,`hold reason: ${r}`); }
+/* called by setStatus after the status is saved */
+function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
+  const prevName=status(prevSid)?.name||"", grp=status(sid)?.group;
+  const relBefore=wasDone||!!w.enabling?.ready, relNow=nowDone||!!w.enabling?.ready; const msgs=[];
+  if(!relBefore&&relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&!blockersOf(d).length){ log(d.id,`is ready to start — ${w.id} is complete`); msgs.push(`${d.id} is ready to start`); } });
+  if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1) log(d.id,`is waiting again — ${w.id} was reopened`); });
+  if(nowDone&&!wasDone){
+    waitsOnIds(w).map(W).forEach(e=>{ if(restoreDue(e)){ log(e.id,`restore due: ${enKind(e).restore} — every job it enabled is complete`); msgs.push(`${e.id}: ${enKind(e).restore} is due`); } });
+    if(w.enabling?.ready&&!w.enabling.restored&&enKind(w).restore){ w.enabling={ ...w.enabling, restored:true, restoredAt:now(), restoredBy:userRef() }; DB.update(WO_COL+"/"+w.id,{ enabling:w.enabling }).catch(console.error); }
+  }
+  if(!nowDone&&(grp==="progress"||grp==="complete")&&blockersOf(w).length) msgs.push(`Heads up: ${w.id} still waits on ${blockersOf(w).map(b=>b.id).join(", ")}`);
+  if(/hold/i.test(prevName)&&!onHold(w)&&w.holdReason) setHold(w.id,null);
+  if(onHold(w)&&!/hold/i.test(prevName)) holdPrompt(w);
+  else if(msgs.length) toast(P(msgs.join(" · ")));
+}
+
+/* ---------- panel ---------- */
+function goJob(id){ if(S.woView) enterWOView(id); else openWO(id); }
+function stDot(w){ const o=status(w.statusId); return `<i class="lkdot" style="background:${col(o?.color).map}"></i>`; }
+function lkChip(b,unlinkAttr,showRel){
+  const o=status(b.statusId); const ok=showRel&&released(b);
+  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
+}
+function linkBannerHTML(w){
+  if(w.trashed||w.draft) return ""; const out=[];
+  if(restoreDue(w)) out.push(`<div class="lkban due"><b>↻ Restore due</b> — ${P(enKind(w).restore)}: every job this enabled is complete. <button class="btn sm teal" id="en-restore2">Mark done</button></div>`);
+  const bl=blockersOf(w);
+  if(isOpen(w)&&bl.length) out.push(`<div class="lkban wait"><b>‖ Waiting on ${bl.length===1?bl[0].id:bl.length+" jobs"}</b> — ${bl.map(b=>`<a data-go="${b.id}">${P(b.id)} ${P(b.title||"Untitled")}</a> (${P(b.enabling?"not yet "+enKind(b).ready.toLowerCase():status(b.statusId)?.name)})`).join(", ")}${onHold(w)?`<div class="lkhold">Hold reason: ${w.holdReason?P(w.holdReason):`<i>none</i>`} <button class="link" id="hold-edit">${w.holdReason?"Edit":"Add"}</button></div>`:""}</div>`);
+  else if(readyToStart(w)) out.push(`<div class="lkban go"><b>✓ Ready to start</b> — everything this job waits on is done${waitsOnIds(w).some(id=>!isDone(W(id)))?" or in place":""}.${onHold(w)?` It is still marked ${P(status(w.statusId).name)}.`:""}</div>`);
+  else if(onHold(w)) out.push(`<div class="lkban wait"><b>‖ ${P(status(w.statusId).name)}</b> — ${w.holdReason?P(w.holdReason):`<i>no reason given</i>`} <button class="link" id="hold-edit">${w.holdReason?"Edit":"Add a reason"}</button></div>`);
+  return out.join("");
+}
+function linksStripHTML(w){
+  if(w.trashed||w.draft) return "";
+  const wo=waitsOnIds(w).map(W), bl=blocksOf(w);
+  let html=`<div class="strip lkstrip" id="lkstrip"><span class="lab">Linked</span><div class="val">`;
+  if(wo.length) html+=`<div class="lkrow"><span class="lkdir">Waits on</span>${wo.map(b=>lkChip(b,`data-unlink="${b.id}"`,true)).join("")}</div>`;
+  if(bl.length) html+=`<div class="lkrow"><span class="lkdir">Blocks</span>${bl.map(d=>lkChip(d,`data-unblock="${d.id}"`,false)).join("")}</div>`;
+  if(!wo.length&&!bl.length) html+=`<span class="hint">No linked jobs</span>`;
+  html+=`<div class="lkacts"><button class="btn sm" id="lk-add">＋ Link a job</button>${w.enabling?"":`<button class="btn sm" id="lk-en">＋ Enabling work</button>`}</div></div></div>`;
+  if(w.enabling){ const k=enKind(w), e=w.enabling, dn=bl.map(d=>d.id);
+    html+=`<div class="strip lkstrip en"><span class="lab">Enabling</span><div class="val"><div><b>${P(k.name)}</b>${dn.length?` · for ${dn.map(P).join(", ")}`:` · <span class="hint">not linked to a job yet</span>`}</div>`;
+    if(!e.ready) html+=`<div class="lkacts"><button class="btn sm teal" id="en-ready">Mark “${P(k.ready)}”</button><span class="hint">Releases the jobs it blocks</span></div>`;
+    else { html+=`<div class="lkok">✓ ${P(k.ready)} · ${P(fmtDate(e.readyAt,true))}${e.readyBy?.name?" · "+P(e.readyBy.name):""} ${isDone(w)?"":`<button class="link" id="en-undo">Undo</button>`}</div>`;
+      if(k.restore){ if(e.restored||isDone(w)) html+=`<div class="lkok">✓ ${P(k.restore)}${e.restoredAt?" · "+P(fmtDate(e.restoredAt,true)):""}</div>`;
+        else if(restoreDue(w)) html+=`<div class="lkacts"><button class="btn sm teal" id="en-restore">Mark “${P(k.restore)}” done</button><span class="hint">Every job it enabled is complete</span></div>`;
+        else html+=`<div class="hint">Next: ${P(k.restore)}, once ${dn.filter(d=>!isDone(W(d))).map(P).join(", ")||"the linked jobs"} ${dn.filter(d=>!isDone(W(d))).length===1?"is":"are"} complete</div>`; } }
+    html+=`</div></div>`; }
+  return html;
+}
+function wireLinks(w){
+  const body=$("#pbody"); if(!body) return;
+  body.querySelectorAll("[data-go]").forEach(el=>el.onclick=e=>{ if(e.target.closest("button")) return; goJob(el.dataset.go); });
+  body.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(w.id,b.dataset.unlink); });
+  body.querySelectorAll("[data-unblock]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(b.dataset.unblock,w.id); });
+  $("#lk-add")?.addEventListener("click",e=>linkPicker(w,e.currentTarget));
+  $("#lk-en")?.addEventListener("click",e=>enablingMenu(w,e.currentTarget));
+  $("#en-ready")?.addEventListener("click",()=>markReady(w.id,true));
+  $("#en-undo")?.addEventListener("click",()=>markReady(w.id,false));
+  $("#en-restore")?.addEventListener("click",()=>markRestored(w.id)); $("#en-restore2")?.addEventListener("click",()=>markRestored(w.id));
+  $("#hold-edit")?.addEventListener("click",()=>holdPrompt(w));
+}
+let LKDIR="waits";
+function linkPicker(w,anchor){
+  const draw=()=>{ const q=(el.querySelector(".pin")?.value||"").toLowerCase();
+    const linked=new Set(LKDIR==="waits"?waitsOnIds(w):blocksOf(w).map(d=>d.id));
+    const rows=live().filter(x=>x.id!==w.id&&!x.draft&&!linked.has(x.id)&&(!q||textOf(x).includes(q)));
+    el.querySelector(".lklist").innerHTML=rows.map(x=>{ const cyc=LKDIR==="waits"?wouldCycle(w.id,x.id):wouldCycle(x.id,w.id);
+      return `<div class="mi ${cyc?"dis":""}" data-pick="${x.id}" ${cyc?`title="${P(LKDIR==="waits"?x.id+" already waits on "+w.id:w.id+" already waits on "+x.id)} — linking would make a loop"`:""}>${stDot(x)}<span class="mono">${x.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(x.title||"Untitled")}</span>${cyc?`<span class="r">loop</span>`:x.enabling?`<span class="r">enabling</span>`:""}</div>`; }).join("")||`<div class="hint" style="padding:6px 8px">No other jobs match</div>`;
+    el.querySelectorAll("[data-pick]:not(.dis)").forEach(m=>m.onclick=async()=>{ closePop(); if(LKDIR==="waits") await linkJobs(w.id,m.dataset.pick); else await linkJobs(m.dataset.pick,w.id); });
+    el.querySelectorAll(".lkseg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.d===LKDIR)); };
+  const el=openPop(anchor,`<div class="lkseg tabs"><button data-d="waits">${P(w.id)} waits on…</button><button data-d="blocks">${P(w.id)} blocks…</button></div><input class="pin" placeholder="Find a job"><div class="lklist"></div>`,{width:300});
+  el.querySelector(".pin").oninput=draw; el.querySelectorAll(".lkseg button").forEach(b=>b.onclick=()=>{ LKDIR=b.dataset.d; draw(); }); draw();
+}
+function enablingMenu(w,anchor){
+  const el=openPop(anchor,`<div class="sec">Add enabling work for ${P(w.id)}</div>${Object.entries(EN_KINDS).map(([k,v])=>`<div class="mi" data-k="${k}"><span style="flex:1">${P(v.title)}</span><span class="r">${v.restore?P(v.restore):"no restore step"}</span></div>`).join("")}<div class="hint" style="padding:4px 8px 6px">Creates a job at the same location that ${P(w.id)} waits on.</div>`,{width:300,noFocus:true});
+  el.querySelectorAll("[data-k]").forEach(m=>m.onclick=()=>{ closePop(); addEnabling(w.id,m.dataset.k); });
+}
+function holdPrompt(w){
+  const anchor=$("#pbody [data-status]")||$(`#views [data-id="${w.id}"]`); if(!anchor) return;
+  const sugg=[...blockersOf(w).map(b=>`Waiting on ${b.id} · ${b.title||"Untitled"}`),...HOLD_REASONS];
+  const el=openPop(anchor,`<div class="sec">Why is ${P(w.id)} on hold?</div>${sugg.map((s,i)=>`<div class="mi" data-r="${i}">${P(s)}</div>`).join("")}<div class="fr"><input type="text" id="hold-txt" placeholder="Or type a reason" value="${P(w.holdReason||"")}"></div><div class="fr" style="justify-content:flex-end"><button class="btn sm" id="hold-skip">Skip</button><button class="btn sm teal" id="hold-ok">Save</button></div>`,{width:300,noFocus:true});
+  el.querySelectorAll("[data-r]").forEach(m=>m.onclick=()=>{ closePop(); setHold(w.id,sugg[+m.dataset.r]); });
+  const ok=()=>{ const v=el.querySelector("#hold-txt").value; closePop(); setHold(w.id,v); };
+  el.querySelector("#hold-ok").onclick=ok; el.querySelector("#hold-txt").onkeydown=e=>{ if(e.key==="Enter") ok(); if(e.key==="Escape") closePop(); };
+  el.querySelector("#hold-skip").onclick=()=>closePop();
+}
+
+/* ---------- board + table ---------- */
+let LKF="all";
+function lkPass(w){ return LKF==="blocked"?isBlocked(w):LKF==="ready"?readyToStart(w):LKF==="restore"?restoreDue(w):true; }
+function lkfRender(){ const bar=$("#lkf"); if(!bar) return; bar.hidden=S.view==="trash"; const L=live();
+  const n={ all:L.length, blocked:L.filter(isBlocked).length, ready:L.filter(readyToStart).length, restore:L.filter(restoreDue).length };
+  bar.innerHTML=`<button data-f="all">All</button><button data-f="blocked">Waiting <span class="mono">${n.blocked}</span></button><button data-f="ready">Ready to start <span class="mono">${n.ready}</span></button>${n.restore||LKF==="restore"?`<button data-f="restore">Restore due <span class="mono">${n.restore}</span></button>`:""}`;
+  bar.querySelectorAll("button").forEach(b=>{ b.setAttribute("aria-selected",b.dataset.f===LKF); b.onclick=()=>{ LKF=b.dataset.f; renderViews(); }; }); }
+function linkCardBits(w){ const b=[]; const bl=blockersOf(w);
+  if(restoreDue(w)) b.push(`<span class="lkb due" title="${P(enKind(w).restore)} is due">↻ ${P(enKind(w).restore)}</span>`);
+  else if(w.enabling) b.push(`<span class="lkb en" title="Enabling work: ${P(enKind(w).name)}">${w.enabling.ready?"✓ ":""}${P(enKind(w).name)}</span>`);
+  if(isOpen(w)&&bl.length) b.push(`<span class="lkb wait" title="Waiting on ${P(bl.map(x=>x.id+" "+(x.title||"")).join(", "))}">‖ waits on ${bl.map(x=>shortId(x.id)).join(", ")}</span>`);
+  else if(readyToStart(w)) b.push(`<span class="lkb go">✓ ready to start</span>`);
+  if(onHold(w)&&w.holdReason&&!bl.length&&!readyToStart(w)) b.push(`<span class="lkb wait" title="${P(w.holdReason)}">‖ ${P(w.holdReason.length>34?w.holdReason.slice(0,32)+"…":w.holdReason)}</span>`);
+  const nb=blocksOf(w).filter(d=>isOpen(d)).length; if(nb&&!w.enabling) b.push(`<span class="hint" title="Jobs waiting on this one">blocks ${nb}</span>`);
+  return b; }
+
+/* ---------- map: badge on the pin, connectors in the job view ---------- */
+function linkPinDecorate(pin,w){ const st=linkPinState(w); if(!st) return; const s=pin.tpl.content.querySelector("svg"); if(!s) return; const NS="http://www.w3.org/2000/svg";
+  const sc=+s.getAttribute("width")/26; s.setAttribute("viewBox","-5 -7 36 43"); s.setAttribute("width",Math.round(36*sc)); s.setAttribute("height",Math.round(43*sc));
+  const g=document.createElementNS(NS,"g"); const fill=st==="r"?"#2FC98A":st==="d"?"#D5C2FF":"#E8A93A";
+  g.innerHTML=`<circle cx="23" cy="1" r="6.6" fill="${fill}" stroke="#0B0F1F" stroke-width="1.4"/>`+(st==="b"?`<rect x="20.2" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/><rect x="23.8" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/>`:st==="r"?`<path d="M19.8 1.2l2.2 2.2 4.2-4.6" fill="none" stroke="#0B0F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`:`<path d="M26 1a3 3 0 1 1-1-2.2M26 -2.6v2h-2" fill="none" stroke="#0B0F1F" stroke-width="1.5" stroke-linecap="round"/>`);
+  s.append(g); pin.state=st; }
+var LKOV={ key:"", els:[] };
+function lkTop(w){ const P0=pts(w); const a=locAnchor(w); if(!a) return null; const kind=locKindW(w); const h=locHeight(w);
+  const g=kind==="area"?minGround(P0):a.ground; const lift=kind==="point"?(a.alt||0)+4:kind==="line"?3:(h>0?h+2:3);
+  return { lat:a.lat, lng:a.lng, ground:P0.every(p=>p.ground!=null)?g:undefined, lift }; }
+function clearLinkOverlays(){ if(LKOV.els.length) killAll(LKOV.els); LKOV.els=[]; LKOV.key=""; }
+function syncLinkOverlays(){ if(!map||!lib) return;
+  const w=S.woView&&!S.note&&S.open?W(S.open):null;
+  const pairs=w&&!w.trashed?[...waitsOnIds(w).map(id=>({ o:W(id), dir:"waits" })),...blocksOf(w).map(d=>({ o:d, dir:"blocks" }))].filter(x=>x.o&&pts(x.o).length):[];
+  const key=w?w.id+"|"+JSON.stringify(w.location||{})+"|"+pairs.map(x=>x.dir+x.o.id+released(x.o)+isDone(x.o)+JSON.stringify(x.o.location||{})).join(";"):"";
+  if(key===LKOV.key) return; clearLinkOverlays(); LKOV.key=key; if(!w||!pairs.length) return;
+  const A=lkTop(w); if(!A) return;
+  pairs.forEach(({o,dir})=>{ const B=lkTop(o); if(!B) return;
+    const d=Math.hypot((B.lat-A.lat)*111320,(B.lng-A.lng)*111320*Math.cos(A.lat*Math.PI/180)); if(d<4) return;   // same spot (enabling work made from this job): the panel says it, a zero-length line would not
+    const mode=A.ground!=null&&B.ground!=null?"ABSOLUTE":"RELATIVE_TO_MESH"; const base=p=>mode==="ABSOLUTE"?p.ground:0;
+    const rise=Math.min(40,Math.max(6,d*0.22)); const N=16; const path=[];
+    for(let i=0;i<=N;i++){ const t=i/N; path.push({ lat:A.lat+(B.lat-A.lat)*t, lng:A.lng+(B.lng-A.lng)*t, altitude:base(A)+A.lift+(base(B)+B.lift-base(A)-A.lift)*t+Math.sin(Math.PI*t)*rise }); }
+    const rel=dir==="waits"?released(o):true; const c=dir==="waits"?(rel?"47,201,138":"232,169,58"):"213,194,255";
+    LKOV.els.push(mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${c},0.95)`, strokeWidth:4, drawsOccludedSegments:true, path }));
+    const mid=path[N/2]; const txt=dir==="waits"?`${rel?"✓ ":""}waits on ${shortId(o.id)}`:`blocks ${shortId(o.id)}`;
+    const m=mk3("m",{ position:{ lat:mid.lat, lng:mid.lng, altitude:mid.altitude+1.5 }, altitudeMode:mode, tpl:distLabelTemplate(txt,dir==="waits"&&!rel) }); if(m) LKOV.els.push(m); });
+}
+if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRestored, setHold, isBlocked, readyToStart, restoreDue, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
+
+(()=>{ const st=document.createElement("style"); st.textContent=`
+.lkban{border-radius:10px;padding:8px 12px;margin:6px 0;font-size:13px;line-height:1.45;border:1px solid var(--line)}
+.lkban.wait{background:rgba(232,169,58,.12);border-color:rgba(232,169,58,.55)}.lkban.wait b{color:var(--warn)}
+.lkban.go{background:rgba(47,201,138,.12);border-color:rgba(47,201,138,.55)}.lkban.go b{color:var(--ok)}
+.lkban.due{background:rgba(213,194,255,.14);border-color:rgba(213,194,255,.6)}
+.lkban a{cursor:pointer;text-decoration:underline;color:inherit}.lkban .btn{margin-left:6px}.lkhold{margin-top:3px;color:var(--ink-2)}
+.lkstrip{align-items:flex-start}.lkstrip .val{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lkrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.lkdir{font-size:11.5px;color:var(--ink-3);min-width:56px}
+.lkchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 4px 3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:12px;cursor:pointer;color:var(--ink)}
+.lkchip:hover{border-color:var(--accent)}.lkchip .lkt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.lkchip .lkst{font-size:11px;color:var(--ink-3);white-space:nowrap}.lkchip.ok .lkst{color:var(--ok)}
+.lkchip .x{border:0;background:transparent;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}.lkchip .x:hover{color:var(--crit)}
+.lkdot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.lkacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lkok{color:var(--ok);font-size:12.5px}
+.lkb{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.lkb.wait{background:rgba(232,169,58,.18);color:var(--warn)}.lkb.go{background:rgba(47,201,138,.18);color:var(--ok)}
+.lkb.en{background:rgba(213,194,255,.16);color:var(--ink-2)}.lkb.due{background:rgba(213,194,255,.3);color:var(--ink)}
+.pop .lkseg{display:flex;margin:2px 4px 6px}.pop .lkseg button{flex:1;font-size:12px}.pop .mi.dis{opacity:.45;cursor:not-allowed}
+#lkf button .mono{opacity:.7;margin-left:2px}`; document.head.append(st); })();
+
+/* =====================================================================
    DEMO — public sandbox build. Every visitor gets the same sample site in their own browser (in-memory store, no
    Firebase, no sign-in). Anything they create, edit or delete lives only until they reload.
    Site: an industrial yard in Thorold, ON. Positions are estimated from aerial imagery; points carry no surface
-   elevation, so shapes sit on the 3D mesh (RELATIVE_TO_MESH) and job areas have no extruded height.
+   elevation, so shapes sit on the 3D mesh (RELATIVE_TO_MESH). Re-place them in author mode to record real heights.
    ===================================================================== */
 async function demoSeed(DB){
   const ago=(d,h=0)=>new Date(Date.now()-d*86400000-h*3600000).toISOString();
@@ -2463,53 +2698,88 @@ async function demoSeed(DB){
   const P0={ lat:43.107892, lng:-79.194882, px:985, py:645 };                  // reference pin in the planning screenshot, ~1 px = 1 m
   const at=(px,py)=>({ lat:+(P0.lat-(py-P0.py)/111320).toFixed(6), lng:+(P0.lng+(px-P0.px)/81270).toFixed(6) });
   const ring=(cx,cy,r,n)=>[...Array(n)].map((_,i)=>{ const a=i/n*2*Math.PI-Math.PI/2; return at(cx+r*Math.cos(a),cy+r*Math.sin(a)); });
+  const rect=(x0,y0,x1,y1)=>[at(x0,y0),at(x1,y0),at(x1,y1),at(x0,y1)];
   const me={ uid:"demo", name:"Demo user", email:"demo@skygauge.co" };
-  const dave={ email:"dave.moreau@example.com", name:"Dave Moreau" }, karen={ email:"karen.liu@example.com", name:"Karen Liu" }, marco={ email:"marco.bellini@example.com", name:"Marco Bellini" };
+  const dave={ email:"dave.moreau@example.com", name:"Dave Moreau" }, karen={ email:"karen.liu@example.com", name:"Karen Liu" }, marco={ email:"marco.bellini@example.com", name:"Marco Bellini" }, priya={ email:"priya.nair@example.com", name:"Priya Nair" };
 
   const S0=defaultSchema(); const opt=(pid,name)=>S0.props.find(p=>p.id===pid).options.find(o=>o.name===name).id;
-  S0.props.push({ id:"po", name:"PO #", type:"text" });
+  const o=(name,color)=>({ id:uid(), name, color });
+  const JT=[o("Inspection","blue"),o("Preventive","green"),o("Corrective","orange"),o("Enabling","purple")]; const jt=n=>[JT.find(x=>x.name===n).id];
+  S0.props.splice(1,0,{ id:"jobtype", name:"Job type", type:"multi", options:JT });
+  S0.props.push({ id:"repeats", name:"Repeats", type:"text" },{ id:"po", name:"PO #", type:"text" });
+  S0.cardProps=["jobtype","asset","deadline","people"];
   await DB.set("workspace/schema",S0);
   await DB.set("workspace/site",{ boundary:DEMO_SITE.boundary });
   await DB.set("config/allowlist",{ domains:["skygauge.co"] });
-  if(window.DEMO_MAPS_KEY&&!/PASTE/i.test(window.DEMO_MAPS_KEY)) await DB.set("config/maps",{ key:window.DEMO_MAPS_KEY });
-  for(const a of [["T-1","Process tank T-1","North yard"],["C-2","Clarifier C-2","North yard"],["PR-3","Pipe rack PR-3","North yard"],["PH-4","Pump house PH-4","South yard"],["ST-5","Settling tanks ST-5","South yard"]])
+  for(const a of [["T-1","Process tank T-1","North yard"],["C-2","Clarifier C-2","North yard"],["PR-3","Pipe bridge PR-3","North yard"],["PH-4","Pump house PH-4","South yard"],["P-402","Pump P-402","Pump house PH-4"],["CG-6","Conveyor gallery CG-6","North yard"],["FH","Fire hydrants","Site-wide"],["RS-8","Rail spur RS-8","South yard"]])
     await DB.set("workspace/main/assets/"+a[0],{ tag:a[0], name:a[1], area:a[2] });
 
+  const WK=n=>opt("worktype",n), AC=n=>opt("access",n), PM=n=>opt("permits",n);
+  const PR3=[at(1098,612),at(1093,660),at(1090,720),at(1086,785)];
+  const GAL=rect(1008,618,1074,627);
   const J=[
-    { id:"J-26-001", seq:1, title:"Tank T-1 roof & shell UT", st:"in_progress", pts:ring(1147,652,27,8), closed:true,
-      values:{ asset:["T-1"], worktype:[opt("worktype","UT thickness")], access:[opt("access","Drone")], permits:[opt("permits","Working at height")], people:[dave,karen], deadline:{ start:ahead(9) }, po:"4500218871" }, created:ago(6) },
-    { id:"J-26-002", seq:2, title:"Clarifier C-2 visual inspection", st:"outstanding", pts:ring(1043,678,29,8), closed:true,
-      values:{ asset:["C-2"], worktype:[opt("worktype","Visual")], access:[opt("access","Drone")], people:[marco], deadline:{ start:ahead(16) } }, created:ago(3) },
-    { id:"J-26-003", seq:3, title:"Pipe rack PR-3 thermal survey", st:"on_hold", pts:[at(1098,612),at(1093,660),at(1090,720),at(1086,785)], closed:false,
-      values:{ asset:["PR-3"], worktype:[opt("worktype","Thermal (IR)")], access:[opt("access","Drone")] }, created:ago(10) },
-    { id:"J-26-004", seq:4, title:"Pump house PH-4 roof leak", st:"completed", pts:[at(1033,748)], closed:false,
-      values:{ asset:["PH-4"], worktype:[opt("worktype","Visual")], access:[opt("access","Grade / platform")], people:[karen] }, created:ago(18), completedAt:ago(12) },
-    { id:"J-26-005", seq:5, title:"Access road washout", st:"outstanding", pts:[at(1115,745),at(1160,730),at(1182,742),at(1150,772)], closed:true,
-      values:{ worktype:[opt("worktype","Visual")], access:[opt("access","Grade / platform")] }, created:ago(1) },
+    { n:1, title:"Tank T-1 monthly external walkdown", st:"completed", pts:[at(1147,680)], created:ago(9), completedAt:ago(2),
+      values:{ jobtype:jt("Inspection"), asset:["T-1"], worktype:[WK("Visual")], access:[AC("Grade / platform")], people:[marco], repeats:"Monthly", reference:"Leaks, foundation, coating and containment check" } },
+    { n:2, title:"Tank T-1 5-yearly external inspection + shell UT", st:"in_progress", pts:ring(1147,652,27,8), closed:true, created:ago(14),
+      values:{ jobtype:jt("Inspection"), asset:["T-1"], worktype:[WK("UT thickness"),WK("Visual")], access:[AC("Drone")], permits:[PM("Working at height")], people:[dave,karen], deadline:{ start:ahead(9) }, repeats:"Every 5 years", po:"4500218871", reference:"Shell + roof visual, UT on all courses, settlement survey" } },
+    { n:3, title:"Tank T-1 nozzle N3 flange repair", st:"outstanding", pts:[at(1156,645)], created:ago(4), waitsOn:[2],
+      values:{ jobtype:jt("Corrective"), asset:["T-1"], worktype:[WK("Other")], access:[AC("Lift")], permits:[PM("Hot work"),PM("Electrical isolation")], people:[karen], reference:"Replace gasket + 4 corroded studs found in J-26-002. Needs ops to drop the tank level." } },
+    { n:4, title:"Clarifier C-2 annual mechanism inspection (drained)", st:"outstanding", pts:ring(1043,678,29,8), closed:true, created:ago(6),
+      values:{ jobtype:jt("Inspection"), asset:["C-2"], worktype:[WK("Visual")], access:[AC("Grade / platform")], permits:[PM("Confined space")], people:[marco], deadline:{ start:ahead(16) }, repeats:"Annual", reference:"Squeegees, rake arms, seals, coating touch-up" } },
+    { n:5, title:"Pipe bridge PR-3 insulation removal + reinstatement", st:"in_progress", pts:PR3, created:ago(8), enabling:{ kind:"insulation", ready:false },
+      values:{ jobtype:jt("Enabling"), asset:["PR-3"], worktype:[WK("Insulation / CUI")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[priya], reference:"Strip 12 windows, fit inspection ports; reinstate after J-26-006" } },
+    { n:6, title:"Pipe bridge PR-3 CUI inspection", st:"on_hold", pts:PR3, created:ago(8), waitsOn:[5], holdReason:"Waiting on insulation removal (J-26-005)",
+      values:{ jobtype:jt("Inspection"), asset:["PR-3"], worktype:[WK("Insulation / CUI"),WK("UT thickness")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[dave], repeats:"Annual", reference:"Visual + UT at 12 windows: low elbows, tee bottoms, hanger penetrations" } },
+    { n:7, title:"Pipe bridge PR-3 baseplate repair", st:"completed", pts:[at(1099,628),at(1095,668),at(1092,708),at(1088,748)], created:ago(21), completedAt:ago(11),
+      values:{ jobtype:jt("Corrective"), asset:["PR-3"], worktype:[WK("Other")], access:[AC("Grade / platform")], permits:[PM("Hot work")], reference:"Clean + recoat 4 corroded baseplates, replace 2 anchor nuts" } },
+    { n:8, title:"Pump P-402 mechanical seal replacement", st:"in_progress", pts:[at(1033,748)], created:ago(1,5),
+      values:{ jobtype:jt("Corrective"), asset:["PH-4","P-402"], worktype:[WK("Other")], access:[AC("Grade / platform")], permits:[PM("Electrical isolation")], people:[marco], deadline:{ start:ahead(1) }, reference:"Reactive: seal leaking. Replace seal, check bearings, realign. Parts on site." } },
+    { n:9, title:"Fall roof inspection + drain clearing", st:"outstanding", pts:rect(1021,737,1045,759), closed:true, created:ago(5),
+      values:{ jobtype:jt("Preventive"), asset:["PH-4"], worktype:[WK("Visual")], access:[AC("Drone")], permits:[PM("Working at height")], deadline:{ start:ahead(24) }, repeats:"Twice a year", reference:"Drains, flashing, seams, penetrations on every building roof" } },
+    { n:10, title:"Conveyor gallery CG-6 sheeting + truss repair", st:"on_hold", pts:GAL, closed:true, height:15, created:ago(12), waitsOn:[13], holdReason:"Waiting on scaffold (J-26-013)",
+      values:{ jobtype:jt("Corrective"), asset:["CG-6"], worktype:[WK("Other")], access:[AC("Scaffold")], permits:[PM("Working at height"),PM("Hot work")], people:[dave], reference:"Replace torn sheeting panels and one cracked brace" } },
+    { n:11, title:"Fire hydrant annual flow + lubrication", st:"completed", pts:[at(1004,700)], created:ago(30), completedAt:ago(17),
+      values:{ jobtype:jt("Preventive"), asset:["FH"], worktype:[WK("Visual")], access:[AC("Grade / platform")], repeats:"Annual (full flow test every 5 years)", reference:"Open and flow each hydrant, lubricate stems and caps" } },
+    { n:12, title:"Rail spur RS-8 tie replacement + crossing drainage", st:"outstanding", pts:[at(1002,786),at(1060,783),at(1120,780),at(1180,777)], created:ago(3),
+      values:{ jobtype:jt("Corrective"), asset:["RS-8"], worktype:[WK("Other")], access:[AC("Grade / platform")], people:[priya], reference:"Replace decayed ties, clear fouled ballast, restore drainage at the road crossing. Needs a rail operations outage." } },
+    { n:13, title:"Erect scaffold · conveyor gallery CG-6", st:"outstanding", pts:GAL, closed:true, height:15, created:ago(12), enabling:{ kind:"scaffold", ready:false },
+      values:{ jobtype:jt("Enabling"), asset:["CG-6"], worktype:[WK("Access build")], access:[AC("Scaffold")], permits:[PM("Working at height")], deadline:{ start:ahead(5) }, reference:"Independent scaffold along the south face, 15 m, tagged before J-26-010 starts" } },
   ];
-  for(const j of J){ await DB.set(WO_COL+"/"+j.id,{ seq:j.seq, title:j.title, statusId:j.st, values:j.values, location:{ points:j.pts, height:0, closed:j.closed }, created:j.created, createdBy:me, edited:j.created, editedBy:me, trashed:false, draft:false, completedAt:j.completedAt||null, noteCount:0 });
-    await DB.add(WO_COL+"/"+j.id+"/activity",{ t:j.created, by:me, text:"created the job" }); }
+  const ID=n=>"J-26-"+String(n).padStart(3,"0");
+  for(const j of J){ const id=ID(j.n);
+    const doc={ seq:j.n, title:j.title, statusId:j.st, values:j.values, location:{ points:j.pts, height:j.height||0, closed:!!j.closed }, created:j.created, createdBy:me, edited:j.created, editedBy:me, trashed:false, draft:false, completedAt:j.completedAt||null, noteCount:0 };
+    if(j.waitsOn) doc.links={ waitsOn:j.waitsOn.map(ID) }; if(j.enabling) doc.enabling=j.enabling; if(j.holdReason) doc.holdReason=j.holdReason;
+    await DB.set(WO_COL+"/"+id,doc);
+    await DB.add(WO_COL+"/"+id+"/activity",{ t:j.created, by:me, text:"created the job" }); }
+  const act=(n,d,text,by=me)=>DB.add(WO_COL+"/"+ID(n)+"/activity",{ t:d, by, text });
+  await act(2,ago(4,1),"raised J-26-003 from a finding at nozzle N3",karen); await act(3,ago(4),"now waits on J-26-002 · Tank T-1 5-yearly external inspection + shell UT",karen); await act(2,ago(4),"now blocks J-26-003 · Tank T-1 nozzle N3 flange repair",karen);
+  await act(6,ago(8),"now waits on J-26-005 · Pipe bridge PR-3 insulation removal + reinstatement"); await act(6,ago(7),"changed Status from Outstanding to On hold"); await act(6,ago(7),"hold reason: Waiting on insulation removal (J-26-005)");
+  await act(5,ago(3),"changed Status from Outstanding to In progress",priya);
+  await act(10,ago(12),"added enabling work J-26-013 · Erect scaffold"); await act(13,ago(12),"created as enabling work (Scaffold) for J-26-010"); await act(10,ago(11),"changed Status from Outstanding to On hold"); await act(10,ago(11),"hold reason: Waiting on scaffold (J-26-013)");
   await DB.set("workspace/counters",{ wo:J.length });
 
-  // notes on T-1: a roof area, a nested point of concern, a scope note
-  const n=(jid,nid,d)=>DB.set(WO_COL+"/"+jid+"/notes/"+nid,{ parent:null, title:"", text:"", files:[], by:"Demo user", ...d });
-  await n("J-26-001","roof",{ kind:"model", title:"Roof inspection", points:ring(1147,652,21,8), closed:true, height:0, text:"Full roof grid, 1 m spacing. Flag anything under 6.0 mm.", t:ago(5,4) });
-  await n("J-26-001","nozzle",{ kind:"model", parent:"roof", title:"Corrosion at nozzle N3", points:[at(1156,645)], closed:false, height:0, text:"Staining around the nozzle flange seen from the stairs. Get close-ups.", t:ago(5,3) });
-  await n("J-26-001","scope",{ kind:"text", title:"Scope from the reliability team", text:"UT readings on the roof grid and the top two shell courses. Previous survey (2023) showed 7.1 mm minimum on the roof.", t:ago(5,5) });
-  await n("J-26-002","launder",{ kind:"model", title:"Launder weir — east side", points:[at(1068,666),at(1072,690)], closed:false, height:0, text:"Operators report uneven overflow along this stretch.", t:ago(2,6) });
-  await n("J-26-004","patch",{ kind:"text", title:"Repair complete", text:"Membrane patched over the east drain. Re-inspect after the next heavy rain.", t:ago(12) });
+  const nc={}; const n=(jid,nid,d)=>{ nc[jid]=(nc[jid]||0)+(d.parent?0:1); return DB.set(WO_COL+"/"+jid+"/notes/"+nid,{ parent:null, title:"", text:"", files:[], by:"Demo user", ...d }); };
+  await n("J-26-002","roof",{ kind:"model", title:"Roof inspection", points:ring(1147,652,21,8), closed:true, height:0, text:"Full roof grid, 1 m spacing. Flag anything under 6.0 mm.", t:ago(5,4) });
+  await n("J-26-002","nozzle",{ kind:"model", parent:"roof", title:"Corrosion at nozzle N3", points:[at(1156,645)], closed:false, height:0, text:"Pitting on the flange face and four studs necked down. Raised as J-26-003.", t:ago(4,3) });
+  await n("J-26-002","scope",{ kind:"text", title:"Scope from the reliability team", text:"UT readings on the roof grid and all shell courses. Previous survey (2021) showed 7.1 mm minimum on the roof.", t:ago(5,5) });
+  await n("J-26-004","launder",{ kind:"model", title:"Launder weir — east side", points:[at(1068,666),at(1072,690)], closed:false, height:0, text:"Operators report uneven overflow along this stretch.", t:ago(2,6) });
+  for(const [i,[x,y]] of [[1097,625],[1094,650],[1092,690],[1090,735],[1087,770]].entries())
+    await n("J-26-006","w"+(i+1),{ kind:"model", title:`Window ${i+1}${i===1?" · low elbow":i===3?" · hanger penetration":""}`, points:[at(x,y)], closed:false, height:0, text:"", t:ago(8,6-i) });
+  await n("J-26-009","roofs",{ kind:"text", title:"Buildings in scope", text:"Pump house PH-4 (marked), MCC building, maintenance shop, gatehouse. Mark each roof as a note when the drone plan is set.", t:ago(5) });
+  await n("J-26-011","hyd",{ kind:"text", title:"Results", text:"All four hydrants flowed and drained. H-3 cap threads damaged, replaced. Next full flow test due 2029.", t:ago(17) });
+  await n("J-26-012","xing",{ kind:"model", title:"Road crossing — drainage", points:rect(1112,772,1128,788), closed:true, height:0, text:"Ponding on both sides of the crossing after rain; ballast fouled.", t:ago(3) });
+  for(const [jid,c] of Object.entries(nc)) await DB.update(WO_COL+"/"+jid,{ noteCount:c });
 
-  // email: a forwarded PO on T-1, a reply thread, one on the clarifier
   const th=async(tid,t,msgs)=>{ const last=msgs[msgs.length-1]; await DB.set(MAIL_COL+"/"+tid,{ ...t, count:msgs.length, last:{ t:last.t, from:last.from, snippet:last.text.slice(0,90) }, readBy:{}, lastMessageId:"<"+tid+"-"+msgs.length+"@demo>" });
     for(const [i,m] of msgs.entries()) await DB.set(MAIL_COL+"/"+tid+"/messages/m"+i,{ to:[], cc:[], quote:"", attachments:[], extracted:{ po:[] }, status:m.dir==="out"?"sent":"received", messageId:"<"+tid+"-"+(i+1)+"@demo>", subject:t.subject, ...m }); };
-  await th("t1",{ jobId:"J-26-001", n:1, addr:"j-26-001-t1@mail.skygauge.co", subject:"FW: PO 4500218871 – Tank T-1 roof survey", about:{ kind:"job" }, participants:[dave,{ email:me.email, name:me.name }], created:ago(2,3), createdBy:dave },
-    [{ dir:"in", from:dave, t:ago(2,3), text:"PO is through. Please confirm the mobilization date and send the JHA before Friday.", quote:"---------- Forwarded message ----------\nFrom: procurement@example.com\nSubject: Purchase Order 4500218871", extracted:{ po:[{ value:"4500218871", src:"Subject: Purchase Order 4500218871", applied:true }] },
+  await th("t1",{ jobId:"J-26-002", n:1, addr:"j-26-002-t1@mail.skygauge.co", subject:"FW: PO 4500218871 – Tank T-1 external inspection", about:{ kind:"job" }, participants:[dave,{ email:me.email, name:me.name }], created:ago(6,3), createdBy:dave },
+    [{ dir:"in", from:dave, t:ago(6,3), text:"PO is through. Please confirm the mobilization date and send the JHA before Friday.", quote:"---------- Forwarded message ----------\nFrom: procurement@example.com\nSubject: Purchase Order 4500218871", extracted:{ po:[{ value:"4500218871", src:"Subject: Purchase Order 4500218871", applied:true }] },
        attachments:[{ id:"a1", name:"PO_4500218871.pdf", size:212000, type:"application/pdf", url:"" }] },
-     { dir:"out", from:{ email:me.email, name:me.name }, to:[dave], t:ago(2,1), text:"Confirmed for Monday, crew of two, 07:00 at the north gate. JHA attached.", link:"#" }]);
-  await th("t2",{ jobId:"J-26-001", n:2, addr:"j-26-001-t2@mail.skygauge.co", subject:"Re: Corrosion at nozzle N3", about:{ kind:"note", noteId:"nozzle", label:"Corrosion at nozzle N3" }, participants:[karen], created:ago(0,5), createdBy:karen },
-    [{ dir:"in", from:karen, t:ago(0,5), text:"That nozzle was re-gasketed in 2022. If the flange shows pitting, please add a close-up of the bolting too." }]);
-  await th("t3",{ jobId:"J-26-002", n:1, addr:"j-26-002-t1@mail.skygauge.co", subject:"Clarifier outage window", about:{ kind:"job" }, participants:[marco], created:ago(1,2), createdBy:marco },
-    [{ dir:"in", from:marco, t:ago(1,2), text:"We can drain C-2 for four hours on the 14th. Does that work for the drone flight?" }]);
+     { dir:"out", from:{ email:me.email, name:me.name }, to:[dave], t:ago(6,1), text:"Confirmed for Monday, crew of two, 07:00 at the north gate. JHA attached.", link:"#" }]);
+  await th("t2",{ jobId:"J-26-002", n:2, addr:"j-26-002-t2@mail.skygauge.co", subject:"Re: Corrosion at nozzle N3", about:{ kind:"note", noteId:"nozzle", label:"Corrosion at nozzle N3" }, participants:[karen], created:ago(4,5), createdBy:karen },
+    [{ dir:"in", from:karen, t:ago(4,5), text:"That nozzle was re-gasketed in 2022. I've raised the flange repair as J-26-003; it can go once your report is in and ops drop the level." }]);
+  await th("t3",{ jobId:"J-26-004", n:1, addr:"j-26-004-t1@mail.skygauge.co", subject:"Clarifier outage window", about:{ kind:"job" }, participants:[marco], created:ago(1,2), createdBy:marco },
+    [{ dir:"in", from:marco, t:ago(1,2), text:"We can drain C-2 for four hours on the 14th. Does that work for the inspection crew?" }]);
 }
 
 /* =====================================================================
