@@ -2573,11 +2573,11 @@ function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el
    (scaffold up and tagged); the enabling job itself stays open until its restore step (strip, reinstate) is done.
    ===================================================================== */
 const EN_KINDS={
-  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", pending:"scaffold not up yet", restore:"Strip scaffold" },
-  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        pending:"insulation not removed yet", restore:"Reinstate insulation" },
-  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     pending:"not isolated yet", restore:"Remove isolation" },
-  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        pending:"not excavated yet", restore:"Backfill" },
-  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          pending:"surface not prepared yet", restore:null },
+  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", restore:"Strip scaffold" },
+  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        restore:"Reinstate insulation" },
+  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     restore:"Remove isolation" },
+  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        restore:"Backfill" },
+  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          restore:null },
 };
 const HOLD_REASONS=["Waiting on scaffold","Waiting on insulation removal","Waiting on parts / materials","Waiting on a shutdown window","Waiting on a permit","Waiting on engineering"];
 const enKind = w => w?.enabling?EN_KINDS[w.enabling.kind]||{ name:"Enabling work", title:"Enabling work", ready:"Ready", restore:null }:null;
@@ -2660,7 +2660,7 @@ function goJob(id){ if(S.woView) enterWOView(id); else openWO(id); }
 function stDot(w){ const o=status(w.statusId); return `<i class="lkdot" style="background:${col(o?.color).map}"></i>`; }
 function lkChip(b,unlinkAttr,showRel){
   const o=status(b.statusId); const ok=showRel&&released(b);
-  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):showRel&&b.enabling&&!released(b)&&enKind(b)?.pending?P(enKind(b).pending):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
+  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
 }
 /* The yellow / green / purple banner under the title was removed (1 Oct 2026, Nikita: it repeated the Linked box).
    Waiting, ready-to-start, restore-due and the hold reason are all shown in the Linked / Enabling boxes. */
