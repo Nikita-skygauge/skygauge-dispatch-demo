@@ -309,7 +309,7 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 /* notes (one drawing = one note) */
 .notes{display:flex;flex-direction:column;gap:4px}
 .note.nr{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:9px;min-height:44px}
-.nr .num{font:700 11px/1 var(--mono);color:var(--ink-3);min-width:16px;text-align:right;white-space:nowrap}
+
 .nr .g{width:30px;height:30px;border-radius:7px;background:var(--panel);display:grid;place-items:center;flex:none;color:var(--ink-2);font-size:15px}.nr .g svg{width:20px;height:20px}
 .nr .g.ph{width:40px;height:40px;background:#000;position:relative;overflow:hidden}.nr .g.ph img{width:100%;height:100%;object-fit:cover;display:block;opacity:.92}.nr .g.ph svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.nr .g.ph svg text{font-family:var(--mono)}.nr .g.ph i{position:absolute;right:2px;bottom:2px;font:600 9px/1 var(--sans);background:rgba(11,15,31,.85);color:#fff;padding:2px 4px;border-radius:4px;font-style:normal}
 .nr .t{flex:1;min-width:0}.nr .t b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nr .t span{color:var(--ink-3);font-size:11.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -317,6 +317,33 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 .nr .chev{min-width:26px;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:3px;color:var(--ink-3);border:1px solid transparent;background:transparent;font:inherit;padding:0 6px;cursor:default}
 .nr .chev.has{color:var(--ink);border-color:var(--line);background:var(--panel);cursor:pointer}.nr .chev.has:hover{border-color:var(--sel)}.nr .chev.has b{font:700 10px/1 var(--mono)}
 .nr.here{background:rgba(0,255,229,.08)}
+/* Notes redesign (1 Oct 2026): add row, filters, photo tiles, drag + move */
+.ki{width:1em;height:1em;vertical-align:-.15em;flex:none}
+.nadd{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 10px}
+.btn.nab{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;font-weight:600;font-size:12.5px;padding:6px 8px;background:var(--panel-2);white-space:nowrap}
+.btn.nab .ki{color:#00A896;font-size:15px}:root[data-theme="dark"] .btn.nab .ki{color:#00FFE5}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.nab .ki{color:#00FFE5}}
+.btn.nab i{font-style:normal}.btn.nab i.sm{display:none}
+.nfilt{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.nfilt .chipbtn{min-height:32px}
+.nphotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ptile{display:flex;flex-direction:column;gap:4px;text-align:left;background:none;border:0;padding:0;color:var(--ink);font:inherit;cursor:pointer;min-width:0}
+.ptile .pimg{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#000}.ptile .pimg img{width:100%;height:100%;object-fit:cover;display:block}
+.ptile:hover .pimg,.ptile.hl .pimg{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel)}
+.ptile .nopos{position:absolute;left:5px;bottom:4px;width:18px;height:18px;border-radius:50%;background:rgba(255,26,0,.85);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.ptile .mkc{position:absolute;right:5px;bottom:4px;font:600 10px/1 inherit;background:rgba(11,15,31,.85);color:#fff;padding:3px 5px;border-radius:4px}
+.ptile b{font-size:12.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ptile>span:last-child{font-size:11px;color:var(--ink-3);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nr .grip{width:12px;flex:none;color:var(--ink-3);display:grid;place-items:center;cursor:grab;opacity:.7}
+.nr .nmv{width:30px;height:28px;flex:none;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--ink-2);display:grid;place-items:center;cursor:pointer;padding:0}.nr .nmv:hover{border-color:var(--line);background:var(--panel)}
+.ncard[data-drag]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.ncard.dragging{opacity:.35}body.ndragging,body.ndragging *{cursor:grabbing!important}
+.ncard.drop-before{box-shadow:0 -3px 0 0 var(--sel)!important}.ncard.drop-after{box-shadow:0 3px 0 0 var(--sel)!important}
+.ncard.drop-inside{border-color:var(--sel)!important;background:rgba(0,255,229,.14)!important;box-shadow:0 0 0 1px var(--sel)!important}
+.ncard.drop-no{outline:1px dashed var(--crit);outline-offset:-1px}
+.nghost{position:fixed;z-index:400;pointer-events:none;max-width:260px;padding:6px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--sel);box-shadow:var(--shadow);font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop .mi[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.toast .t-undo{margin-left:10px;color:#00FFE5;font-weight:700}
+.strip.ppos{margin-top:10px}
+@media (max-width:860px){ .btn.nab{flex-direction:column;gap:3px;min-height:56px;font-size:12px} .btn.nab .ki{font-size:18px} .btn.nab i.lg{display:none} .btn.nab i.sm{display:inline} .nfilt .chipbtn{min-height:36px;font-size:12.5px} .note.nr{min-height:52px} .nr .nmv{width:40px;height:40px} .nr .k,.nr .chev:not(.has){display:none} }
+
 .kids{margin:0 0 4px 22px;padding-left:12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:4px}.kids .kids{border-left-color:#3A4270}
 .kids .note.nr{position:relative}.kids .note.nr::before{content:"";position:absolute;left:-14px;width:12px;height:2px;background:var(--line);top:50%}
 .note{display:grid;grid-template-columns:140px 1fr;gap:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer}
@@ -1214,10 +1241,8 @@ function renderRecord(){
     </div>`:""}
     ${notesHTML()}
     ${mailSectionHTML(w)}
-    ${galleryHTML()}
-    ${filesHTML()}
     <section class="ps"><h3 id="act-h">${showAct?"▾":"▸"} Activity <span class="mono" style="font-weight:400" id="act-n">${ACT.length}</span></h3><div id="act" ${showAct?"":"hidden"}></div></section>`;
-  renderActivity(); wireGallery(); wireNotes(); wireFiles(); wireMailSection(w); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
+  renderActivity(); wireNotes(); wireMailSection(w); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
   const t=$("#ptitle"); const fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
   t.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); t.blur(); } if(e.key==="Escape"){ t.value=w.title||""; fit(); t.blur(); e.stopPropagation(); } };
   t.onblur=()=>setTitle(w.id,t.value.trim());
@@ -1454,11 +1479,11 @@ function mk3(kind,o={}){ if(!map||!lib) return null; if(kind==="pli"&&!lib.Polyl
     el=(kind==="m"||kind==="mi")?new C({ position:o.position||PARK(), altitudeMode:o.altitudeMode||"ABSOLUTE" }):new C({ altitudeMode:o.altitudeMode||"ABSOLUTE" });
     el.__pool=kind; el.__onClick=null; if(kind==="mi"||kind==="pli") el.addEventListener("gmp-click",e=>{ el.__onClick?.(e); }); map.append(el); POOL.all.add(el); }
   el.__onClick=null; el.__seg=undefined;
-  if(kind==="m"||kind==="mi"){ el.altitudeMode=o.altitudeMode||"ABSOLUTE"; el.position=o.position||PARK(); el.sizePreserved=o.sizePreserved!==false; el.drawsWhenOccluded=o.drawsWhenOccluded!==false; el.extruded=!!o.extruded; if(o.tpl) setTpl(el,o.tpl); }
+  if(kind==="m"||kind==="mi"){ el.altitudeMode=o.altitudeMode||"ABSOLUTE"; el.position=o.position||PARK(); el.sizePreserved=o.sizePreserved!==false; el.drawsWhenOccluded=o.drawsWhenOccluded!==false; el.extruded=!!o.extruded; if(o.tpl) setTpl(el,o.tpl); if(kind==="mi") el.title=o.title||""; }
   else { el.altitudeMode=o.altitudeMode||"ABSOLUTE"; el.drawsOccludedSegments=o.drawsOccludedSegments!==false; if(kind==="pg"){ el.extruded=!!o.extruded; el.fillColor=o.fillColor||CLEAR; } el.strokeColor=o.strokeColor||CLEAR; el.strokeWidth=o.strokeWidth??2; if(o.path) el.path=o.path; }
   return el; }
 function poolPut(el){ if(!el) return; if(!el.__pool){ try{ el.remove(); }catch{} return; } el.__onClick=null; el.__seg=undefined; const p=PARK();
-  try{ if(el.__pool==="m"||el.__pool==="mi"){ setTpl(el,emptyTpl()); el.position=p; }
+  try{ if(el.__pool==="m"||el.__pool==="mi"){ setTpl(el,emptyTpl()); el.position=p; if(el.__pool==="mi") el.title=""; }
     else if(el.__pool==="pg"){ el.fillColor=CLEAR; el.strokeColor=CLEAR; el.strokeWidth=0; el.extruded=false; el.path=[p,{ ...p, lng:p.lng+1e-6 },{ ...p, lat:p.lat+1e-6 },p]; }
     else { el.strokeColor=CLEAR; el.strokeWidth=0; el.path=[p,{ ...p, lng:p.lng+1e-6 }]; } }catch(e){ console.warn("pool park",e); }
   if(!POOL.free[el.__pool].includes(el)) POOL.free[el.__pool].push(el); }
@@ -1811,7 +1836,7 @@ function enterWOView(id){ const w=W(id); if(!w) return; const wasHidden=S.tab!==
 function exitWOView(){ S.woView=false; LOCK=null; S.note=null; document.body.classList.remove("note-view"); leaveJobScene(); syncJobLabels(); document.body.classList.remove("wo-view"); closePeek(); resetMode(); orbitSync(); }   // camera stays where it is; the Site button reframes on demand
 function woMode(){ const w=W(S.open); if(!w) return;
   if(S.note&&typeof N==="function"&&N(S.note)){ const n=N(S.note); const par=n.parent?N(n.parent):null; const sibs=(typeof childrenOf==="function"?childrenOf(n.parent||null):[]).length;
-    setMode("wo note","Note",`<b>${P(noteTitle(n))}</b> · ${par?`inside ${P(noteTitle(par))}`:`${noteNo(n.id)} of ${sibs||"?"} in ${w.id}`} <button class="btn sm" id="mode-back">‹ Back</button>`,false); $("#mode-back").onclick=()=>closeNote(true); return; }
+    setMode("wo note","Note",`<b>${P(noteTitle(n))}</b> · ${par?`inside ${P(noteTitle(par))}`:`in ${w.id}`} <button class="btn sm" id="mode-back">‹ Back</button>`,false); $("#mode-back").onclick=()=>closeNote(true); return; }
   setMode("wo","Job",isMobile()?`<b>${w.id}</b> · double-tap the map to re-centre`:`<b>${w.id}</b> · standard Google controls · double-click the map to re-centre`,false); }
 function orbitSync(){ $("#orbit").hidden=true; }   // stock Google 3D gestures everywhere; no custom control layer
 function installLock(){ return;
@@ -1961,23 +1986,8 @@ async function deletePhoto(woId,pid){
 }
 async function getFull(woId,pid){ if(fullCache.has(pid)) return fullCache.get(pid); const d=await DB.get(WO_COL+"/"+woId+"/photofull/"+pid); const u=d?.data||null; if(u) fullCache.set(pid,u); return u; }
 
-/* ---------- gallery in the record page (V46, V81) ---------- */
-function galleryHTML(){
-  return `<section class="ps" id="gal"><h3 style="cursor:default">Photos <span class="mono" style="font-weight:400">${PH.length}</span>
-    <span style="margin-left:auto;display:flex;gap:6px"><button class="btn sm" id="ph-take">📷 Take photo</button><button class="btn sm" id="ph-pick">Choose from library</button></span></h3>
-    <input type="file" id="ph-file" accept="image/*" multiple hidden>
-    ${PH.length?`<div class="thumbs">${PH.map(p=>{ const e=effPose(p); return `<div class="th" data-pid="${p.id}" title="${P(p.caption||"")}"><img src="${p.thumb}" alt="">${!hasPos(p)?`<span class="nopos" title="Position unknown">?</span>`:""}${p.marks?.length?`<span class="mkc" title="${p.marks.length} marks">✎ ${p.marks.length}</span>`:""}</div>`; }).join("")}</div>`
-    :`<div class="hint">No photos yet. Take one on your phone: the position and the direction you were facing are recorded and drawn on the model.</div>`}
-    <div class="hint" style="margin-top:6px">Positions are approximate — GPS 3–30 m, compass ±15° or worse near heavy steel. Open a photo to move its icon or correct the heading.</div></section>`;
-}
-function renderGallery(){ const g=$("#gal"); if(!g||S.note) { if(S.note) renderRecord(); return; } g.outerHTML=galleryHTML(); wireGallery(); renderNotes(); }
-function wireGallery(){
-  const w=W(S.open); if(!w) return;
-  $("#ph-take")?.addEventListener("click",()=>openCamera(w.id));
-  $("#ph-pick")?.addEventListener("click",()=>$("#ph-file").click());
-  $("#ph-file")?.addEventListener("change",async e=>{ for(const f of e.target.files) await addPhoto(w.id,f,null); e.target.value=""; });
-  $$("#gal .th").forEach(t=>t.onclick=()=>{ if(N("ph_"+t.dataset.pid)) openNote("ph_"+t.dataset.pid); else openViewer(t.dataset.pid); });
-}
+/* ---------- photos live in the Notes section now (Photos filter; ＋ Photo adds one) ---------- */
+function renderGallery(){ if(S.note) renderRecord(); else renderNotes(); }
 
 /* ---------- viewer with pose correction (V79, V80) ---------- */
 let VW=null, MK={ pen:true, color:"#FF1A00", sel:null };
@@ -2060,13 +2070,13 @@ function syncPhotoOverlays(){
   PH.filter(hasPos).forEach(p=>{ const e=effPose(p); const sig=JSON.stringify(e)+(PHOV[p.id]?.hl?"#":""); const o=PHOV[p.id]; if(o&&o.sig===sig) return; if(o){ killEl(o.m); killAll(o.sight); }
     const fill=o?.hl?"#00FFE5":"#B9C2DA";   // grey by default; teal when hovered or open
     // the icon sits on the surface the photo was placed on (roof, platform…), not on the ground under it
-    const m=mk3("mi",{ position:{ lat:e.lat, lng:e.lng, altitude:e.ground!=null?e.ground+0.6:1.2 }, altitudeMode:e.ground!=null?"ABSOLUTE":"RELATIVE_TO_MESH", tpl:tpl(camSvg(fill,o?.hl?1.35:1)) });
+    const m=mk3("mi",{ position:{ lat:e.lat, lng:e.lng, altitude:e.ground!=null?e.ground+0.6:1.2 }, altitudeMode:e.ground!=null?"ABSOLUTE":"RELATIVE_TO_MESH", tpl:tpl(camSvg(fill,o?.hl?1.35:1)), title:noteTitle(N("ph_"+p.id)||{ kind:"photo", photoId:p.id }) });
     m.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); if(N("ph_"+p.id)) openNote("ph_"+p.id); else openViewer(p.id); };
     PHOV[p.id]={ m, sight:[], sig, hl:o?.hl||false }; });   // heading is not drawn: phone compasses proved too unreliable on site
 }
 function tpl(svg){ const t=document.createElement("template"); t.content.append(svg); return t; }
 function clearPhotoOverlays(){ const n=Object.keys(PHOV).length; Object.values(PHOV).forEach(o=>{ killEl(o.m); killAll(o.sight); }); for(const k in PHOV) delete PHOV[k]; if(n) mapRedraw(); }
-function highlightPhoto(pid){ Object.entries(PHOV).forEach(([id,o])=>{ const hl=id===pid; if(hl!==o.hl){ o.hl=hl; o.sig=""; } }); $$("#gal .th").forEach(t=>t.classList.toggle("hl",t.dataset.pid===pid)); syncPhotoOverlays(); }
+function highlightPhoto(pid){ Object.entries(PHOV).forEach(([id,o])=>{ const hl=id===pid; if(hl!==o.hl){ o.hl=hl; o.sig=""; } }); $$(".ptile[data-pid]").forEach(t=>t.classList.toggle("hl",!!pid&&t.dataset.pid===pid)); syncPhotoOverlays(); }
 function flyPhoto(p){ const e=effPose(p); if(!e||!map) return; const g=photoGround(p);
   LOCK=null; fly({ center:{ lat:e.lat, lng:e.lng, altitude:g+2 }, range:60, tilt:62, heading:map.heading??0 },1600); }
 
@@ -2082,26 +2092,33 @@ function flyPhoto(p){ const e=effPose(p); if(!e||!map) return; const g=photoGrou
 const NOTE_DEPTH=3;
 const PIN_NOTE_COLOR="#FFD400";
 const NOTE_LABEL={ pin:"Point", line:"Line", area:"Area" };
-const KIND_ICON={ text:"📝", model:"📍", photo:"📷", file:"📎" };
+const KIND_ICON={ text:'<svg class="ki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 6h14M5 12h14M5 18h9"/></svg>',
+  model:'<svg class="ki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2"/></svg>',
+  photo:'<svg class="ki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  file:'<svg class="ki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/></svg>' };
+const GRIP_SVG='<svg viewBox="0 0 10 16" width="10" height="16" fill="currentColor"><circle cx="2.5" cy="3" r="1.5"/><circle cx="7.5" cy="3" r="1.5"/><circle cx="2.5" cy="8" r="1.5"/><circle cx="7.5" cy="8" r="1.5"/><circle cx="2.5" cy="13" r="1.5"/><circle cx="7.5" cy="13" r="1.5"/></svg>';
+const DOTS_SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 let NT=[], ntUnsub=null, ntJob=null, ntReady=false;   // notes of the open job
 let selPin=null, hoverPin=null; const PINOV={};       // model-note overlays: nid → parts[]
 const noteCol = id => WO_COL+"/"+id+"/notes";
-function watchNotes(id){ if(ntJob===id) return; ntUnsub?.(); NT=[]; ntJob=id; ntReady=false; clearPinOverlays();
-  ntUnsub=DB.watchCol(noteCol(id),rows=>{ NT=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); ntReady=true; if(S.open===id){ renderNotes(); renderFiles(); if(S.note) renderRecord(); migrateNotes(id); } }); }
+function watchNotes(id){ if(ntJob===id) return; ntUnsub?.(); NT=[]; ntJob=id; NFILT="all"; ntReady=false; clearPinOverlays();
+  ntUnsub=DB.watchCol(noteCol(id),rows=>{ NT=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); ntReady=true; if(S.open===id){ renderNotes(); if(S.note) renderRecord(); migrateNotes(id); } }); }
 function stopNotes(){ ntUnsub?.(); ntUnsub=null; NT=[]; ntJob=null; ntReady=false; clearPinOverlays(); }
 const N = nid => NT.find(n=>n.id===nid);
-const childrenOf = nid => NT.filter(n=>(n.parent||null)===(nid||null));
+const byOrder=(a,b)=>(a.order??1e9)-(b.order??1e9)||(a.t||"").localeCompare(b.t||"");
+const childrenOf = nid => NT.filter(n=>(n.parent||null)===(nid||null)).sort(byOrder);
+function heightOf(nid){ const k=childrenOf(nid); return 1+(k.length?Math.max(...k.map(c=>heightOf(c.id))):0); }
+function treeOrder(){ const out=[]; const walk=p=>childrenOf(p).forEach(c=>{ out.push(c); walk(c.id); }); walk(null); return out; }
 function depthOf(nid){ let d=0, n=N(nid); while(n){ d++; n=n.parent?N(n.parent):null; if(d>20) break; } return d; }
 function ancestors(nid){ const out=[]; let n=N(nid); while(n?.parent){ n=N(n.parent); if(!n||out.length>20) break; out.unshift(n); } return out; }
 function descendants(nid){ const out=[]; const walk=p=>childrenOf(p).forEach(c=>{ out.push(c); walk(c.id); }); walk(nid); return out; }
-function noteNo(nid){ return NT.findIndex(n=>n.id===nid)+1; }
 function notePts(k){ return k.points||[]; }
 function noteClosed(k){ return !!k.closed&&notePts(k).length>=3; }
 function noteShape(k){ const n=notePts(k).length; return n<=1?"pin":noteClosed(k)?"area":"line"; }
-function noteTitle(n){ if(n.title) return n.title; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); return p?.caption||`Photo ${photoNo(p)||""}`.trim(); } if(n.kind==="file") return n.files?.[0]?.name||"File"; if(n.kind==="model") return `${NOTE_LABEL[noteShape(n)]} on the model`; return (n.text||"").split("\n")[0].slice(0,60)||"Note"; }
+function noteTitle(n){ if(n.title) return n.title; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); return p?.caption||(p?.t?`Photo · ${fmtDate(p.t,true)}`:"Photo"); } if(n.kind==="file") return n.files?.[0]?.name||"File"; if(n.kind==="model") return `${NOTE_LABEL[noteShape(n)]} on the model`; return (n.text||"").split("\n")[0].slice(0,60)||"Note"; }
 function noteCount(){ return NT.length+PH.reduce((s,p)=>s+(p.marks?.length||0),0); }
 function photoNo(p){ if(!p) return ""; const asc=PH.slice().sort((a,b)=>a.t.localeCompare(b.t)); const i=asc.findIndex(x=>x.id===p.id); return i<0?"":i+1; }
-function logNote(woId,p,m,verb){ const txt=(m.note||"").trim(); log(woId, txt?`${verb} a note on photo ${photoNo(p)}: “${txt.slice(0,80)}${txt.length>80?"…":""}”`:`cleared a note on photo ${photoNo(p)}`); }
+function logNote(woId,p,m,verb){ const txt=(m.note||"").trim(); const pt=noteTitle({ kind:"photo", photoId:p.id }).slice(0,40); log(woId, txt?`${verb} a note on the photo “${pt}”: “${txt.slice(0,80)}${txt.length>80?"…":""}”`:`cleared a note on the photo “${pt}”`); }
 
 /* ---------- one-time, lazy migration of the old shapes: pins[] → model notes, photos → photo notes (deterministic ids, so it is idempotent) ---------- */
 let migrating=null; const migratedIds=new Set();
@@ -2117,7 +2134,7 @@ async function migrateNotes(id){ if(!ntReady||phWO!==id||migrating===id) return;
 /* ---------- create / edit / delete ---------- */
 async function createNote(id,kind,parent,data={}){
   if(parent&&depthOf(parent)>=NOTE_DEPTH){ toast(`Notes go ${NOTE_DEPTH} levels deep at most.`,true); return null; }
-  const nid=data.id||uid(); const n={ kind, parent:parent||null, title:data.title||"", text:data.text||"", files:data.files||[], t:now(), by:S.user.name, ...(kind==="model"?{ points:data.points||[], closed:!!data.closed, height:data.height||0 }:{}), ...(kind==="photo"?{ photoId:data.photoId }:{}) };
+  const nid=data.id||uid(); const sib=childrenOf(parent||null); const ord=sib.some(x=>x.order!=null)?Math.max(...sib.map(x=>x.order??0))+1:null; const n={ ...(ord!=null?{ order:ord }:{}), kind, parent:parent||null, title:data.title||"", text:data.text||"", files:data.files||[], t:now(), by:S.user.name, ...(kind==="model"?{ points:data.points||[], closed:!!data.closed, height:data.height||0 }:{}), ...(kind==="photo"?{ photoId:data.photoId }:{}) };
   NT=[...NT,{ id:nid, ...n }]; renderNotes();
   await flashSaved($("#notes h3"),()=>DB.set(noteCol(id)+"/"+nid,n)); bumpNoteCount(id);
   log(id, `added a ${kind==="model"?NOTE_LABEL[noteShape(n)].toLowerCase()+" note on the model":kind==="photo"?"photo note":kind==="file"?"file note":"note"}${parent?" inside “"+noteTitle(N(parent)||{}).slice(0,40)+"”":""}`);
@@ -2135,20 +2152,20 @@ async function addFileToNote(id,nid,file,statusEl){
   if(statusEl) statusEl.textContent=`Uploading ${file.name}… 0%`;
   let up; try{ up=await ST.upload(path,file,pct=>{ if(statusEl) statusEl.textContent=`Uploading ${file.name}… ${Math.round(pct*100)}%`; }); }catch(e){ toast(`Upload failed: ${e?.code==="storage/unauthorized"?"storage rules deny it — publish the Storage rules first":(e.message||e)}`,true); if(statusEl) statusEl.textContent=""; return; }
   const entry={ id:fid, name:file.name, size:file.size, type:file.type||"application/octet-stream", path:up.path, url:up.url, t:now(), by:S.user.name };
-  await updateNote(id,nid,{ files:[...(n.files||[]),entry] },statusEl,`attached ${file.name} to “${noteTitle(n).slice(0,40)}”`); if(statusEl) statusEl.textContent=""; renderFiles(); }
+  await updateNote(id,nid,{ files:[...(n.files||[]),entry] },statusEl,`attached ${file.name} to “${noteTitle(n).slice(0,40)}”`); if(statusEl) statusEl.textContent=""; }
 async function removeFile(id,nid,fid){ const n=N(nid); const f=(n?.files||[]).find(x=>x.id===fid); if(!f||!confirm(`Remove ${f.name}?`)) return; try{ await ST.del(f.path); }catch{} await updateNote(id,nid,{ files:(n.files||[]).filter(x=>x.id!==fid) },null,`removed ${f.name}`); renderFiles(); }
 
-/* ---------- the "+ Note" menu: text · on the model · photo · file ---------- */
-function noteMenu(id,parent,anchor){
-  const deep=parent&&depthOf(parent)>=NOTE_DEPTH; if(deep){ toast(`Notes go ${NOTE_DEPTH} levels deep at most.`,true); return; }
-  const el=openPop(anchor,`<div class="sec">${parent?"Note inside “"+P(noteTitle(N(parent)||{}).slice(0,32))+"”":"New note"}</div>
-    <div class="mi" data-k="text">${KIND_ICON.text} Text note</div><div class="mi" data-k="model">${KIND_ICON.model} On the model <span class="r hint">point · line · area</span></div>
-    <div class="mi" data-k="photo">${KIND_ICON.photo} Photo <span class="r hint">camera or library</span></div><div class="mi" data-k="file">${KIND_ICON.file} File <span class="r hint">up to 50 MB</span></div>`,{width:260,noFocus:true});
-  el.querySelectorAll("[data-k]").forEach(m=>m.onclick=async()=>{ closePop(); const k=m.dataset.k;
-    if(k==="text"){ const nid=await createNote(id,"text",parent); if(nid){ openNote(nid,{ focus:true }); } }
-    if(k==="model") drawNote(id,null,parent);
-    if(k==="photo"){ pendingPhotoParent=parent||null; if(isMobile()&&navigator.mediaDevices?.getUserMedia) openCamera(id); else $("#ph-file").click(); }
-    if(k==="file"){ pendingFileParent=parent||null; $("#nf-file").click(); } }); }
+/* ---------- adding: the four buttons — ＋ Note (text) · ＋ On model · ＋ Photo · ＋ File ---------- */
+async function addNote(id,parent,k,anchor){
+  if(parent&&depthOf(parent)>=NOTE_DEPTH){ toast(`Notes go ${NOTE_DEPTH} levels deep at most.`,true); return; }
+  if(k==="text"){ const nid=await createNote(id,"text",parent); if(nid){ openNote(nid,{ focus:true }); } }
+  if(k==="model") drawNote(id,null,parent);
+  if(k==="photo"){ pendingPhotoParent=parent||null;
+    /* the in-app camera records where you stand (GPS) — a plain file picker cannot, so a phone gets the choice */
+    if(isMobile()&&navigator.mediaDevices?.getUserMedia){ const el=openPop(anchor,`<div class="mi" data-ph="cam">${KIND_ICON.photo} Take photo <span class="r hint">records where you stand</span></div><div class="mi" data-ph="lib">Choose from library</div>`,{ width:260, noFocus:true });
+      el.querySelector('[data-ph="cam"]').onclick=()=>{ closePop(); openCamera(id); }; el.querySelector('[data-ph="lib"]').onclick=()=>{ closePop(); $("#ph-file")?.click(); }; }
+    else $("#ph-file")?.click(); }
+  if(k==="file"){ pendingFileParent=parent||null; $("#nf-file")?.click(); } }
 let pendingPhotoParent=null, pendingFileParent=null;
 function drawNote(id,nid,parent){ const w=W(id); if(!w) return; if(!map){ toast("The map is not loaded.",true); return; } if(!S.woView) enterWOView(id); setTab("map"); closeViewer(); if(isMobile()) setSheet("peek");
   const existing=nid?N(nid):null;
@@ -2164,8 +2181,6 @@ function openNote(nid,opts={}){ const n=N(nid); if(!n||!S.open) return; S.note=n
   if(n.kind==="photo"){ highlightPhoto(n.photoId); const p=PH.find(x=>x.id===n.photoId); if(p&&map&&hasPos(p)) flyPhoto(p); }
   if(isMobile()) setSheet("half"); if(opts.focus) setTimeout(()=>{ $("#nv-text")?.focus(); },80); }
 function closeNote(up){ const n=S.note?N(S.note):null; S.note=up&&n?.parent?n.parent:null; if(!S.note) document.body.classList.remove("note-view"); selPin=S.note; highlightPhoto(null); renderRecord(); syncPinOverlays(); syncJobLabels(); if(S.woView) woMode(); setTimeout(mapRedraw,350); }
-/* Notes list: 44 px rows (number · glyph · title + meta · kind · chevron). A row whose note has children carries a chevron
-   with the count; it unfolds the children in place, three levels deep. Expanded state lives in NEXP for the open job. */
 const NEXP=new Set();
 const GLYPH={ pin:'<svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6z" fill="#FFD400" stroke="#0B0F1F" stroke-width="1.2"/></svg>',
   line:'<svg viewBox="0 0 20 20"><path d="M3 15l5-7 4 3 5-7" fill="none" stroke="#FFD400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -2174,77 +2189,155 @@ function noteMetaExtra(n){ if(n.kind==="model"){ const P=notePts(n), sh=noteShap
   if(n.kind==="file"){ const fs=n.files||[]; const b=fs.reduce((a,f)=>a+(f.size||0),0); return `${fs.length} file${fs.length===1?"":"s"}${b?" · "+fmtBytes(b):""}`; }
   if(n.kind==="text"&&n.text){ const t=n.text.trim().replace(/\s+/g," "); return t.length>48?`“${t.slice(0,48)}…”`:`“${t}”`; }
   if(n.kind==="photo"&&n.text) return n.text.trim().slice(0,48); return ""; }
+/* Notes list (1 Oct 2026 redesign): no numbers. Rows: grip · glyph · title + meta · kind · chevron · ⋯ (move).
+   A row whose note has children carries a chevron with the count; it unfolds them in place, three levels deep.
+   Rows can be dragged (mouse: after 6 px; touch: press and hold) to reorder, to nest inside another note, or out of one;
+   the ⋯ menu does the same without dragging. Sibling order is the `order` field (missing → creation time). */
 function noteCardHTML(n,opts={}){
-  const kids=childrenOf(n.id); const no=String(noteNo(n.id)); /* flat number = what the pin on the model shows */ const p=n.kind==="photo"?PH.find(x=>x.id===n.photoId):null; const fc=(n.files||[]).length;
+  const kids=childrenOf(n.id); const p=n.kind==="photo"?PH.find(x=>x.id===n.photoId):null; const fc=(n.files||[]).length;
   let g;
   if(n.kind==="model") g=`<span class="g">${GLYPH[noteShape(n)]||GLYPH.pin}</span>`;
   else if(n.kind==="photo") g=`<span class="g ph">${p?`<img src="${p.thumb}" alt=""><svg viewBox="0 0 1 1" preserveAspectRatio="none">${(p.marks||[]).map(markSVG).join("")}</svg>`:""}${p?.marks?.length?`<i>✎${p.marks.length}</i>`:""}</span>`;
-  else if(n.kind==="file") g=`<span class="g">${KIND_ICON.file}</span>`;
-  else g=`<span class="g">≡</span>`;
+  else g=`<span class="g">${KIND_ICON[n.kind==="file"?"file":"text"]}</span>`;
   const kind=n.kind==="model"?NOTE_LABEL[noteShape(n)]:n.kind==="photo"?"Photo":n.kind==="file"?"Files":"Text";
-  const extra=noteMetaExtra(n); const open=NEXP.has(n.id); const here=S.note===n.id;
-  const row=`<div class="note ncard nr ${here?"here":""}" data-kind="${n.kind}" data-nid="${n.id}"><span class="num">${no}</span>${g}<div class="t"><b>${P(noteTitle(n))}</b><span>${P((n.by||"").split(" ")[0])} · ${P(fmtDate(n.t))}${extra?" · "+P(extra):""}${fc&&n.kind!=="file"?` · ${fc} file${fc===1?"":"s"}`:""}</span></div><span class="k">${kind}</span>${kids.length?`<button type="button" class="chev has" data-fold="${n.id}" title="${open?"Hide":"Show"} ${kids.length} note${kids.length===1?"":"s"} inside">${open?"▾":"▸"}<b>${kids.length}</b></button>`:`<span class="chev">·</span>`}</div>`;
+  const extra=noteMetaExtra(n); const open=NEXP.has(n.id); const here=S.note===n.id; const par=opts.where&&n.parent?N(n.parent):null;
+  const meta=[(n.by||"").split(" ")[0],fmtDate(n.t),extra,fc&&n.kind!=="file"?`${fc} file${fc===1?"":"s"}`:"",par?`in ${noteTitle(par).slice(0,40)}`:""].filter(Boolean).map(P).join(" · ");
+  const flat=!!opts.flat;
+  const row=`<div class="note ncard nr ${here?"here":""}" data-kind="${n.kind}" data-nid="${n.id}"${flat?"":` data-drag="1"`}>${flat?"":`<span class="grip" aria-hidden="true">${GRIP_SVG}</span>`}${g}<div class="t"><b>${P(noteTitle(n))}</b><span>${meta}</span></div><span class="k">${kind}</span>${flat?"":kids.length?`<button type="button" class="chev has" data-fold="${n.id}" title="${open?"Hide":"Show"} ${kids.length} note${kids.length===1?"":"s"} inside">${open?"▾":"▸"}<b>${kids.length}</b></button>`:`<span class="chev">·</span>`}${flat?"":`<button type="button" class="nmv" data-move="${n.id}" aria-label="Move this note" title="Move">${DOTS_SVG}</button>`}</div>`;
   const depth=(opts.depth||1);
-  return row+(kids.length&&open&&depth<NOTE_DEPTH?`<div class="kids">${kids.map(k=>noteCardHTML(k,{ depth:depth+1 })).join("")}</div>`:""); }
+  return row+(!flat&&kids.length&&open&&depth<NOTE_DEPTH?`<div class="kids">${kids.map(k=>noteCardHTML(k,{ depth:depth+1 })).join("")}</div>`:""); }
+function photoTileHTML(n){ const p=PH.find(x=>x.id===n.photoId); const par=n.parent?N(n.parent):null;
+  return `<button type="button" class="ptile" data-open-note="${n.id}" data-pid="${n.photoId||""}"><span class="pimg">${p?`<img src="${p.thumb}" alt="">`:""}${p&&!hasPos(p)?`<span class="nopos" title="Position unknown">?</span>`:""}${p?.marks?.length?`<span class="mkc">✎ ${p.marks.length}</span>`:""}</span><b>${P(noteTitle(n))}</b><span>${par?"in "+P(noteTitle(par).slice(0,40)):P(fmtDate(n.t))}</span></button>`; }
+/* the add row: same four buttons in the job panel and inside a note */
+function addButtonsHTML(parent){ return `<div class="nadd" data-parent="${parent||""}">
+    <button type="button" class="btn nab" data-add="text">${KIND_ICON.text}<span>＋ Note</span></button>
+    <button type="button" class="btn nab" data-add="model">${KIND_ICON.model}<span>＋ <i class="lg">On model</i><i class="sm">Model</i></span></button>
+    <button type="button" class="btn nab" data-add="photo">${KIND_ICON.photo}<span>＋ Photo</span></button>
+    <button type="button" class="btn nab" data-add="file">${KIND_ICON.file}<span>＋ File</span></button>
+    <input type="file" id="nf-file" multiple hidden><input type="file" id="ph-file" accept="image/*" multiple hidden></div>`; }
+let NFILT="all";   // All · On model · Photos · Files — resets when another job opens
 function notesHTML(){
-  const top=childrenOf(null);
-  return `<section class="ps" id="notes"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">Notes <span class="mono" style="font-weight:400">${NT.length}</span><button class="btn sm teal" id="n-add" style="margin-left:auto">＋ Note</button></h3>
-    <input type="file" id="nf-file" hidden>
-    ${top.length?`<div class="notes">${top.map(n=>noteCardHTML(n)).join("")}</div>`:`<div class="hint">No notes yet. Add a text note, mark a point, line or area on the model, take a photo, or attach a file.</div>`}</section>`; }
+  const top=childrenOf(null), all=treeOrder(); const models=all.filter(n=>n.kind==="model"), photos=all.filter(n=>n.kind==="photo");
+  const files=all.flatMap(n=>(n.files||[]).map(f=>({ f, n }))).sort((a,b)=>(b.f.t||"").localeCompare(a.f.t||""));
+  const f=NFILT; const chip=(k,l,c)=>`<button type="button" class="chipbtn" data-nf="${k}" aria-selected="${f===k}">${l}<b>${c}</b></button>`; const hint=t=>`<div class="hint">${t}</div>`;
+  const body=f==="model"?(models.length?`<div class="notes">${models.map(n=>noteCardHTML(n,{ flat:true, where:true })).join("")}</div>`:hint("Nothing on the model yet. ＋ On model marks a point, a line or an area."))
+    :f==="photos"?(photos.length?`<div class="nphotos">${photos.map(photoTileHTML).join("")}</div>`:hint("No photos yet. ＋ Photo adds one; on a phone it can record where you stand."))
+    :f==="files"?(files.length?`<div class="files">${files.map(({f,n})=>fileRowHTML(f,n,true)).join("")}</div>`:hint("No files yet. ＋ File attaches PDFs, reports or drawings, up to 50 MB each."))
+    :(top.length?`<div class="notes">${top.map(n=>noteCardHTML(n)).join("")}</div>`:hint("No notes yet. Add a text note, mark a point, line or area on the model, take a photo, or attach a file."));
+  return `<section class="ps" id="notes"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">Notes <span class="mono" style="font-weight:400">${NT.length}</span></h3>
+    ${addButtonsHTML(null)}
+    ${NT.length?`<div class="nfilt" role="group" aria-label="Show">${chip("all","All",NT.length)}${chip("model","On model",models.length)}${chip("photos","Photos",photos.length)}${chip("files","Files",files.length)}</div>`:""}
+    ${body}</section>`; }
 function renderNotes(){ const el=$("#notes"); if(!el||S.note) return; el.outerHTML=notesHTML(); wireNotes(); syncPinOverlays(); }
 function wireNotes(){ const w=W(S.open); if(!w) return; wireNoteCommon(w.id);
-  $("#n-add")?.addEventListener("click",e=>noteMenu(w.id,null,e.currentTarget)); }
+  $$("#notes [data-nf]").forEach(b=>b.onclick=()=>{ NFILT=b.dataset.nf; renderNotes(); }); }
 function wireNoteCommon(id){
   $$("[data-fold]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const id=b.dataset.fold; if(NEXP.has(id)) NEXP.delete(id); else NEXP.add(id); if(S.note) renderRecord(); else renderNotes(); });
-  $$(".ncard").forEach(c=>{ c.onclick=e=>{ if(e.target.closest("textarea,button,a")) return; openNote(c.dataset.nid); };
+  $$("[data-move]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); moveMenu(id,b.dataset.move,b); });
+  $$(".nadd [data-add]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); addNote(id,b.closest(".nadd").dataset.parent||null,b.dataset.add,b); });
+  $$("[data-open-note]").forEach(b=>{ b.onclick=()=>openNote(b.dataset.openNote); b.onmouseenter=()=>highlightPhoto(b.dataset.pid||null); b.onmouseleave=()=>highlightPhoto(S.note?N(S.note)?.photoId:null); });
+  $$("[data-gonote]").forEach(a=>a.onclick=e=>{ e.preventDefault(); openNote(a.dataset.gonote); });
+  $$(".ncard").forEach(c=>{ c.onclick=e=>{ if(c.__noClick||e.target.closest("textarea,button,a")) return; openNote(c.dataset.nid); };
+    c.oncontextmenu=e=>{ if(e.pointerType!=="mouse"&&ND) e.preventDefault(); };
     // hovering a card lights its shape (or photo icon) on the model; leaving restores it
     const n=N(c.dataset.nid); if(!n) return;
     c.onmouseenter=()=>{ hoverPin=n.id; syncPinOverlays(); syncPointHandles(); highlightPhoto(n.kind==="photo"?n.photoId:null); };
     c.onmouseleave=()=>{ hoverPin=null; syncPinOverlays(); syncPointHandles(); highlightPhoto(S.note?N(S.note)?.photoId:null); }; });
-  $("#nf-file")?.addEventListener("change",async e=>{ const files=[...e.target.files]; e.target.value=""; if(!files.length) return; const parent=pendingFileParent; pendingFileParent=null;
-    for(const f of files){ const nid=await createNote(id,"file",parent,{ title:f.name }); if(nid) await addFileToNote(id,nid,f,$("#notes h3")); } }); }
+  $$(".ncard[data-drag]").forEach(c=>c.addEventListener("pointerdown",e=>noteDragStart(e,c,id)));
+  $("#ph-file")?.addEventListener("change",async e=>{ const files=[...e.target.files]; e.target.value=""; const par=e.target.closest(".nadd")?.dataset.parent||null; for(const f of files){ pendingPhotoParent=par; await addPhoto(id,f,null); } pendingPhotoParent=null; });
+  $("#nf-file")?.addEventListener("change",async e=>{ const files=[...e.target.files]; e.target.value=""; if(!files.length) return; const parent=e.target.closest(".nadd")?.dataset.parent||null; pendingFileParent=null;
+    for(const f of files){ const nid=await createNote(id,"file",parent,{ title:f.name }); if(nid) await addFileToNote(id,nid,f,$("#notes h3")||$("#pbody h3")); } }); }
+
+/* ---------- moving: reorder among siblings, put inside a note, take out of one ---------- */
+function canPlace(nid,parent){ if(parent&&(parent===nid||descendants(nid).some(d=>d.id===parent))) return false; return (parent?depthOf(parent):0)+heightOf(nid)<=NOTE_DEPTH; }
+function moveMenu(id,nid,anchor){ const n=N(nid); if(!n) return; const sib=childrenOf(n.parent||null); const i=sib.findIndex(x=>x.id===nid); const prev=sib[i-1], next=sib[i+1], par=n.parent?N(n.parent):null;
+  const item=(k,on,l)=>`<div class="mi" data-mv="${k}"${on?"":` aria-disabled="true"`}>${l}</div>`; const short=x=>P(noteTitle(x).slice(0,28));
+  const el=openPop(anchor,`<div class="sec">Move “${P(noteTitle(n).slice(0,32))}”</div>${item("up",!!prev,"↑ Move up")}${item("down",!!next,"↓ Move down")}${item("in",!!prev&&canPlace(nid,prev.id),prev?`→ Put inside “${short(prev)}”`:"→ Put inside the note above")}${item("out",!!par,par?`← Take out of “${short(par)}”`:"← Already a top-level note")}<div class="hint" style="padding:6px 10px 4px">Or drag the note${isMobile()?": press and hold, then drag":""}.</div>`,{ width:290, noFocus:true });
+  el.querySelectorAll("[data-mv]:not([aria-disabled])").forEach(m=>m.onclick=()=>{ closePop(); const k=m.dataset.mv;
+    if(k==="up") moveNote(id,nid,{ parent:n.parent||null, before:prev.id });
+    if(k==="down") moveNote(id,nid,{ parent:n.parent||null, after:next.id });
+    if(k==="in") moveNote(id,nid,{ parent:prev.id });
+    if(k==="out") moveNote(id,nid,{ parent:par.parent||null, after:par.id }); }); }
+function rerenderNotesHere(){ if(S.note) renderRecord(); else renderNotes(); }
+async function moveNote(id,nid,to){ const n=N(nid); const parent=to.parent||null; if(!n||!canPlace(nid,parent)) return false;
+  const before=NT.map(x=>({ id:x.id, parent:x.parent||null, order:x.order??null })); const was=n.parent||null;
+  const sib=childrenOf(parent).filter(x=>x.id!==nid);
+  let i=to.before?sib.findIndex(x=>x.id===to.before):to.after?sib.findIndex(x=>x.id===to.after)+1:sib.length; if(i<0) i=sib.length;
+  sib.splice(i,0,n); n.parent=parent; const writes=[];
+  sib.forEach((x,k)=>{ if(x.order!==k||x.id===nid){ x.order=k; writes.push([x.id,x.id===nid?{ order:k, parent }:{ order:k }]); } });
+  if(parent) NEXP.add(parent); rerenderNotesHere(); syncPinOverlays();
+  try{ await Promise.all(writes.map(([x,p])=>DB.update(noteCol(id)+"/"+x,p))); }catch(e){ toast("Couldn't move the note: "+P(e.message||String(e)),true); return false; }
+  const t=noteTitle(n).slice(0,50);
+  const msg=was!==parent?(parent?`“${P(t)}” is now inside “${P(noteTitle(N(parent)).slice(0,40))}”`:`“${P(t)}” is now its own note`):`Moved “${P(t)}”`;
+  if(was!==parent) log(id,parent?`moved note “${t}” inside “${noteTitle(N(parent)).slice(0,40)}”`:`took note “${t}” out to its own note`);
+  undoToast(msg,async()=>{ const back=[]; before.forEach(b=>{ const x=N(b.id); if(!x) return; if((x.parent||null)!==b.parent||(x.order??null)!==b.order){ x.parent=b.parent; x.order=b.order; back.push([x.id,{ parent:b.parent, order:b.order }]); } });
+    rerenderNotesHere(); syncPinOverlays(); await Promise.all(back.map(([x,p])=>DB.update(noteCol(id)+"/"+x,p))); if(was!==parent) log(id,`undid moving note “${t}”`); });
+  return true; }
+function undoToast(html,fn){ toast(`${html} <button type="button" class="link t-undo">Undo</button>`); const b=$(".toast .t-undo"); if(b) b.onclick=()=>{ $(".toast")?.remove(); fn(); }; }
+/* drag: pointer events, so a mouse drags after 6 px and a finger after press-and-hold (400 ms) — a quick swipe still scrolls */
+let ND=null;
+function dropPlan(nid,tid,zone){ const t=N(tid); if(!t||tid===nid) return null; let to;
+  if(zone==="inside") to={ parent:tid };
+  else if(zone==="before") to={ parent:t.parent||null, before:tid };
+  else { const k=childrenOf(tid).filter(x=>x.id!==nid); to=k.length&&NEXP.has(tid)?{ parent:tid, before:k[0].id }:{ parent:t.parent||null, after:tid }; }
+  return canPlace(nid,to.parent)?to:null; }
+function noteDragStart(e,c,id){ if(e.button>0||e.target.closest("button,a,textarea,input")||ND) return; const touch=e.pointerType!=="mouse";
+  const d={ id, nid:c.dataset.nid, card:c, x0:e.clientX, y0:e.clientY, on:false, pid:e.pointerId, to:null, over:null, ghost:null, timer:null }; ND=d;
+  const move=ev=>{ if(ev.pointerId!==d.pid) return; const far=Math.hypot(ev.clientX-d.x0,ev.clientY-d.y0);
+    if(!d.on){ if(touch){ if(far>8) end(); return; } if(far<6) return; beginNoteDrag(d); }
+    ev.preventDefault(); noteDragOver(d,ev.clientX,ev.clientY); };
+  const up=ev=>{ if(ev.pointerId!==d.pid) return; const was=d.on, to=d.to; end(); if(was){ c.__noClick=true; setTimeout(()=>{ c.__noClick=false; },60); if(to) moveNote(id,d.nid,to); } };
+  const tm=ev=>{ if(d.on) ev.preventDefault(); };
+  function end(){ clearTimeout(d.timer); document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up); document.removeEventListener("pointercancel",up); document.removeEventListener("touchmove",tm); endNoteDragUI(d); if(ND===d) ND=null; }
+  if(touch) d.timer=setTimeout(()=>{ if(ND===d&&!d.on){ beginNoteDrag(d); navigator.vibrate?.(12); } },400);
+  document.addEventListener("pointermove",move,{ passive:false }); document.addEventListener("pointerup",up); document.addEventListener("pointercancel",up); document.addEventListener("touchmove",tm,{ passive:false }); }
+function beginNoteDrag(d){ d.on=true; d.card.classList.add("dragging"); document.body.classList.add("ndragging"); const n=N(d.nid);
+  const g=document.createElement("div"); g.className="nghost"; g.textContent=n?noteTitle(n):""; document.body.append(g); d.ghost=g; g.style.left=d.x0+12+"px"; g.style.top=d.y0+8+"px"; }
+function noteDragOver(d,x,y){ if(d.ghost){ d.ghost.style.left=x+12+"px"; d.ghost.style.top=y+8+"px"; }
+  const sc=$("#pbody"); if(sc){ const r=sc.getBoundingClientRect(); if(y<r.top+40) sc.scrollTop-=12; else if(y>r.bottom-40) sc.scrollTop+=12; }
+  const el=document.elementFromPoint(x,y)?.closest(".ncard[data-drag]"); if(d.over&&d.over!==el) d.over.classList.remove("drop-before","drop-after","drop-inside","drop-no");
+  d.over=el; d.to=null; if(!el||el===d.card) return; const r=el.getBoundingClientRect(); const f=(y-r.top)/r.height; const zone=f<0.28?"before":f>0.72?"after":"inside";
+  el.classList.remove("drop-before","drop-after","drop-inside","drop-no"); const to=dropPlan(d.nid,el.dataset.nid,zone); if(!to){ el.classList.add("drop-no"); return; } el.classList.add("drop-"+zone); d.to=to; }
+function endNoteDragUI(d){ d.card.classList.remove("dragging"); document.body.classList.remove("ndragging"); d.over?.classList.remove("drop-before","drop-after","drop-inside","drop-no"); d.ghost?.remove(); d.ghost=null; }
 function renderNoteView(w){
   const n=N(S.note); if(!n){ S.note=null; document.body.classList.remove("note-view"); renderRecord(); return; }
   const crumbs=[{ id:null, label:w.id },...ancestors(n.id).map(a=>({ id:a.id, label:noteTitle(a) })),{ id:n.id, label:noteTitle(n), here:true }];
   const p=n.kind==="photo"?PH.find(x=>x.id===n.photoId):null; const kids=childrenOf(n.id); const depth=depthOf(n.id);
-  $("#pk-id").textContent=`${w.id} · note ${noteNo(n.id)}`;
+  $("#pk-id").textContent=w.id; const showFiles=n.kind==="file"||(n.files||[]).length>0||depth>=NOTE_DEPTH;
   $("#pbody").innerHTML=`<div class="nview">
     <div class="ctx"><span class="tag">Note</span><span class="lvl">${[1,2,3].map(l=>`<s class="${l<=depth?"on":""}"></s>`).join("")}</span><span class="crumbs">${crumbs.map(c=>c.here?`<b>${P(c.label)}</b>`:`<a href="#" data-crumb="${c.id||""}">${P(c.label)}</a><span class="sep">›</span>`).join("")}</span><button class="btn sm" id="nv-mail" title="Start an email thread about this note">✉ Email</button><button class="btn sm teal" id="nv-back" title="Back (Esc)">‹ ${depth>1?"Back":"Back to job"}</button></div>
     <div class="nhead"><span class="kico big">${KIND_ICON[n.kind]}</span><input class="ntitle-in" id="nv-title" placeholder="${P(noteTitle(n))}" value="${P(n.title||"")}"><span class="chip soft">${n.kind==="model"?`${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}`:n.kind==="photo"?"Photo":n.kind==="file"?"Files":"Text"}</span></div>
     <textarea class="ntext big" id="nv-text" rows="2" placeholder="${n.kind==="text"?"Write the note…":"Add text to this note…"}">${P(n.text||"")}</textarea>
     ${n.kind==="model"?`<section class="ps"><h3 style="cursor:default">Location <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span></h3><div class="strip" id="nv-loc"><span class="lab">Location</span><span class="val">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span><button class="btn sm teal" id="nv-move">${noteShape(n)==="pin"?"Move":"Edit"}</button></div></section>`:""}
-    ${n.kind==="photo"?`<section class="ps"><h3 style="cursor:default">Photo</h3>${p?`<div class="nphoto"><div class="pw" id="nv-img"><img src="${p.thumb}" alt=""><svg viewBox="0 0 1 1" preserveAspectRatio="none">${(p.marks||[]).map(markSVG).join("")}</svg></div><div class="acts" style="margin-top:8px"><button class="btn sm teal" id="nv-edit">✎ Open photo editor</button><button class="btn sm" id="nv-move-ph">Move on model</button></div></div>
+    ${n.kind==="photo"?`<section class="ps"><h3 style="cursor:default">Photo</h3>${p?`<div class="nphoto"><div class="pw" id="nv-img"><img src="${p.thumb}" alt=""><svg viewBox="0 0 1 1" preserveAspectRatio="none">${(p.marks||[]).map(markSVG).join("")}</svg></div><div class="acts" style="margin-top:8px"><button class="btn sm teal" id="nv-edit">✎ Open photo editor</button><button class="btn sm" id="nv-move-ph">Move on model</button></div><div class="strip ppos"><span class="lab">Position</span><span class="val">${P(photoPosText(p))}</span></div></div>
       ${p.marks?.length?`<div class="eyebrow" style="margin:10px 0 4px">Drawings on this photo · ${p.marks.length}</div><div class="marks nvmarks">${p.marks.map((m,i)=>`<div class="mk" data-mid="${m.id}"><span class="dot" style="background:${m.color}">${m.type==="point"?(m.n||""):""}</span><textarea class="in note" data-mid="${m.id}" rows="1" placeholder="${m.type==="point"?"Note for point "+(m.n||""):"Note for this drawing"}…">${P(m.note||"")}</textarea><button class="btn sm" data-open="${m.id}" title="Open in the editor">↗</button></div>`).join("")}</div>`:`<div class="hint" style="margin-top:6px">Open the editor to draw on the photo; each drawing becomes a note here.</div>`}`:`<div class="hint">This photo is no longer available.</div>`}</section>`:""}
-    <section class="ps"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">Files <span class="mono" style="font-weight:400">${(n.files||[]).length}</span><button class="btn sm" id="nv-addfile" style="margin-left:auto">＋ Add file</button></h3><input type="file" id="nv-file" multiple hidden><span class="hint" id="nv-upstat"></span>
-      ${(n.files||[]).length?`<div class="files">${(n.files||[]).map(f=>fileRowHTML(f,n)).join("")}</div>`:`<div class="hint">No files. PDFs, reports, drawings — up to 50 MB each.</div>`}</section>
-    <section class="ps"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">Notes inside <span class="mono" style="font-weight:400">${kids.length}</span>${depth<NOTE_DEPTH?`<button class="btn sm teal" id="nv-add" style="margin-left:auto">＋ Note</button>`:`<span class="hint" style="margin-left:auto">deepest level</span>`}</h3><input type="file" id="nf-file" hidden>
-      ${kids.length?`<div class="notes">${kids.map(k=>noteCardHTML(k)).join("")}</div>`:`<div class="hint">${depth<NOTE_DEPTH?"Nothing inside yet. Notes can hold text, shapes on the model, photos and files.":""}</div>`}</section>
+    ${showFiles?`<section class="ps"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">${n.kind==="file"?"Files":"Attached files"} <span class="mono" style="font-weight:400">${(n.files||[]).length}</span><button class="btn sm" id="nv-addfile" style="margin-left:auto">＋ Add file</button></h3><input type="file" id="nv-file" multiple hidden><span class="hint" id="nv-upstat"></span>
+      ${(n.files||[]).length?`<div class="files">${(n.files||[]).map(f=>fileRowHTML(f,n)).join("")}</div>`:`<div class="hint">No files. PDFs, reports, drawings — up to 50 MB each.</div>`}</section>`:""}
+    <section class="ps"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">Notes inside <span class="mono" style="font-weight:400">${kids.length}</span>${depth<NOTE_DEPTH?"":`<span class="hint" style="margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400">deepest level — attach files above</span>`}</h3>${depth<NOTE_DEPTH?addButtonsHTML(n.id):""}
+      ${kids.length?`<div class="notes" style="margin-top:8px">${kids.map(k=>noteCardHTML(k,{ depth:depth+1 })).join("")}</div>`:`<div class="hint" style="margin-top:8px">${depth<NOTE_DEPTH?"Nothing inside yet. Notes can hold text, shapes on the model, photos and files.":""}</div>`}</section>
     <div class="nmeta" style="margin-top:14px">${P(n.by||"")} · ${P(fmtDate(n.t,true))}${n.edited?` · edited ${P(rel(n.edited))} by ${P(n.editedBy||"")}`:""}<button class="btn sm danger" id="nv-del" style="margin-left:auto">Delete note</button></div>
   </div>`;
   if(S.woView) woMode();
   $$("#pbody [data-crumb]").forEach(a=>a.onclick=e=>{ e.preventDefault(); const id=a.dataset.crumb; if(!id){ S.note=null; document.body.classList.remove("note-view"); selPin=null; highlightPhoto(null); renderRecord(); syncPinOverlays(); } else openNote(id); });
   $("#nv-back").onclick=()=>closeNote(true); $("#nv-mail").onclick=()=>newThreadFrom(w.id,{ kind:"note", noteId:n.id });
   const ti=$("#nv-title"); ti.onblur=()=>{ if(ti.value.trim()!==(n.title||"")) updateNote(w.id,n.id,{ title:ti.value.trim() },ti,`renamed a note to “${ti.value.trim().slice(0,60)}”`); }; ti.onkeydown=e=>{ if(e.key==="Enter") ti.blur(); };
-  const tx=$("#nv-text"); const grow=()=>{ tx.style.height="auto"; tx.style.height=Math.max(56,tx.scrollHeight)+"px"; }; grow(); tx.oninput=grow; tx.onblur=()=>{ if(tx.value.trim()!==(n.text||"")) updateNote(w.id,n.id,{ text:tx.value.trim() },tx,tx.value.trim()?`wrote in note ${noteNo(n.id)}: “${tx.value.trim().slice(0,80)}${tx.value.trim().length>80?"…":""}”`:`cleared note ${noteNo(n.id)}`); };
+  const tx=$("#nv-text"); const grow=()=>{ tx.style.height="auto"; tx.style.height=Math.max(56,tx.scrollHeight)+"px"; }; grow(); tx.oninput=grow; tx.onblur=()=>{ if(tx.value.trim()!==(n.text||"")) updateNote(w.id,n.id,{ text:tx.value.trim() },tx,tx.value.trim()?`wrote in “${noteTitle(n).slice(0,40)}”: “${tx.value.trim().slice(0,80)}${tx.value.trim().length>80?"…":""}”`:`cleared the text of “${noteTitle(n).slice(0,40)}”`); };
   $("#nv-move")?.addEventListener("click",()=>drawNote(w.id,n.id));
   $("#nv-edit")?.addEventListener("click",()=>openViewer(n.photoId)); $("#nv-img")?.addEventListener("click",()=>openViewer(n.photoId));
   { const pw=$("#nv-img"), im=pw?.querySelector("img"); if(im){ const fit=()=>{ if(im.naturalHeight>im.naturalWidth) pw.style.maxWidth=Math.round(420*im.naturalWidth/im.naturalHeight)+"px"; }; if(im.complete) fit(); else im.onload=fit; } }
   $("#nv-move-ph")?.addEventListener("click",()=>{ if(!map){ toast("The map is not loaded.",true); return; } setTab("map"); V.placing={ onPlace:pt=>{ savePoseCorrection(w.id,p,{ lat:pt.lat, lng:pt.lng, ground:pt.ground }); if(isMobile()) setSheet("half"); } }; map.classList.add("placing"); orbitSync(); setMode("place","Move photo",`${isMobile()?"Tap":"Click"} the model where this photo was taken.`,true); if(isMobile()) setSheet("peek"); });
   $$("#pbody .nvmarks .note").forEach(t=>{ const g=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; g(); t.oninput=g; t.onblur=()=>{ const m=p?.marks?.find(x=>x.id===t.dataset.mid); if(m&&(m.note||"")!==t.value.trim()){ m.note=t.value.trim(); flashSaved(t,()=>DB.update(WO_COL+"/"+w.id+"/photos/"+p.id,{ marks:packMarks(p.marks) })).catch(()=>{}); logNote(w.id,p,m,"wrote"); } }; t.onkeydown=ev=>{ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); t.blur(); } }; });
   $$("#pbody [data-open]").forEach(b=>b.onclick=()=>openViewer(n.photoId,b.dataset.open));
-  $("#nv-addfile").onclick=()=>$("#nv-file").click(); $("#nv-file").onchange=async e=>{ const files=[...e.target.files]; e.target.value=""; for(const f of files) await addFileToNote(w.id,n.id,f,$("#nv-upstat")); };
+  if($("#nv-addfile")) $("#nv-addfile").onclick=()=>$("#nv-file").click(); if($("#nv-file")) $("#nv-file").onchange=async e=>{ const files=[...e.target.files]; e.target.value=""; for(const f of files) await addFileToNote(w.id,n.id,f,$("#nv-upstat")); };
   $$("#pbody [data-rmfile]").forEach(b=>b.onclick=()=>removeFile(w.id,n.id,b.dataset.rmfile));
-  $("#nv-add")?.addEventListener("click",e=>noteMenu(w.id,n.id,e.currentTarget));
   $("#nv-del").onclick=()=>deleteNote(w.id,n.id);
   wireNoteCommon(w.id);
 }
+function photoPosText(p){ const ps=p.pose||{}; if(ps.corrected) return "Placed by hand on the model"; if(!hasPos(p)) return "Unknown — use Move on model to place it"; if(ps.source==="sensor") return `Phone GPS${ps.raw?.acc?` ±${Math.round(ps.raw.acc)} m`:""}`; if(ps.source==="exif") return "From the photo's own GPS data"; return "Approximate"; }
 const fmtBytes = b => b>=1048576?(b/1048576).toFixed(1)+" MB":b>=1024?Math.round(b/1024)+" KB":b+" B";
 function fileRowHTML(f,n,withNote){ const img=/^image\//.test(f.type); return `<div class="frow"><span class="fico">${img?"🖼":/pdf/.test(f.type)?"📄":"📎"}</span><a class="fname" href="${P(f.url)}" target="_blank" rel="noopener">${P(f.name)}</a><span class="hint">${fmtBytes(f.size||0)} · ${P(f.by||"")} · ${P(fmtDate(f.t,true))}${withNote?` · <a href="#" data-gonote="${n.id}">${P(noteTitle(n).slice(0,40))}</a>`:""}</span>${withNote?"":`<button class="btn sm" data-rmfile="${f.id}" title="Remove">✕</button>`}</div>`; }
-/* master list on the job: every file from every note, newest first */
-function filesHTML(){ const all=NT.flatMap(n=>(n.files||[]).map(f=>({ f, n }))).sort((a,b)=>(b.f.t||"").localeCompare(a.f.t||""));
-  return `<section class="ps" id="files"><h3 style="cursor:default">Files <span class="mono" style="font-weight:400">${all.length}</span></h3>${all.length?`<div class="files">${all.map(({f,n})=>fileRowHTML(f,n,true)).join("")}</div>`:`<div class="hint">Files attached to notes appear here.</div>`}</section>`; }
-function renderFiles(){ const el=$("#files"); if(!el||S.note) return; el.outerHTML=filesHTML(); wireFiles(); }
-function wireFiles(){ $$("#files [data-gonote]").forEach(a=>a.onclick=e=>{ e.preventDefault(); openNote(a.dataset.gonote); }); }
+/* the job-wide file list now lives in the Notes section (Files filter) */
+function renderFiles(){ renderNotes(); }
 
 /* ---------- model-note overlays ---------- */
 function markSVG(m){ if(m.type==="point"){ const [x,y]=m.pts[0]; return `<circle cx="${x}" cy="${y}" r="0.045" fill="${m.color}" stroke="#0B0F1F" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${x}" y="${y}" dy="0.016" text-anchor="middle" font-size="0.05" font-weight="700" fill="#0B0F1F">${m.n||""}</text>`; } return `<path d="M${m.pts.map(q=>q.join(",")).join(" L")}" fill="none" stroke="${m.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`; }
@@ -2258,13 +2351,13 @@ function syncPinOverlays(){ if(!map||!lib||!S.open||!S.woView){ clearPinOverlays
   const openSet=hoverPin?new Set([hoverPin]):S.note?new Set([S.note,...descendants(S.note).map(x=>x.id),...ancestors(S.note).map(x=>x.id)]):null;
   const want=new Set();
   NT.filter(n=>n.kind==="model"&&notePts(n).length&&V.draw?.noteId!==n.id).forEach(k=>{ const P=notePts(k); const mode=surf(P); const lit=hoverPin?hoverPin===k.id:(selPin===k.id||S.note===k.id); const dim=openSet&&!openSet.has(k.id)&&!lit;
-    const sh=noteShape(k); const inView=S.note===k.id; const sig=JSON.stringify([w.id,P,sh,lit,dim,noteNo(k.id),inView]);
+    const sh=noteShape(k); const inView=S.note===k.id; const sig=JSON.stringify([w.id,P,sh,lit,dim,noteTitle(k),inView]);
     want.add(k.id); const cur=PINOV[k.id]; if(cur&&cur.sig===sig) return;   // unchanged → leave the engine alone (no remove/re-add)
     if(cur) killAll(cur);
     const parts=[]; parts.sig=sig;
     const col=lit?"#00FFE5":dim?"#8A93AD":PIN_NOTE_COLOR; const rgbc=lit?"0,255,229":dim?"138,147,173":"255,212,0"; const a=dim?0.55:1;
-    const anc=noteAnchor(k); const tp=pinTemplate(col,lit?1.25:dim?0.75:0.95,undefined,noteNo(k.id)); if(dim) tp.tpl.content.firstChild?.setAttribute?.("opacity","0.45");
-    const m=mk3("mi",{ position:atSurf(anc,P.length===1?0.6:1.2,mode), altitudeMode:mode, tpl:tp.tpl }); m.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); if(S.note===k.id&&P.length===1) selectAt(()=>drawNote(w.id,k.id),0); else openNote(k.id); }; parts.push(m);
+    const anc=noteAnchor(k); const tp=pinTemplate(col,lit?1.25:dim?0.75:0.95); if(dim) tp.tpl.content.firstChild?.setAttribute?.("opacity","0.45");
+    const m=mk3("mi",{ position:atSurf(anc,P.length===1?0.6:1.2,mode), altitudeMode:mode, tpl:tp.tpl, title:noteTitle(k) }); m.__onClick=ev=>{ if(V.draw||V.placing) return; ev.stopPropagation?.(); if(S.note===k.id&&P.length===1) selectAt(()=>drawNote(w.id,k.id),0); else openNote(k.id); }; parts.push(m);
     if(sh==="line"&&P.length>=2){ const l=mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:5, drawsOccludedSegments:true, path:P.map(p=>atSurf(p,0.8,mode)) }); parts.push(l); }
     if(sh==="area"&&P.length>=3){ const g=mk3("pg",{ altitudeMode:mode, fillColor:`rgba(${rgbc},${0.25*a})`, strokeColor:`rgba(${rgbc},${0.95*a})`, strokeWidth:3, drawsOccludedSegments:true, path:[...P,P[0]].map(p=>atSurf(p,0.8,mode)) }); parts.push(g); }
     if(inView&&(sh==="line"||sh==="area")) parts.push(...segmentLabels(P,sh==="area"));   // lengths only inside this note's view
@@ -2273,6 +2366,8 @@ function syncPinOverlays(){ if(!map||!lib||!S.open||!S.woView){ clearPinOverlays
     PINOV[k.id]=parts; });
   Object.keys(PINOV).forEach(id=>{ if(!want.has(id)){ killAll(PINOV[id]); delete PINOV[id]; } }); }
 
+if(MOCK) window.__notes={ get NT(){ return NT; }, canPlace, moveNote, tree:()=>treeOrder().map(n=>({ id:n.id, parent:n.parent||null, order:n.order??null, title:noteTitle(n) })),
+  pins:()=>Object.entries(PINOV).map(([id,parts])=>{ const m=parts[0]; const t=(m?.children||[]).find(c=>c instanceof HTMLTemplateElement); return { id, title:m?.title||"", text:t?.content.querySelector("text")?.textContent||"" }; }) };   // test harness only
 
 /* =====================================================================
    MAIL — email threads attached to jobs. The platform is a participant in email, not a replacement for it.
