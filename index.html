@@ -107,8 +107,13 @@ body.pivot #pivot-hint{background:#00FFE5;color:#0B0F1F;border-color:#00FFE5}bod
 #mode.place .mode-tag,#mode.draw .mode-tag{background:#FF6A00;color:#fff}
 #mode b{color:var(--ink);font-family:var(--mono)}
 #legend{position:absolute;right:12px;bottom:12px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 12px;font-size:11.5px;color:var(--ink-2);background:var(--panel);border:1px solid var(--line);padding:5px 9px;border-radius:8px;z-index:6}
-#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
-#legend span{cursor:pointer;user-select:none;padding:1px 4px;border-radius:5px}#legend span.off{opacity:.38;text-decoration:line-through}
+#legend{align-items:center;gap:6px}#legend .lg-h{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:0 2px 0 4px}
+#legend .lgt{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-3);border-radius:999px;padding:4px 10px 4px 5px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;min-height:30px}
+#legend .lgt .mono{font-weight:500;opacity:.8}
+#legend .lgt .sw{position:relative;width:26px;height:15px;border-radius:999px;background:var(--line);flex:none;transition:background .15s}
+#legend .lgt .kn{position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+#legend .lgt.on{color:var(--ink);border-color:var(--c)}#legend .lgt.on .sw{background:var(--c)}#legend .lgt.on .kn{left:13px}
+#legend .lgt:hover{border-color:var(--c)}#legend .lgt:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
 #mapgate{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--canvas);z-index:7;padding:16px;overflow:auto}
 #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--canvas);color:var(--ink-2);z-index:7}
 #loading .bar{width:220px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
@@ -258,6 +263,36 @@ table.tbl{border-collapse:separate;border-spacing:0;background:var(--panel);bord
 .prop .pv .empty{color:var(--ink-3)}
 .prop.dragover{box-shadow:inset 0 2px 0 var(--accent)}
 .addprop{color:var(--ink-3);padding:7px 8px;cursor:pointer;border-radius:6px;font-size:13px;display:flex;gap:6px;align-items:center}.addprop:hover{background:var(--panel-2)}
+
+/* basics + properties (1 Oct 2026) */
+.basics{display:grid;gap:8px;margin:12px 0 4px}
+.bx{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink);font:inherit;min-width:0}
+button.bx{cursor:pointer}button.bx:hover{border-color:var(--sel)}
+.bx .bl{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.bx .bv{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bx .bv.mono{font-family:var(--sans,inherit)}
+.bx .bs{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bx.due-soon{border-color:rgba(232,169,58,.6)}.bx.due-soon .bdue{color:var(--warn);font-weight:600}
+.bx.due-late{border-color:rgba(255,74,51,.6)}.bx.due-late .bdue{color:var(--crit);font-weight:600}
+.bx.due-ok .bdue{color:var(--ok)}
+.badd,.padd{display:inline-block;align-self:flex-start;border:1px dashed var(--line);border-radius:6px;padding:1px 9px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.bx .badd{margin-top:3px;color:var(--ink-2);font-weight:600}
+.bppl{display:flex;align-items:center;gap:6px;min-width:0;margin-top:2px}.bpn{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bstack{display:flex;flex:none}.avatar.bav{width:24px;height:24px;font-size:9.5px;box-shadow:0 0 0 2px var(--panel-2)}.avatar.bav.ov{margin-left:-4px}.avatar.bav.more{background:var(--line);color:var(--ink)}
+section.ps.props{margin-top:14px}section.ps.props h3{text-transform:uppercase}.pcount{font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:12px}
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;align-items:stretch;border-top:1px solid var(--line)}
+.pcell{display:grid;grid-template-columns:108px minmax(0,1fr);align-items:center;min-height:38px;border-bottom:1px solid var(--line)}
+.pcell.wide{grid-column:1/-1;align-items:start;padding:8px 0}.pcell.wide .pn{padding-top:1px}
+.pcell .pn{font-size:12px;color:var(--ink-3);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}.pcell .pn:hover{color:var(--ink)}
+.pcell .pv{font-size:13px;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px 0;border-radius:6px}.pcell .pv:hover .padd{border-color:var(--sel);color:var(--ink)}
+.pcell.dragover{box-shadow:0 -2px 0 0 var(--sel)}
+.pwarn{font-size:12px;font-weight:600;color:#9A5B00;background:rgba(232,169,58,.16);border:1px solid rgba(232,169,58,.5);padding:1px 7px;border-radius:5px}
+:root[data-theme="dark"] .pwarn{color:#F3C77A}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pwarn{color:#F3C77A}}
+.pop .plist{border-top:1px solid var(--line);margin-top:6px;max-height:340px;overflow:auto}
+.pop .prow{display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line)}.pop .prow:last-child{border-bottom:0}
+.pop .prow .avatar{width:28px;height:28px;font-size:10.5px;flex:none}.pop .prow .pt{flex:1;min-width:0;display:flex;flex-direction:column}.pop .prow .pt b{font-size:13px;font-weight:600}.pop .prow .pt>span{font-size:11.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pop .prow .x{width:28px;height:28px;border:0;background:transparent;color:var(--ink-3);cursor:pointer;border-radius:6px}.pop .prow .x:hover{color:var(--crit);background:var(--panel)}
+.pauto{font-size:10.5px;font-weight:600;color:var(--accent);background:var(--steel-2);padding:1px 6px;border-radius:4px;margin-left:4px}
+@media (max-width:860px){ .basics{gap:6px} .bx{padding:8px 10px} .bx .bs{font-size:11.5px} .pgrid{grid-template-columns:1fr} .pcell{min-height:44px;grid-template-columns:100px minmax(0,1fr)} .padd{padding:4px 12px} }
 .pill{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:5px;font-size:12.5px;line-height:1.5;color:#141B33;white-space:nowrap;max-width:100%}
 .pill.st{font-weight:500}
 .pill .x{opacity:.55;cursor:pointer;font-size:12px;margin-left:2px}.pill .x:hover{opacity:1}
@@ -433,7 +468,7 @@ body.creating #pbody{display:flex;flex-direction:column}.create{display:flex;fle
   #draw-acts[hidden]{display:none!important} #draw-acts .btn{flex:1;min-height:52px;font-size:15px;font-weight:600;box-shadow:var(--shadow)}
   body:not(.wo-view) #draw-acts{bottom:76px}
   #hud{left:auto;right:8px;top:auto;bottom:calc(76px + var(--sab));flex-direction:column;gap:6px} body.wo-view #hud{display:none}
-  #legend{display:none}
+  #legend{left:8px;right:60px;bottom:calc(76px + var(--sab));flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:5px 8px} body.wo-view #legend{display:none} #legend .lgt{min-height:36px;flex:none}
   /* the map container ends where the sheet begins, so the camera centre (the job) sits in the visible area */
   #canvas-wrap{bottom:calc(64px + var(--sab))} body.wo-view #canvas-wrap{bottom:var(--sheet-half)} body.wo-view[data-sheet="peek"] #canvas-wrap{bottom:var(--sheet-peek)} body.wo-view[data-sheet="full"] #canvas-wrap{bottom:var(--sheet-half)}
   body.wo-view #canvas-wrap,#canvas-wrap{transition:bottom .22s ease}
@@ -578,18 +613,16 @@ function defaultSchema(){
       { id:"asset", name:"Asset", type:"relation" },
       { id:"worktype", name:"Work type", type:"multi", options:["UT thickness","Visual","Thermal (IR)","Insulation / CUI","Access build","Other"].map((n,i)=>o(n,["blue","green","orange","yellow","purple","gray"][i])) },
       { id:"access", name:"Access method", type:"multi", options:["Drone","Rope","Scaffold","Lift","Grade / platform"].map((n,i)=>o(n,["blue","purple","brown","orange","green"][i])) },
-      { id:"permits", name:"Permits", type:"multi", options:["Hot work","Confined space","Working at height","Electrical isolation"].map((n,i)=>o(n,["red","orange","yellow","pink"][i])) },
+      { id:"permits", name:"Permits", type:"multi", warn:true, options:["Hot work","Confined space","Working at height","Electrical isolation"].map((n,i)=>o(n,["red","orange","yellow","pink"][i])) },
       { id:"created_by", name:"Created by", type:"created_by", system:true },
       { id:"created", name:"Created", type:"created_time", system:true },
       { id:"people", name:"People tagged", type:"person", multiple:true },
       { id:"deadline", name:"Deadline", type:"date" },
-      { id:"reference", name:"Reference", type:"text" },
-      { id:"photos", name:"Photos", type:"files", imagesOnly:true },
-      { id:"documents", name:"Documents", type:"files" },
+      { id:"reference", name:"Description", type:"text" },
     ],
     status:{ options:[
-      { id:"outstanding", name:"Outstanding", color:"orange", group:"todo", default:true },
-      { id:"on_hold", name:"On hold", color:"purple", group:"todo" },
+      { id:"outstanding", name:"Requested", color:"gray", group:"todo", default:true },
+      { id:"on_hold", name:"On hold", color:"orange", group:"todo" },
       { id:"in_progress", name:"In progress", color:"blue", group:"progress", default:true },
       { id:"completed", name:"Completed", color:"green", group:"complete", default:true },
     ]},
@@ -1058,22 +1091,30 @@ function datePicker(p,w,anchor){
   el.querySelector("#d-today").onclick=()=>{ el.querySelector("#d-s").value=new Date().toISOString().slice(0,10); save(); closePop(); };
   el.querySelector("#d-clear").onclick=()=>{ setValue(w.id,p.id,null); closePop(); };
 }
+/* People on a job: everyone listed (name, email, "added by a rule", ✕), a search box on top. Removing someone records it
+   in w.untagged so a rule that tags them does not put them straight back; tagging them again clears that. */
 function personPicker(p,w,anchor){
-  const el=openPop(anchor,"",{width:300}); let q="";
+  const el=openPop(anchor,"",{width:330}); let q="";
+  const known=()=>{ const m=new Map(); const add=x=>{ const k=(x.email||x.uid||"").toLowerCase(); if(k&&!m.has(k)) m.set(k,x); };
+    S.members.forEach(mm=>add({ uid:mm.id, name:mm.name, email:mm.email })); live().forEach(j=>(j.values?.[p.id]||[]).forEach(x=>add({ uid:x.uid, name:x.name, email:x.email }))); return [...m.values()]; };
+  const key=x=>(x.email||x.uid||"").toLowerCase();
   const draw=()=>{
-    const cur=(W(w.id)||w).values?.[p.id]||[];
-    const ms=S.members.filter(m=>!q||(m.name+" "+m.email).toLowerCase().includes(q.toLowerCase()));
-    const isEmail=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q.trim());
-    el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px 0">${cur.map((x,i)=>`<span class="pill" style="background:var(--panel-2)">${personHTML(x)}<span class="x" data-rm="${i}">✕</span></span>`).join("")}</div>
-      <input class="pin" placeholder="Type a name or an email address…" value="${P(q)}">
-      <div class="sec">Members</div>${ms.map(m=>`<div class="mi" data-uid="${m.id}"><span class="avatar sm">${P(initials(m.name))}</span>${P(m.name)}<span class="r">${P(domainOf(m.email))}</span></div>`).join("")||`<div class="hint" style="padding:4px 8px">No matching member</div>`}
-      ${isEmail?`<div class="hr"></div><div class="mi" data-email="${P(q.trim().toLowerCase())}"><span class="em">✉</span> Tag ${P(q.trim().toLowerCase())}</div>`:""}`;
+    const cur=(W(w.id)||w).values?.[p.id]||[]; const has=x=>cur.some(c=>key(c)===key(x)||(x.uid&&c.uid===x.uid));
+    const ql=q.trim().toLowerCase(); const sugg=ql?known().filter(x=>!has(x)&&((x.name||"")+" "+(x.email||"")).toLowerCase().includes(ql)).slice(0,6):[];
+    const isEmail=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ql)&&!has({ email:ql })&&!sugg.some(x=>(x.email||"").toLowerCase()===ql);
+    el.innerHTML=`<div class="sec">People on ${P(w.id)}${cur.length?" · "+cur.length:""}</div>
+      <input class="pin" placeholder="＋ Tag someone — name or email" value="${P(q)}" aria-label="Tag someone">
+      ${sugg.map((x,i)=>`<div class="mi" data-sug="${i}"><span class="avatar sm">${P(initials(x.name||x.email))}</span>${P(x.name||x.email)}<span class="r">${P(x.email||"")}</span></div>`).join("")}
+      ${isEmail?`<div class="mi" data-email="${P(ql)}"><span class="em">✉</span> Tag ${P(ql)}</div>`:""}
+      ${ql&&!sugg.length&&!isEmail?`<div class="hint" style="padding:4px 10px">No match. Type a full email address to tag someone new.</div>`:""}
+      <div class="plist">${cur.map((x,i)=>`<div class="prow"><span class="avatar">${P(initials(nameOf(x)))}</span><div class="pt"><b>${P(nameOf(x))}${x.auto?` <span class="pauto" title="${P(x.autoName||"")}">added by a rule</span>`:""}</b>${x.email&&nameOf(x)!==x.email?`<span>${P(x.email)}</span>`:""}</div><button type="button" class="x" data-rm="${i}" aria-label="Remove ${P(nameOf(x))}">✕</button></div>`).join("")||`<div class="hint" style="padding:6px 10px">Nobody tagged yet.</div>`}</div>`;
     const inp=el.querySelector("input"); inp.focus(); inp.setSelectionRange(q.length,q.length); inp.oninput=()=>{ q=inp.value; draw(); };
-    inp.onkeydown=e=>{ if(e.key==="Enter"){ (el.querySelector("[data-email]")||el.querySelector("[data-uid]"))?.click(); } };
-    const set=nv=>{ setValue(w.id,p.id,nv); q=""; draw(); };
-    el.querySelectorAll("[data-rm]").forEach(x=>x.onclick=()=>set(cur.filter((_,i)=>i!==+x.dataset.rm)));
-    el.querySelectorAll("[data-uid]").forEach(m=>m.onclick=()=>{ const mem=S.members.find(mm=>mm.id===m.dataset.uid); if(cur.some(x=>x.uid===mem.id)) return; const nv=p.multiple===false?[]:cur.slice(); nv.push({uid:mem.id,name:mem.name,email:mem.email}); set(nv); });
-    el.querySelector("[data-email]")?.addEventListener("click",()=>{ const em=el.querySelector("[data-email]").dataset.email; if(cur.some(x=>x.email===em)) return; const mem=S.members.find(mm=>mm.email===em); set([...cur, mem?{uid:mem.id,name:mem.name,email:mem.email}:{email:em}]); });
+    inp.onkeydown=e=>{ if(e.key==="Enter"){ (el.querySelector("[data-sug]")||el.querySelector("[data-email]"))?.click(); } };
+    const set=(nv,gone,back)=>{ setValue(w.id,p.id,nv); if(p.id==="people"){ const J=W(w.id)||w; let un=(J.untagged||[]).slice(); if(gone&&!un.includes(gone)) un.push(gone); if(back) un=un.filter(e=>e!==back); if(JSON.stringify(un)!==JSON.stringify(J.untagged||[])){ J.untagged=un; DB.update(WO_COL+"/"+w.id,{ untagged:un }).catch(console.error); } } q=""; draw(); };
+    el.querySelectorAll("[data-rm]").forEach(x=>x.onclick=()=>{ const gone=cur[+x.dataset.rm]; set(cur.filter((_,i)=>i!==+x.dataset.rm),key(gone),null); });
+    const add=x=>{ if(has(x)) return; const nv=p.multiple===false?[]:cur.slice(); const mem=S.members.find(mm=>(x.uid&&mm.id===x.uid)||(x.email&&(mm.email||"").toLowerCase()===x.email.toLowerCase())); const rec=mem?{ uid:mem.id, name:mem.name, email:mem.email }:{ email:(x.email||"").toLowerCase(), ...(x.name?{ name:x.name }:{}) }; nv.push(rec); set(nv,null,key(rec)); };
+    el.querySelectorAll("[data-sug]").forEach(m=>m.onclick=()=>add(sugg[+m.dataset.sug]));
+    el.querySelector("[data-email]")?.addEventListener("click",()=>add({ email:el.querySelector("[data-email]").dataset.email }));
   };
   draw();
 }
@@ -1199,10 +1240,10 @@ function openWO(id,fly){
   if(S.creating&&S.creating!==id){ cancelCreate(); }   // opening another record abandons the unfinished draft
   if(S.open!==id){ showEmpty=false; showAct=false; actUnsub?.(); ACT=[]; actUnsub=DB.watchCol(WO_COL+"/"+id+"/activity",rows=>{ ACT=rows.sort((a,b)=>b.t.localeCompare(a.t)); if(S.open===id) renderActivity(); }); }
   if(S.open!==id&&S.open&&typeof leaveJobScene==="function") leaveJobScene();
-  if(S.open!==id){ selPt=null; editLoc=null; S.note=null; document.body.classList.remove("note-view"); if(isMobile()) setSheet("half"); } S.open=id; document.body.classList.add("peek-open"); watchPhotos(id); watchNotes(id); $("#peek").classList.add("on"); $("#reg").classList.remove("open"); renderRecord(); highlightCard(id); syncPointHandles();
+  if(S.open!==id){ selPt=null; editLoc=null; S.note=null; document.body.classList.remove("note-view"); if(isMobile()) setSheet("half"); } S.open=id; document.body.classList.add("peek-open"); watchPhotos(id); watchNotes(id); $("#peek").classList.add("on"); $("#reg").classList.remove("open"); renderRecord(); highlightCard(id); syncPointHandles(); if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo);
   if(fly&&map) flyWO(w);
 }
-function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leaveJobScene(); stopPhotos(); stopNotes(); editLoc=null; S.note=null; document.body.classList.remove("note-view"); S.open=null; document.body.classList.remove("peek-open"); $("#peek").classList.remove("on"); actUnsub?.(); actUnsub=null; closePop(); highlightCard(null);
+function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leaveJobScene(); stopPhotos(); stopNotes(); editLoc=null; S.note=null; document.body.classList.remove("note-view"); S.open=null; if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo); document.body.classList.remove("peek-open"); $("#peek").classList.remove("on"); actUnsub?.(); actUnsub=null; closePop(); highlightCard(null);
   if(S.woView){ S.woView=false; LOCK=null; document.body.classList.remove("wo-view"); if(typeof resetMode==="function") resetMode(); if(typeof orbitSync==="function") orbitSync(); }   // closing the panel from any tab also leaves the job view
   if(typeof syncJobLabels==="function") syncJobLabels(); }
 function highlightCard(id){ $$(".kcard.hl").forEach(c=>c.classList.remove("hl")); if(id){ const c=document.querySelector(`.kcard[data-id="${id}"]`); if(c){ c.classList.add("hl"); c.scrollIntoView({block:"nearest"}); } } }
@@ -1222,8 +1263,8 @@ function renderRecord(){
   const areaTxt=P0.length?P(shapeLabel(locShape(w))+(locKindW(w)==="area"&&locHeight(w)>0?" · "+locHeight(w)+" m high":"")):"";
   $("#pbody").innerHTML=`
     <div class="trow"><textarea class="ptitle" id="ptitle" rows="1" placeholder="Untitled">${P(w.title||"")}</textarea><div class="pv" data-status>${statusPill(w)}</div></div>
-    ${custom.length?`<div class="chips">${custom.map(p=>`<div class="pv chip" data-edit="${p.id}" title="${P(p.name)}">${renderValue(p,w.values?.[p.id],w)}</div>`).join("")}</div>`:""}
-    <div class="metaline">${P(w.createdBy?.name||"")} · ${P(fmtDate(w.created,true))}${w.edited?` · edited ${P(rel(w.edited))}`:""}${w.completedAt?` · completed ${P(fmtDate(w.completedAt,true))}`:""}</div>
+    ${basicsHTML(w)}
+    ${propsHTML(w)}
     ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span style="color:var(--crit)">required — mark it on the model</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
     :`<section class="ps"><h3 style="cursor:default">Job area <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${areaTxt}</span></h3><div class="locbox editing">
       ${P0.length?`<div class="ptlist">${P0.map((p,i)=>`<div class="ptrow ${V.draw?.sel===i?"sel":""}" data-i="${i}"><span class="ptn">${i+1}</span><span class="mono">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><button class="btn sm" data-mv="${i}" title="Click the model to move this point">Move</button><button class="btn sm" data-rm="${i}" title="Remove this point">✕</button></div>`).join("")}</div>`:`<div class="hint">${isMobile()?"Tap":"Click"} the model: one point, more for a line, then point ① to close an area.</div>`}
@@ -1231,13 +1272,6 @@ function renderRecord(){
       <button class="btn sm teal" id="l-done" style="margin-left:auto">Done</button></div></div></section>`}
     ${typeof linksStripHTML==="function"?linksStripHTML(w):""}
     ${typeof autoStripHTML==="function"?autoStripHTML(w):""}
-    <div class="addprop" id="toggle-details">${showDetails?"▾":"▸"} Details${empty.length?` · ${empty.length} empty propert${empty.length===1?"y":"ies"}`:""}</div>
-    ${showDetails?`<div class="props details">
-      ${filled.map(rowHTML).join("")}
-      ${empty.length?`<div class="addprop" id="toggle-empty">${showEmpty?"▾":"▸"} ${empty.length} empty propert${empty.length===1?"y":"ies"}</div>`:""}
-      ${showEmpty?empty.map(rowHTML).join(""):""}
-      <div class="addprop" id="add-prop">＋ Add a property</div>
-    </div>`:""}
     ${notesHTML()}
     ${mailSectionHTML(w)}
     <section class="ps"><h3 id="act-h">${showAct?"▾":"▸"} Activity <span class="mono" style="font-weight:400" id="act-n">${ACT.length}</span></h3><div id="act" ${showAct?"":"hidden"}></div></section>`;
@@ -1247,11 +1281,9 @@ function renderRecord(){
   t.onblur=()=>setTitle(w.id,t.value.trim());
   if(w._focusTitle){ delete w._focusTitle; t.focus(); }
   $("#pbody").querySelector("[data-status]").onclick=e=>statusMenu(w,e.currentTarget);
-  $$("#pbody .pv[data-edit]").forEach(el=>el.onclick=e=>{ if(e.target.closest("a")) return; const a=e.target.closest("[data-asset]"); if(a&&!el.classList.contains("chip")){ const as=asset(a.dataset.asset); if(as) assetEditor(as,a); return; } startEdit(prop(el.dataset.edit),w,el); });   // a chip always opens the picker; the asset editor lives in Details
+  $$("#pbody .pv[data-edit]").forEach(el=>el.onclick=e=>{ if(e.target.closest("a")) return; startEdit(prop(el.dataset.edit),w,el); });   // the whole cell opens its editor (assets are edited in the site register)
   $$("#pbody .pn[title]").forEach(el=>el.onclick=()=>propertyMenu(prop(el.closest(".prop").dataset.pid),el));
-  $("#toggle-empty")?.addEventListener("click",()=>{ showEmpty=!showEmpty; renderRecord(); });
-  $("#toggle-details")?.addEventListener("click",()=>{ showDetails=!showDetails; renderRecord(); });
-  $("#add-prop")?.addEventListener("click",e=>propertyCreator(e.currentTarget,p=>{ showEmpty=true; renderRecord(); const el=document.querySelector(`#pbody .pv[data-edit="${p.id}"]`); if(el) startEdit(p,w,el); }));
+    $("#add-prop")?.addEventListener("click",e=>propertyCreator(e.currentTarget,p=>{ showEmpty=true; renderRecord(); const el=document.querySelector(`#pbody .pv[data-edit="${p.id}"]`); if(el) startEdit(p,w,el); }));
   $("#act-h").onclick=()=>{ showAct=!showAct; renderRecord(); };
   $("#l-add")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
   $("#l-edit")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
@@ -1263,6 +1295,35 @@ function renderRecord(){
   // property reorder by drag (V17)
   let dragPid=null; $$("#pbody .prop[data-pid]").forEach(r=>{ r.ondragstart=e=>{ dragPid=r.dataset.pid; e.dataTransfer.effectAllowed="move"; }; r.ondragover=e=>{ e.preventDefault(); r.classList.add("dragover"); }; r.ondragleave=()=>r.classList.remove("dragover"); r.ondrop=e=>{ e.preventDefault(); r.classList.remove("dragover"); if(!dragPid||dragPid===r.dataset.pid) return; const a=S.schema.props; a.splice(a.findIndex(p=>p.id===r.dataset.pid),0,a.splice(a.findIndex(p=>p.id===dragPid),1)[0]); saveSchema(); }; });
 }
+/* ---------- basics + properties (1 Oct 2026 redesign) ----------
+   Under the title: Created · Due · People. Then every other property, labelled, filled or not ("＋ Add" when empty).
+   Colour only where it means something: a close / overdue due date, permits (safety). */
+const BASIC_IDS=["deadline","people"];
+const warnProp = p => !!p.warn||p.id==="permits";
+function dueInfo(w){ const v=w.values?.deadline; if(isEmpty(v)) return null; const d=daysUntil(v.end||v.start);
+  if(isDone(w)) return { cls:"ok", sub:w.completedAt?`Completed ${new Date(w.completedAt).toLocaleDateString(undefined,{ month:"short", day:"numeric" })}`:"Completed" };
+  if(d<0) return { cls:"late", sub:`${-d} day${d===-1?"":"s"} overdue` }; if(d===0) return { cls:"soon", sub:"Today" }; if(d===1) return { cls:"soon", sub:"Tomorrow" };
+  if(d<=2) return { cls:"soon", sub:`in ${d} days` }; return { cls:"", sub:`in ${d} days` }; }
+function peopleBoxHTML(list){ const n=list.length; const av=(x,i)=>`<span class="avatar bav${i>0?" ov":""}" title="${P(nameOf(x))}">${P(initials(nameOf(x)))}</span>`;
+  if(!n) return `<span class="badd">＋ Tag someone</span>`;
+  if(n===1) return `<span class="bppl">${av(list[0],0)}<span class="bpn">${P(nameOf(list[0]))}</span></span>`;
+  if(n<=3) return `<span class="bppl"><span class="bstack">${list.map(av).join("")}</span><span class="bpn">${P(list.map(x=>nameOf(x).split(/[\s@]/)[0]).join(", "))}</span></span>`;
+  return `<span class="bppl"><span class="bstack">${list.slice(0,4).map(av).join("")}<span class="avatar bav ov more">+${n-4}</span></span></span>`; }
+function basicsHTML(w){ const cells=[];
+  const day=t=>{ if(!t) return ""; const d=new Date(t); const o={ month:"short", day:"numeric" }; if(d.getFullYear()!==new Date().getFullYear()) o.year="numeric"; return d.toLocaleDateString(undefined,o); };
+  cells.push(`<div class="bx"><span class="bl">Created</span><span class="bv">${P(day(w.created))}</span><span class="bs">${P(w.createdBy?.name||"")}${w.createdBy?.name?" · ":""}${P(rel(w.created))}</span>${w.edited&&w.edited!==w.created?`<span class="bs">edited ${P(rel(w.edited))}${w.editedBy?.name?" by "+P(w.editedBy.name):""}</span>`:""}</div>`);
+  if(prop("deadline")){ const v=w.values?.deadline, di=dueInfo(w);
+    cells.push(`<button type="button" class="bx pv ${di?.cls?"due-"+di.cls:isDone(w)?"due-ok":""}" data-edit="deadline"><span class="bl">Due</span>${di?`<span class="bv mono">${P(fmtDate(v.start,v.time)+(v.end?" → "+fmtDate(v.end,v.time):""))}</span><span class="bs bdue">${P(di.sub)}</span>`:isDone(w)?`<span class="bv">No due date</span><span class="bs bdue">${P(w.completedAt?"Completed "+new Date(w.completedAt).toLocaleDateString(undefined,{ month:"short", day:"numeric" }):"Completed")}</span>`:`<span class="badd">＋ Set a date</span>`}</button>`); }
+  const pp=prop("people"); if(pp){ const list=w.values?.people||[];
+    cells.push(`<button type="button" class="bx pv" data-edit="people"><span class="bl">${P(pp.name==="People tagged"?"People":pp.name)}${list.length>1?" · "+list.length:""}</span>${peopleBoxHTML(list)}</button>`); }
+  return `<div class="basics" style="grid-template-columns:repeat(${cells.length},minmax(0,1fr))">${cells.join("")}</div>`; }
+function quietValue(p,v,w){ if(isEmpty(v)) return `<span class="padd">＋ Add</span>`;
+  if(p.type==="multi"||p.type==="select"){ const os=(p.type==="select"?[v]:v).map(id=>p.options?.find(o=>o.id===id)).filter(Boolean);
+    return warnProp(p)?os.map(o=>`<span class="pwarn">${P(o.name)}</span>`).join(""):`<span>${P(os.map(o=>o.name).join(", "))}</span>`; }
+  return renderValue(p,v,w); }
+function propsHTML(w){ const list=props().filter(p=>!p.system&&!BASIC_IDS.includes(p.id)); const filled=list.filter(p=>!isEmpty(w.values?.[p.id])).length;
+  const cell=p=>`<div class="prop pcell${["text","url"].includes(p.type)?" wide":""}" data-pid="${p.id}" draggable="true"><div class="pn" title="${P(p.name)} · ${TYPE_LABEL[p.type]}">${P(p.name)}</div><div class="pv" data-edit="${p.id}">${quietValue(p,w.values?.[p.id],w)}</div></div>`;
+  return `<section class="ps props" id="props"><h3 style="cursor:default">Properties <span class="pcount">${filled} of ${list.length} filled</span><button type="button" class="link" id="add-prop" style="margin-left:auto;text-transform:none;letter-spacing:0">＋ New property</button></h3>${list.length?`<div class="pgrid">${list.map(cell).join("")}</div>`:`<div class="hint">No properties yet.</div>`}</section>`; }
 function renderActivity(){ const n=$("#act-n"); if(n) n.textContent=ACT.length; const a=$("#act"); if(a) a.innerHTML=ACT.map(x=>`<div class="act"><span class="t" title="${P(fmtDate(x.t,true))}">${P(rel(x.t))}</span><span>${x.by?.auto?`<span class="aubadge" title="${P(x.by.autoName||"")}">Automation</span>`:`<b>${P(x.by?.name||"")}</b>`} ${P(x.text)}</span></div>`).join("")||`<div class="hint">No activity yet.</div>`; }
 function recordMenu(anchor){
   const w=W(S.open); if(!w) return;
@@ -1308,7 +1369,7 @@ function renderViews(){
 function cardHTML(w){
   const vis=props().filter(p=>(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id));
   const bits=vis.map(p=>{ const v=w.values?.[p.id]; return isEmpty(v)&&!p.system?"":renderValue(p,v,w,true); }).filter(Boolean);
-  const nph=(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
+  const nph=w.photoCount??(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
   return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${w.id}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${w.id}</span>${bits.join("")}</div></div>`;
 }
 function renderBoard(rows){
@@ -1637,8 +1698,13 @@ function syncJobLabels(){ if(!map) return; Object.entries(OV.wo).forEach(([id,o]
   const hidePin=open&&w&&locKindW(w)!=="point"; if(hidePin&&!o.pinHidden&&o.m){ poolPut(o.m); o.m=null; o.pinHidden=true; } else if(!hidePin&&o.pinHidden){ o.pinHidden=false; if(w&&!w.trashed) refreshWOOverlay(w,true); } }); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 function minGround(P){ const g=P.map(p=>p.ground).filter(x=>x!=null); return g.length?Math.min(...g):GROUND_FALLBACK; }
 function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(w.trashed||force||o.sig!==woSig(w)){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
-function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId); if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); o.hidden=true; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
-function renderLegend(){ if(!S.schema) return; $("#legend").innerHTML=statuses().map(o=>`<span data-s="${o.id}" class="${S.legendOff.has(o.id)?"off":""}"><i style="background:${col(o.color).map}"></i>${P(o.name)} <span class="mono">${live().filter(w=>w.statusId===o.id).length}</span></span>`).join(""); }
+function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId)&&S.open!==w.id&&S.creating!==w.id;   /* the job you have open always shows */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); o.hidden=true; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
+/* Status toggles on the model (1 Oct 2026): switches, not a key. Default view = jobs that need attention now —
+   In progress and On hold; Requested and Completed start switched off. Tests on ?mock=1 start with everything on. */
+const legendDefaultOff = () => new Set(statuses().filter(o=>!(o.group==="progress"||/hold/i.test(o.name||""))).map(o=>o.id));
+function renderLegend(){ if(!S.schema) return;
+  if(!S.legendInit){ S.legendInit=true; if(!PARAMS.has("mock")||PARAMS.has("legend")){ S.legendOff=legendDefaultOff(); if(map) live().forEach(applyLegendTo); } }
+  $("#legend").innerHTML=`<span class="lg-h">Show</span>`+statuses().map(o=>{ const on=!S.legendOff.has(o.id); return `<button type="button" role="switch" aria-checked="${on}" data-s="${o.id}" class="lgt${on?" on":""}" style="--c:${col(o.color).map}" title="${on?"Hide":"Show"} ${P(o.name)} jobs on the model"><span class="sw"><span class="kn"></span></span>${P(o.name)}<span class="mono">${live().filter(w=>w.statusId===o.id).length}</span></button>`; }).join(""); }
 $("#legend").addEventListener("click",e=>{ const s=e.target.closest("[data-s]"); if(!s) return; S.legendOff.has(s.dataset.s)?S.legendOff.delete(s.dataset.s):S.legendOff.add(s.dataset.s); renderLegend(); live().forEach(applyLegendTo); });
 let flyTok=0; function onFlyEnd(fn){ const tok=++flyTok; const h=()=>{ map.removeEventListener("gmp-animationend",h); if(tok===flyTok) fn(); }; map.addEventListener("gmp-animationend",h); }
 function fly(cam,ms=1800){ if(!map) return; flying=true; map.flyCameraTo({ endCamera:cam, durationMillis:ms }); clearTimeout(flyT); flyT=setTimeout(()=>{ flying=false; },ms+150); onFlyEnd(()=>{ flying=false; }); }
@@ -1860,6 +1926,7 @@ async function startCreate(init={}){
 async function finishCreate(){
   const id=S.creating; const w=W(id); if(!w) return; if(!pts(w).length){ toast("Mark the job area on the model first.",true); return; }
   clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); w.draft=false; w._focusTitle=true;
+  if(S.legendOff.has(w.statusId)){ S.legendOff.delete(w.statusId); renderLegend(); live().forEach(applyLegendTo); }   // a new job in a hidden status: switch that status on so it does not vanish
   await DB.update(WO_COL+"/"+id,{ draft:false, ...stamp() }); const n=pts(w).length; log(id,`created the job · ${shapeLabel(locShape(w))}`);
   refreshWOOverlay(w,true); syncPointHandles(); renderAll(); woMode(); if(map) flyWO(w); setTimeout(()=>$("#ptitle")?.focus(),50);
   if(typeof autoEvent==="function") autoEvent("created",w);
@@ -1974,15 +2041,16 @@ async function addPhoto(woId, fileOrBlob, pose){
   catch(e){ toast("Upload failed: "+(e.message||e),true); return; }
   const parent=pendingPhotoParent||null; pendingPhotoParent=null; try{ await DB.set(WO_COL+"/"+woId+"/notes/ph_"+pid,{ kind:"photo", parent, title:"", text:"", photoId:pid, files:[], t:meta.t, by:S.user.name }); }catch(e){ console.error(e); }
   log(woId,`added a photo${pose.source==="sensor"?" with position and heading":pose.source==="exif"?" with EXIF position":""}${parent?" inside a note":""}`);
-  const n=(W(woId)?.values?.photos||[]); if(prop("photos")) setValue(woId,"photos",[...n,{ id:pid, name:meta.name, bytes:meta.bytes }]);
+  const n=(W(woId)?.values?.photos||[]); if(prop("photos")) setValue(woId,"photos",[...n,{ id:pid, name:meta.name, bytes:meta.bytes }]); bumpPhotoCount(woId,+1);
   toast("Photo added"+(pose.source==="none"?" — position unknown":""));
 }
 async function deletePhoto(woId,pid){
   if(!confirm("Delete this photo?")) return;
   await DB.del(WO_COL+"/"+woId+"/photos/"+pid); await DB.del(WO_COL+"/"+woId+"/photofull/"+pid).catch(()=>{});
   await DB.del(WO_COL+"/"+woId+"/notes/ph_"+pid).catch(()=>{}); if(S.note==="ph_"+pid){ S.note=null; document.body.classList.remove("note-view"); }
-  const w=W(woId); if(w&&prop("photos")) setValue(woId,"photos",(w.values?.photos||[]).filter(f=>f.id!==pid)); log(woId,"deleted a photo"); closeViewer(); renderRecord();
+  const w=W(woId); if(w&&prop("photos")) setValue(woId,"photos",(w.values?.photos||[]).filter(f=>f.id!==pid)); bumpPhotoCount(woId,-1); log(woId,"deleted a photo"); closeViewer(); renderRecord();
 }
+function bumpPhotoCount(woId,d){ const w=W(woId); if(!w) return; const n=Math.max(0,(w.photoCount??(w.values?.photos||[]).length)+d); w.photoCount=n; DB.update(WO_COL+"/"+woId,{ photoCount:n }).catch(()=>{}); }
 async function getFull(woId,pid){ if(fullCache.has(pid)) return fullCache.get(pid); const d=await DB.get(WO_COL+"/"+woId+"/photofull/"+pid); const u=d?.data||null; if(u) fullCache.set(pid,u); return u; }
 
 /* ---------- photos live in the Notes section now (Photos filter; ＋ Photo adds one) ---------- */
@@ -2908,8 +2976,8 @@ async function runRule(a,w,ctx={}){ const did=[], mails=[];
   return did; }
 async function doAction(a,x,w){
   const path=WO_COL+"/"+w.id;
-  if(x.type==="tag"){ const ppl=(w.values?.people||[]); if(!x.person?.email||ppl.some(p=>(p.email||"").toLowerCase()===x.person.email.toLowerCase())) return null;
-    const nv=[...ppl,{ email:x.person.email.toLowerCase(), name:x.person.name||"" }]; w.values??={}; w.values.people=nv; await DB.update(path,{ "values.people":nv }); auLog(w,a,`tagged ${personLabel(x.person)} (${a.name})`); return { text:`tagged ${personLabel(x.person)}` }; }
+  if(x.type==="tag"){ const ppl=(w.values?.people||[]); const em=(x.person?.email||"").toLowerCase(); if(!em||ppl.some(p=>(p.email||"").toLowerCase()===em)||(w.untagged||[]).includes(em)) return null;   // someone removed by hand stays removed
+    const nv=[...ppl,{ email:em, name:x.person.name||"", auto:a.id, autoName:a.name }]; w.values??={}; w.values.people=nv; await DB.update(path,{ "values.people":nv }); auLog(w,a,`tagged ${personLabel(x.person)} (${a.name})`); return { text:`tagged ${personLabel(x.person)}` }; }
   if(x.type==="cc"){ let n=0; for(const t of jobThreads(w.id)){ if((t.participants||[]).some(p=>(p.email||"").toLowerCase()===x.person.email.toLowerCase())) continue; await DB.update(MAIL_COL+"/"+t.id,{ participants:[...(t.participants||[]),{ email:x.person.email.toLowerCase(), name:x.person.name||"" }] }); n++; }
     if(!n) return null; auLog(w,a,`added ${personLabel(x.person)} to ${n} email thread${n===1?"":"s"}`); return { text:`added ${personLabel(x.person)} to ${n} thread${n===1?"":"s"}` }; }
   if(x.type==="permit"){ let o=optByName("permits",x.value); if(!o){ const p=prop("permits"); if(!p) return null; o={ id:uid(), name:x.value, color:"red" }; p.options.push(o); await saveSchema(); }
@@ -2918,7 +2986,7 @@ async function doAction(a,x,w){
   if(x.type==="deadline"){ const d=ymd(addDays(new Date(),x.days||7)); w.values??={}; w.values.deadline={ start:d }; await DB.update(path,{ "values.deadline":{ start:d } }); auLog(w,a,`set the deadline to ${fmtDate(d)}`); return { text:`deadline ${fmtDate(d)}` }; }
   if(x.type==="email"){ const m=await queueEmail(a,w,x); if(!m) return null; auLog(w,a,`will email ${m.names} ${WHAT[x.what]||""} at ${new Date(m.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})} (${a.name})`); return { text:`emailed ${m.names}`, mail:{ ...m, what:x.what } }; }
   return null; }
-function emailBody(what,w,x,a){ const st=status(w.statusId)?.name||""; const nPh=(w.values?.photos||[]).length, docs=(w.values?.documents||[]);
+function emailBody(what,w,x,a){ const st=status(w.statusId)?.name||""; const nPh=w.photoCount??(w.values?.photos||[]).length, docs=(w.values?.documents||[]);
   if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${docs.length} · Notes: ${w.noteCount||0}\n\nThe files are attached. Open the job for the marked-up model, notes and activity.`, attachments:docs.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
   if(what==="ready") return { subject:`${w.id} is ready to start`, text:`Everything ${w.id} · ${w.title||"Untitled"} was waiting on is done or in place:\n${waitsOnIds(w).map(id=>{ const b=W(id); return `• ${id} ${b?.title||""} — ${isDone(b)?"completed":enKind(b)?.ready||"ready"}`; }).join("\n")}\n\nIt is still marked ${st}. Plan the crew and permits.`, attachments:[] };
   if(what==="restore"){ const k=enKind(w); return { subject:`${k?.restore||"Restore"} due · ${w.id}`, text:`${w.title||"Untitled"} (${w.id}): every job it enabled is complete (${blocksOf(w).map(d=>d.id).join(", ")}).\n\nPlease book: ${k?.restore||"the restore step"}.`, attachments:[] }; }
@@ -2984,7 +3052,7 @@ function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
     if(t.type==="ready") return waitsOnIds(w).length>0&&isOpen(w);
     if(t.type==="restore") return !!w.enabling&&!w.enabling.restored&&!!enKind(w)?.restore&&isOpen(w);
     if(t.type==="deadline") return !!w.values?.deadline?.start&&isOpen(w);
-    if(t.type==="change") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
+    if(t.type==="change") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.untagged||[]).includes((x.person?.email||"").toLowerCase())&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
     return false; })()); }
 function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
   const a=w.series?AUX(w.series.auto):null;
@@ -3316,7 +3384,7 @@ async function demoSeed(DB){
   const ID=n=>"J-26-"+String(n).padStart(3,"0");
   const railops={ email:"rail.ops@example.com", name:"Rail operations" };
   const JV=n=>J.find(j=>j.n===n).values;
-  [6,10,13].forEach(n=>{ const v=JV(n); v.people=[...(v.people||[]),priya]; });   // "Scaffold requests include Priya Nair" already ran on these
+  [6,10,13].forEach(n=>{ const v=JV(n); v.people=[...(v.people||[]),{ ...priya, auto:"r1", autoName:"Scaffold requests include Priya Nair" }]; });   // "Scaffold requests include Priya Nair" already ran on these
   JV(12).people=[...(JV(12).people||[]),railops]; JV(12).permits=[...(JV(12).permits||[]),PM("Track protection")];   // rail job: Rail operations tagged, track protection permit
   const SER={ 1:["s1",4], 2:["s3",3], 4:["s2",3], 6:["s6",2], 9:["s4",2], 11:["s5",2] };
   for(const j of J){ const id=ID(j.n);
@@ -3327,9 +3395,9 @@ async function demoSeed(DB){
     await DB.add(WO_COL+"/"+id+"/activity",{ t:j.created, by:me, text:"created the job" }); }
   const act=(n,d,text,by=me)=>DB.add(WO_COL+"/"+ID(n)+"/activity",{ t:d, by, text });
   await act(2,ago(4,1),"raised J-26-003 from a finding at nozzle N3",karen); await act(3,ago(4),"now waits on J-26-002 · Tank T-1 5-yearly external inspection + shell UT",karen); await act(2,ago(4),"now blocks J-26-003 · Tank T-1 nozzle N3 flange repair",karen);
-  await act(6,ago(8),"now waits on J-26-005 · Pipe bridge PR-3 insulation removal + reinstatement"); await act(6,ago(7),"changed Status from Outstanding to On hold"); await act(6,ago(7),"hold reason: Waiting on insulation removal (J-26-005)");
-  await act(5,ago(3),"changed Status from Outstanding to In progress",priya);
-  await act(10,ago(12),"added enabling work J-26-013 · Erect scaffold"); await act(13,ago(12),"created as enabling work (Scaffold) for J-26-010"); await act(10,ago(11),"changed Status from Outstanding to On hold"); await act(10,ago(11),"hold reason: Waiting on scaffold (J-26-013)");
+  await act(6,ago(8),"now waits on J-26-005 · Pipe bridge PR-3 insulation removal + reinstatement"); await act(6,ago(7),"changed Status from Requested to On hold"); await act(6,ago(7),"hold reason: Waiting on insulation removal (J-26-005)");
+  await act(5,ago(3),"changed Status from Requested to In progress",priya);
+  await act(10,ago(12),"added enabling work J-26-013 · Erect scaffold"); await act(13,ago(12),"created as enabling work (Scaffold) for J-26-010"); await act(10,ago(11),"changed Status from Requested to On hold"); await act(10,ago(11),"hold reason: Waiting on scaffold (J-26-013)");
   await DB.set("workspace/counters",{ wo:J.length });
 
   const nc={}; const n=(jid,nid,d)=>{ nc[jid]=(nc[jid]||0)+(d.parent?0:1); return DB.set(WO_COL+"/"+jid+"/notes/"+nid,{ parent:null, title:"", text:"", files:[], by:"Demo user", ...d }); };
