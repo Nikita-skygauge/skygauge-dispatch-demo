@@ -1473,7 +1473,7 @@ function sceneSchedule(){ if(SCENE.pending) return; SCENE.pending=true; requestA
 function sceneKnown(){ const k=new Set(); const add=x=>{ if(x) k.add(x); };
   Object.values(OV.wo).forEach(o=>{ if(o.hidden) return; if(!o.pinHidden) add(o.m); add(o.area); add(o.line); add(o.box); (o.labels||[]).forEach(add); }); add(OV.site); (OV.draw||[]).forEach(add);
   if(typeof PTH!=="undefined") PTH.forEach(add); if(typeof PINOV!=="undefined") Object.values(PINOV).forEach(a=>a.forEach(add)); if(typeof PHOV!=="undefined") Object.values(PHOV).forEach(o=>{ add(o.m); (o.sight||[]).forEach(add); });
-  if(typeof LKOV!=="undefined") LKOV.els.forEach(add); if(typeof ZOV!=="undefined") ZOV.forEach(add);
+  if(typeof LKOV!=="undefined") LKOV.els.forEach(add);
   Object.values(POOL.free).forEach(l=>l.forEach(add));
   return k; }
 function sceneChildren(){ if(!map) return []; const c=map.children; return Array.isArray(c)?c.slice():[...c].filter(el=>/^GMP-/i.test(el.tagName||"")); }
@@ -1584,7 +1584,7 @@ async function initMap(){
   requestAnimationFrame(()=>{ drawSite(); syncOverlays(); syncPhotoOverlays(); });
 }
 function applyCameraLimits(){ if(!map) return; const c=siteCam(); fly(c,1200); const g=siteGeom(); $("#m-extent").textContent=`${(g.e.ns/1000).toFixed(1)} × ${(g.e.ew/1000).toFixed(1)} km`; }
-function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const line=mk3("pl",{ altitudeMode:"CLAMP_TO_GROUND", strokeColor:"rgba(0,255,229,0.95)", strokeWidth:5, drawsOccludedSegments:true, path:[...B,B[0]].map(p=>({lat:p.lat,lng:p.lng,altitude:2})) }); OV.site=line; if(typeof syncZoneOverlays==="function") syncZoneOverlays(); }
+function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const line=mk3("pl",{ altitudeMode:"CLAMP_TO_GROUND", strokeColor:"rgba(0,255,229,0.95)", strokeWidth:5, drawsOccludedSegments:true, path:[...B,B[0]].map(p=>({lat:p.lat,lng:p.lng,altitude:2})) }); OV.site=line; }
 function syncAssetOverlays(){ /* assets carry no location (register only) */ }
 const rgb = hex => { const n=parseInt(hex.slice(1),16); return `${n>>16},${(n>>8)&255},${n&255}`; };
 function woColor(w){ return col(status(w.statusId)?.color).map; }
@@ -2699,22 +2699,22 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
 #lkf button .mono{opacity:.7;margin-left:2px}`; document.head.append(st); })();
 
 /* =====================================================================
-   AUTOMATIONS — schedules (jobs that repeat) and rules (when this happens to a job, do that), plus map zones.
+   AUTOMATIONS — schedules (jobs that repeat) and rules (when this happens to a job, do that).
+   Map zones were taken out on 1 Oct 2026 (parked for later: docs/parked/zones-2026-10-01).
    workspace/automations/{id}: { kind:"schedule"|"rule", name, on, order, created, createdBy, lastRun, runCount,
        schedule:{ mode:"calendar"|"after", unit:"month"|"week"|"year", every, dates:[{m,d}..], months, leadDays, dueDays,
                   ifOpen:"create"|"skip", last (ISO occurrence last created), lastDone (ISO, before the app), enabling,
                   template:{ from, title, values, location }, history:[{when,state,label}] },
-       rule:{ trigger:{type,to?,days?}, conds:[{type:"prop",pid,value}|{type:"zone",zone}], actions:[{type,...}] } }
-   workspace/automations/{id}/runs/{rid}: { t, job, did, result }      workspace/zones/{id}: { name, color, points }
+       rule:{ trigger:{type,to?,days?}, conds:[{type:"prop",pid,value}], actions:[{type,...}] } }
+   workspace/automations/{id}/runs/{rid}: { t, job, did, result }
    Everything an automation does is written to the job's Activity as "Automation", the job panel says in advance what
    will fire, and its emails wait (hold minutes) in the thread as "scheduled" so they can be cancelled.
    Where it runs: in whichever browser has Dispatch open (the demo; one user). A server scheduler is needed before this
    can be trusted at a real site, where nobody may have the app open at 06:00.
    ===================================================================== */
-const AU_COL="workspace/automations", ZONE_COL="workspace/zones";
-let AU=[], ZONES=[], AU_DENIED=false, AU_BUSY=false, auTimer=null, auUnsub=[];
+const AU_COL="workspace/automations";
+let AU=[], AU_DENIED=false, AU_BUSY=false, auTimer=null, auUnsub=[];
 const AUV={ sel:null, f:"rule" };   // f = the page: "schedule" or "rule"
-var ZOV=[];
 const auCanEdit=()=>!!S.admin||(typeof DEMO!=="undefined"&&!!DEMO);
 const AUTO_BY=a=>({ uid:"automation", name:"Automation", email:"", auto:a.id, autoName:a.name });
 const AUX=id=>AU.find(a=>a.id===id);
@@ -2729,7 +2729,6 @@ function startAuto(){
   auUnsub.forEach(f=>{ try{ f(); }catch{} });
   auUnsub=[
     DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note&&!S.creating) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
-    DB.watchCol(ZONE_COL,rows=>{ ZONES=rows; syncZoneOverlays(); },e=>console.warn("zones",e)),
   ];
   S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
@@ -2742,18 +2741,10 @@ const optByName=(pid,name)=>prop(pid)?.options?.find(o=>o.name.toLowerCase()===S
 const hasOpt=(w,pid,name)=>{ const o=optByName(pid,name); return !!o&&(w.values?.[pid]||[]).includes(o.id); };
 function condMatch(c,w){
   if(c.type==="prop") return hasOpt(w,c.pid,c.value);
-  if(c.type==="zone"){ const z=ZONES.find(z=>z.id===c.zone); return !!z&&jobInZone(w,z); }
   return false;
 }
 const condsMatch=(a,w)=>(a.rule?.conds||[]).every(c=>condMatch(c,w));
-function condText(c){ if(c.type==="prop") return `${prop(c.pid)?.name||c.pid} includes ${c.value}`; if(c.type==="zone") return `Job area touches the ${ZONES.find(z=>z.id===c.zone)?.name||"?"} zone`; return "?"; }
-/* zones: a job touches a zone when a point is inside it, a segment crosses its edge, or (areas) the zone sits inside the job */
-function segX(a,b,c,d){ const o=(p,q,r)=>Math.sign((q.lng-p.lng)*(r.lat-p.lat)-(q.lat-p.lat)*(r.lng-p.lng)); return o(a,b,c)!==o(a,b,d)&&o(c,d,a)!==o(c,d,b); }
-function jobInZone(w,z){ const P0=pts(w), Z=z.points||[]; if(!P0.length||Z.length<3) return false;
-  if(P0.some(p=>inPoly(p,Z))) return true;
-  const segs=[]; for(let i=0;i<P0.length-1;i++) segs.push([P0[i],P0[i+1]]); if(locClosed(w)&&P0.length>=3) segs.push([P0[P0.length-1],P0[0]]);
-  for(const [a,b] of segs) for(let i=0;i<Z.length;i++){ if(segX(a,b,Z[i],Z[(i+1)%Z.length])) return true; }
-  return locClosed(w)&&P0.length>=3&&inPoly(Z[0],P0); }
+function condText(c){ if(c.type==="prop") return `${prop(c.pid)?.name||c.pid} includes ${c.value}`; return "?"; }
 
 /* ---------- triggers and actions: words ---------- */
 const TRIG={
@@ -2762,12 +2753,11 @@ const TRIG={
   before:{ label:"Before status changes to" },
   ready:{ label:"A waiting job becomes ready to start" },
   restore:{ label:"Enabling work becomes restore due" },
-  area:{ label:"A job area is drawn or moved" },
   deadline:{ label:"days before the deadline" },
 };
 const statusWord=to=>GROUPS[to]||status(to)?.name||to;
 function trigText(t){ if(t.type==="status"||t.type==="before") return `${TRIG[t.type].label} ${statusWord(t.to)}`; if(t.type==="deadline") return `${t.days} ${TRIG.deadline.label}`; return TRIG[t.type]?.label||t.type; }
-function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusWord(t.to)}`; if(t.type==="before") return `Before it moves to ${statusWord(t.to)}`; if(t.type==="ready") return "When it becomes ready to start"; if(t.type==="restore") return "When its restore step is due"; if(t.type==="deadline") return `${t.days} days before the deadline`; if(t.type==="area") return "When its area is drawn or moved"; return "When it changes"; }
+function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusWord(t.to)}`; if(t.type==="before") return `Before it moves to ${statusWord(t.to)}`; if(t.type==="ready") return "When it becomes ready to start"; if(t.type==="restore") return "When its restore step is due"; if(t.type==="deadline") return `${t.days} days before the deadline`; return "When it changes"; }
 const WHAT={ results:"the results, photos and files", ready:"a ready-to-start notice", restore:"a restore request", reminder:"a deadline reminder", note:"a note" };
 function actText(x){ switch(x.type){
   case "tag": return `Tag ${personLabel(x.person)}`;
@@ -2817,7 +2807,6 @@ function auLog(w,a,text){ return DB.add(WO_COL+"/"+w.id+"/activity",{ t:now(), b
 async function recordRun(a,w,did,result="Done"){ await DB.add(AU_COL+"/"+a.id+"/runs",{ t:now(), job:w?.id||"", did, result }); await DB.update(AU_COL+"/"+a.id,{ lastRun:now(), runCount:(AUX(a.id)?.runCount||a.runCount||0)+1 }); }
 function trigMatch(t,type,w,ctx){
   if(t.type==="change") return ["created","changed","area","status"].includes(type);
-  if(t.type==="area") return type==="area"||type==="created";
   if(t.type==="status") return type==="status"&&(status(ctx.sid)?.group===t.to||ctx.sid===t.to)&&(status(ctx.prevSid)?.group!==status(ctx.sid)?.group||t.to===ctx.sid);
   return t.type===type; }
 /* something happened to a job → run every matching rule */
@@ -2900,10 +2889,6 @@ async function autoTick(){ if(AU_BUSY||!S.schema) return; AU_BUSY=true;
         if(left<=a.rule.trigger.days&&!(w.autoDone||{})[key]&&condsMatch(a,w)){ await DB.update(WO_COL+"/"+w.id,{ ["autoDone."+key]:true }); w.autoDone={ ...(w.autoDone||{}), [key]:true }; await runRule(a,w,{}); } } } }
   } finally { AU_BUSY=false; } }
 
-/* ---------- map zones ---------- */
-function syncZoneOverlays(){ if(!map||!lib) return; if(ZOV.length) killAll(ZOV); ZOV=[];
-  ZONES.forEach(z=>{ const Z=z.points||[]; if(Z.length<3) return; const el=mk3("pl",{ altitudeMode:"CLAMP_TO_GROUND", strokeColor:"rgba(224,176,0,0.95)", strokeWidth:3, drawsOccludedSegments:true, path:[...Z,Z[0]].map(p=>({ lat:p.lat, lng:p.lng, altitude:1 })) }); if(el) ZOV.push(el); }); }
-
 /* ---------- which automations touch a job (panel, cards) ---------- */
 function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
   return AU.filter(a=>a.on&&a.kind==="rule"&&a.rule&&condsMatch(a,w)&&(()=>{ const t=a.rule.trigger;
@@ -2911,7 +2896,7 @@ function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
     if(t.type==="ready") return waitsOnIds(w).length>0&&isOpen(w);
     if(t.type==="restore") return !!w.enabling&&!w.enabling.restored&&!!enKind(w)?.restore&&isOpen(w);
     if(t.type==="deadline") return !!w.values?.deadline?.start&&isOpen(w);
-    if(t.type==="change"||t.type==="area") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
+    if(t.type==="change") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
     return false; })()); }
 function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
   const a=w.series?AUX(w.series.auto):null;
@@ -2939,7 +2924,7 @@ function renderAuto(){ const root=$("#auto-root"); if(!root) return;
   const row=a=>{ const meta=a.kind==="schedule"?(a.on?(a.schedule?.mode==="after"&&seriesJobs(a).some(isOpen)?`after ${seriesJobs(a).find(isOpen).id}`:`next ${nextLabel(a)}`):"off"):(a.runCount?`${a.runCount}× · ${fmtDate(a.lastRun)}`:"not run yet");
     const line=(a.text||[]).length&&segText(a.text).trim()?segText(a.text):a.kind==="schedule"?`${rhythmLong(a)}${a.schedule?.template?.from?` · copy of ${a.schedule.template.from}`:""}`:`${trigText(a.rule.trigger)} → ${(a.rule.actions||[]).map(actPhrase).join(", ")||"nothing yet — write it"}`;
     return `<div class="au-row ${AUV.sel===a.id?"sel":""} ${a.on?"":"off"}" data-au="${a.id}"><button class="au-main" data-au-pick="${a.id}"><span class="au-ic ${a.kind}">${a.kind==="schedule"?"↻":BOLT}</span><span class="au-txt"><b>${P(a.name)}</b><span>${P(line)}</span></span><span class="au-meta mono">${P(meta)}</span></button><button class="au-sw ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn ${P(a.name)} on or off" ${ed?"":"disabled"}><i></i></button></div>`; };
-  const list=`${f==="schedule"?`<section class="au-sec">${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Use ＋ New schedule and pick a job you repeat.</div>`}</section>`:""}${f==="rule"?`<section class="au-sec">${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}${ZONES.length&&f==="rule"?`<section class="au-sec"><h3>Zones <span>areas drawn on the model that rules can check</span></h3>${ZONES.map(z=>`<div class="au-zone"><i></i><b>${P(z.name)}</b><span class="hint">${(z.points||[]).length} corners · ${live().filter(w=>jobInZone(w,z)).length} jobs touch it</span></div>`).join("")}</section>`:""}`;
+  const list=`${f==="schedule"?`<section class="au-sec">${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Use ＋ New schedule and pick a job you repeat.</div>`}</section>`:""}${f==="rule"?`<section class="au-sec">${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}`;
   root.innerHTML=`<div class="au-head"><div><div class="au-crumb">Automations <span>›</span> <button class="link" id="au-switch" aria-label="Switch between Schedules and Rules">${f==="schedule"?"Schedules":"Rules"} ▾</button></div><h2>${f==="schedule"?"Schedules":"Rules"}</h2><div class="hint">${f==="schedule"?"Jobs that repeat on their own: on a calendar, or a set time after the last one was completed.":"Things Dispatch does the moment something happens to a job."}${ed?"":" Only admins can change them."}</div></div><span class="sp"></span>
     <span class="hint mono">${mine.filter(a=>a.on).length} of ${mine.length} on</span>
     ${ed?(f==="schedule"?`<button class="btn primary" id="au-new-s">＋ New schedule</button>`:`<button class="btn primary" id="au-new-r">＋ New rule</button>`):""}</div>
@@ -2947,11 +2932,11 @@ function renderAuto(){ const root=$("#auto-root"); if(!root) return;
   wireAuto(root); }
 /* ---------- writing automations: a sentence with /tokens, read back in plain words ----------
    An automation's `text` is a list of segments: { t:"plain words" } or { tok:{ k, ... }, label }.
-   Tokens: opt {pid,value} · status {id} · person {name,email} · zone {id} · job {id}. The words around them are read
+   Tokens: opt {pid,value} · status {id} · person {name,email} · job {id}. The words around them are read
    by compileRule / compileSchedule below into the same trigger / conditions / actions the engine already runs, and the
    panel shows that reading back so nobody has to trust a guess. */
 const segText=(segs=[])=>segs.map(s=>s.tok?s.label:s.t).join("");
-const tokLabel=tok=>tok.k==="opt"?tok.value:tok.k==="status"?(status(tok.id)?.name||tok.id):tok.k==="person"?personLabel(tok):tok.k==="zone"?(ZONES.find(z=>z.id===tok.id)?.name||tok.id):tok.k==="job"?tok.id:"?";
+const tokLabel=tok=>tok.k==="opt"?tok.value:tok.k==="status"?(status(tok.id)?.name||tok.id):tok.k==="person"?personLabel(tok):tok.k==="job"?tok.id:"?";
 /* the sentence as a string with ⟦i⟧ where token i sits, lower-cased words */
 function segFlat(segs){ const toks=[]; let s=""; for(const g of segs||[]){ if(g.tok){ s+=` ⟦${toks.length}⟧ `; toks.push(g.tok); } else s+=String(g.t||"").toLowerCase().replace(/[’`]/g,"'"); } return { s:s.replace(/\s+/g," "), toks }; }
 const EMAILV=/\b(notify|notifies|notified|email|emails|e-mail|tell|tells|send|sends|message|messages|let|lets|inform|informs|alert|alerts|remind|reminds|ping|pings|update|updates)\b/g;
@@ -2971,7 +2956,6 @@ function compileRule(segs){
   else if(/\b(completed|complete|done|finished|closed|signed off)\b/.test(s)) trigger={ type:"status", to:"complete" };
   else if(/\b(in progress|started|starts|begins|kicks off|gets going)\b/.test(s)) trigger={ type:"status", to:"progress" };
   else if(/\bon hold\b/.test(s)){ const h=statuses().find(o=>/hold/i.test(o.name)); trigger={ type:"status", to:h?.id||"todo" }; }
-  else if(toks.some(t=>t.k==="zone")&&/\b(drawn|draw|placed|marked|inside|within|in|touches|touching|crosses|crossing|enters|near|on)\b/.test(s)) trigger={ type:"area" };
   else trigger={ type:"change" };
   const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="restore"?"restore":trigger.type==="deadline"?"reminder":"note";
   const hold=/\b(right away|immediately|straight away|at once|without waiting|instantly)\b/.test(s)?0:(m=s.match(/wait(?:ing)?\s*(\d+)\s*min/))?+m[1]:trigger.type==="deadline"?0:5;
@@ -2979,7 +2963,6 @@ function compileRule(segs){
     if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); if(/include|loop|cc/.test(v.w)) actions.push({ type:"cc", person:{ name:t.name||"", email:t.email } }); }
       else actions.push({ type:"email", to:"person", person:{ name:t.name||"", email:t.email }, what, hold }); }
     else if(t.k==="opt"){ const lead=before(i).slice(-40); if(v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
-    else if(t.k==="zone") conds.push({ type:"zone", zone:t.id });
     else if(t.k==="job") note.push(`${t.id} is ignored here: rules apply to every job that matches.`); });
   if(/\b(the people on it|people on the job|people on it|the crew|everyone on (?:it|the job)|tagged people|the people tagged|assignees|whoever is (?:on|tagged))\b/.test(s)) actions.unshift({ type:"email", to:"people", what, hold });
   const q=s.match(/\bask(?:s|ing)?\b\s*(?:them\s*|the user\s*|people\s*)?(?:"([^"]+)"|“([^”]+)”|(?:if|whether)\s+([^.⟦]+))/); if(q){ const raw=(q[1]||q[2]||q[3]||"").trim(); const src=segText(segs); const exact=src.match(/[“"]([^”"]+)[”"]/); let qt=exact?exact[1]:raw; qt=qt.charAt(0).toUpperCase()+qt.slice(1); if(!/\?$/.test(qt)) qt+="?"; actions.push({ type:"ask", q:qt }); }
@@ -2987,7 +2970,7 @@ function compileRule(segs){
   if(trigger.type==="before"&&!actions.some(x=>x.type==="ask")) err.push("A rule that runs before a status change can only ask a question — write it in quotes after “ask”.");
   if(trigger.type!=="before"&&actions.some(x=>x.type==="ask")) note.push("Questions are only asked by rules that start with “Before …”; this one will ignore it.");
   if(!actions.length) err.push("Say what should happen: for example “notify /someone”, “tag /someone” or “gets /a permit”.");
-  if(!segs?.some(g=>g.tok)&&!actions.length) err.push("Type / to pull in a person, property, status or zone.");
+  if(!segs?.some(g=>g.tok)&&!actions.length) err.push("Type / to pull in a person, property or status.");
   return { rule:{ trigger, conds, actions }, err, note }; }
 const MONTHS=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 function compileSchedule(segs,prev={}){
@@ -3019,7 +3002,7 @@ function readbackHTML(a,c){ const L=(l,v)=>`<div class="au-rl">${l}</div><div cl
   return `<div class="au-read">${h}</div>${c.err.slice(0,1).map(e=>`<div class="au-issue bad">${P(e)}</div>`).join("")}${c.note.map(e=>`<div class="au-issue">${P(e)}</div>`).join("")}`; }
 const compileFor=(a,segs)=>a.kind==="rule"?compileRule(segs):compileSchedule(segs,a.schedule);
 /* token markup (list rows and the composer) */
-const tokClass=k=>({ opt:"opt", status:"st", person:"pe", zone:"zo", job:"jo" })[k]||"opt";
+const tokClass=k=>({ opt:"opt", status:"st", person:"pe", job:"jo" })[k]||"opt";
 function segsHTML(segs,editable){ return (segs||[]).map(g=>g.tok?`<span class="au-tok ${tokClass(g.tok.k)}" ${editable?`contenteditable="false" data-tok="${P(JSON.stringify(g.tok))}"`:""}>${P(g.label||tokLabel(g.tok))}</span>`:P(g.t)).join(""); }
 function readSegs(el){ const out=[]; const push=t=>{ if(!t) return; const l=out[out.length-1]; if(l&&!l.tok) l.t+=t; else out.push({ t }); };
   const walk=n=>{ n.childNodes.forEach(c=>{ if(c.nodeType===3) push(c.nodeValue.replace(/ /g," ")); else if(c.dataset?.tok){ try{ out.push({ tok:JSON.parse(c.dataset.tok), label:c.textContent }); }catch{} } else if(c.nodeName==="BR") push(" "); else walk(c); }); };
@@ -3031,8 +3014,7 @@ function slashItems(kind,q){ q=(q||"").toLowerCase().trim(); const items=[];
   if(kind==="schedule") live().filter(w=>!w.draft).forEach(w=>items.push({ group:"Jobs", label:`${w.id} · ${w.title||"Untitled"}`, tok:{ k:"job", id:w.id } }));
   [...people.values()].forEach(p=>items.push({ group:"People", label:p.name||p.email, sub:p.email, tok:{ k:"person", ...p } }));
   if(kind==="rule"){ props().filter(p=>(p.type==="multi"||p.type==="select")&&p.options?.length).forEach(p=>p.options.forEach(o=>items.push({ group:p.name, label:o.name, tok:{ k:"opt", pid:p.id, value:o.name } })));
-    statuses().forEach(o=>items.push({ group:"Status", label:o.name, tok:{ k:"status", id:o.id } }));
-    ZONES.forEach(z=>items.push({ group:"Zones", label:z.name, tok:{ k:"zone", id:z.id } })); }
+    statuses().forEach(o=>items.push({ group:"Status", label:o.name, tok:{ k:"status", id:o.id } })); }
   const hit=items.filter(x=>!q||(x.label+" "+(x.sub||"")+" "+x.group).toLowerCase().includes(q));
   if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q)&&!people.has(q)) hit.unshift({ group:"New person", label:q, tok:{ k:"person", name:"", email:q } });
   return hit.slice(0,40); }
@@ -3048,7 +3030,7 @@ function auDetailHTML(a){ if(!a) return `<div class="au-empty">Nothing here yet.
   const acting=a.kind==="rule"&&a.rule?live().filter(isOpen).filter(w=>rulesFor(w).some(x=>x.id===a.id)):[];
   return `<div class="au-dh"><div style="flex:1;min-width:0"><div class="au-lab">${a.kind==="schedule"?"SCHEDULE":"RULE"}</div><h2 class="au-name" ${ed?`data-au-rename="1" title="Click to rename"`:""}>${P(a.name)}</h2><div class="hint">${a.on?"On":"Off"} · ${a.kind==="schedule"?"checks every minute while Dispatch is open":"runs the moment a job changes"}</div></div><button class="au-sw big ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn this automation on or off" ${ed?"":"disabled"}><i></i></button></div>
     <div><div class="au-lab">WRITE IT</div><div class="au-write ${ed?"":"ro"}" id="au-write" ${ed?`contenteditable="true" role="textbox" aria-multiline="true" aria-label="Write the ${a.kind}" spellcheck="true"`:""} data-ph="${a.kind==="schedule"?"e.g. Repeat /J-26-001 every month, due 7 days later":"e.g. Every /UT thickness job notifies /Karen Liu when it's completed"}">${segsHTML(segs,ed)}</div>
-      <div class="au-hint">${ed?`Type <b>/</b> to pull in ${a.kind==="schedule"?"a job or a person":"a person, a property value, a status or a zone"}. ${a.kind==="schedule"?"Say how often (“every month”, “every year on Apr 15”, “12 months after it's completed”), when it's due and how far ahead to create it.":"Say when (“when it's completed”, “3 days before the deadline”, “before it goes /In progress”) and what to do (“notify”, “tag”, “gets /Track protection”, “ask “…?””)."}`:""}</div></div>
+      <div class="au-hint">${ed?`Type <b>/</b> to pull in ${a.kind==="schedule"?"a job or a person":"a person, a property value or a status"}. ${a.kind==="schedule"?"Say how often (“every month”, “every year on Apr 15”, “12 months after it's completed”), when it's due and how far ahead to create it.":"Say when (“when it's completed”, “3 days before the deadline”, “before it goes /In progress”) and what to do (“notify”, “tag”, “gets /Track protection”, “ask “…?””)."}`:""}</div></div>
     <div><div class="au-lab">DISPATCH READS THIS AS</div><div id="au-readback">${readbackHTML(a,c)}</div>
       ${ed?`<div class="au-savebar" id="au-savebar" ${AUD.id===a.id&&AUD.dirty?"":"hidden"}><span class="hint">Not saved yet</span><button class="btn" id="au-revert">Undo changes</button><button class="btn primary" id="au-save" ${c.err.length?"disabled":""}>Save</button></div>`:""}</div>
     ${series}
@@ -3121,7 +3103,7 @@ function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ 
 document.addEventListener("click",e=>{ const o=e.target.closest("[data-au-open]"); if(o){ e.preventDefault(); openAuto(o.dataset.auOpen); return; }
   const c=e.target.closest("[data-au-cancel]"); if(c){ e.preventDefault(); cancelEmail(c.dataset.auCancel,c.dataset.mid); } });
 
-if(MOCK) window.__auto={ get AU(){ return AU; }, get ZONES(){ return ZONES; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), jobInZone:(id,z)=>jobInZone(W(id),ZONES.find(x=>x.id===z)), cancelEmail, get ZOV(){ return ZOV; }, compileRule, compileSchedule, segText, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
+if(MOCK) window.__auto={ get AU(){ return AU; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), cancelEmail, compileRule, compileSchedule, segText, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
 #view-auto{overflow:auto;background:var(--ground)}
@@ -3141,7 +3123,7 @@ if(MOCK) window.__auto={ get AU(){ return AU; }, get ZONES(){ return ZONES; }, t
 .au-meta{font-size:11px;color:var(--ink-3);white-space:nowrap;text-align:right}
 .au-sw{width:36px;height:20px;flex:none;margin-right:10px;border-radius:999px;border:0;padding:0;position:relative;cursor:pointer;background:var(--line)}.au-sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}.au-sw.on{background:var(--accent)}.au-sw.on i{left:18px}.au-sw:disabled{cursor:default;opacity:.6}
 .au-sw.big{width:44px;height:24px;margin:16px 0 0}.au-sw.big i{width:18px;height:18px;top:3px;left:3px}.au-sw.big.on i{left:23px}
-.au-zone{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px}.au-zone i{width:22px;height:12px;border:2px dashed #E0B000;border-radius:3px;background:rgba(224,176,0,.12)}
+
 .au-detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 22px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0}
 .au-dh{display:flex;gap:12px;align-items:flex-start}.au-name{margin:0;font-size:20px;font-weight:600;line-height:1.3;cursor:text}
 .au-lab{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--ink-3);margin-bottom:6px}
@@ -3164,7 +3146,7 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 .au-write:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(75,30,171,.18)}.au-write.ro{background:var(--panel-2)}
 .au-write:empty:before{content:attr(data-ph);color:var(--ink-3)}
 .au-tok{display:inline-block;border-radius:6px;padding:0 7px;line-height:1.55;font-size:.92em;font-weight:600;white-space:nowrap;margin:0 1px;vertical-align:baseline}
-.au-tok.pe{background:#E3D6FA;color:#331466}.au-tok.opt{background:#CFE1FB;color:#0D3A73}.au-tok.st{background:#FBD9BF;color:#5A2E00}.au-tok.zo{background:#F7E7A9;color:#4A3900}.au-tok.jo{background:#CFEBD9;color:#0F4A2C;font-family:var(--mono);font-weight:500}
+.au-tok.pe{background:#E3D6FA;color:#331466}.au-tok.opt{background:#CFE1FB;color:#0D3A73}.au-tok.st{background:#FBD9BF;color:#5A2E00}.au-tok.jo{background:#CFEBD9;color:#0F4A2C;font-family:var(--mono);font-weight:500}
 .au-hint{font-size:12px;color:var(--ink-3);margin-top:6px}.au-hint b{color:var(--accent);font-family:var(--mono)}
 .au-read{display:grid;grid-template-columns:78px minmax(0,1fr);gap:6px 12px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--panel-2);font-size:13.5px}
 .au-rl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);padding-top:2px}.au-rv{color:var(--ink)}
@@ -3247,7 +3229,7 @@ async function demoSeed(DB){
   const railops={ email:"rail.ops@example.com", name:"Rail operations" };
   const JV=n=>J.find(j=>j.n===n).values;
   [6,10,13].forEach(n=>{ const v=JV(n); v.people=[...(v.people||[]),priya]; });   // "Scaffold requests include Priya Nair" already ran on these
-  JV(12).people=[...(JV(12).people||[]),railops]; JV(12).permits=[...(JV(12).permits||[]),PM("Track protection")];   // rail corridor rule ran when 012 was drawn
+  JV(12).people=[...(JV(12).people||[]),railops]; JV(12).permits=[...(JV(12).permits||[]),PM("Track protection")];   // rail job: Rail operations tagged, track protection permit
   const SER={ 1:["s1",4], 2:["s3",3], 4:["s2",3], 6:["s6",2], 9:["s4",2], 11:["s5",2] };
   for(const j of J){ const id=ID(j.n);
     const doc={ seq:j.n, title:j.title, statusId:j.st, values:j.values, location:{ points:j.pts, height:j.height||0, closed:!!j.closed }, created:j.created, createdBy:me, edited:j.created, editedBy:me, trashed:false, draft:false, completedAt:j.completedAt||null, noteCount:0 };
@@ -3285,9 +3267,9 @@ async function demoSeed(DB){
   await th("t3",{ jobId:"J-26-004", n:1, addr:"j-26-004-t1@mail.skygauge.co", subject:"Clarifier outage window", about:{ kind:"job" }, participants:[marco], created:ago(1,2), createdBy:marco },
     [{ dir:"in", from:marco, t:ago(1,2), text:"We can drain C-2 for four hours on the 14th. Does that work for the inspection crew?" }]);
 
-  // ---------- automations: the six repeating jobs become schedules; seven rules; one zone ----------
+  // ---------- automations: the six repeating jobs become schedules; six rules ----------
   const tplOf=n=>{ const j=J.find(x=>x.n===n); const v=structuredClone(j.values); delete v.deadline; return { from:ID(n), title:j.title, values:v, location:{ points:j.pts, height:j.height||0, closed:!!j.closed } }; };
-  const T=t=>({ t }), PE=p=>({ tok:{ k:"person", name:p.name, email:p.email }, label:p.name }), OP=(pid,v)=>({ tok:{ k:"opt", pid, value:v }, label:v }), ST=(id,l)=>({ tok:{ k:"status", id }, label:l }), ZO=(id,l)=>({ tok:{ k:"zone", id }, label:l }), JO=n=>({ tok:{ k:"job", id:ID(n) }, label:ID(n) });
+  const T=t=>({ t }), PE=p=>({ tok:{ k:"person", name:p.name, email:p.email }, label:p.name }), OP=(pid,v)=>({ tok:{ k:"opt", pid, value:v }, label:v }), ST=(id,l)=>({ tok:{ k:"status", id }, label:l }), JO=n=>({ tok:{ k:"job", id:ID(n) }, label:ID(n) });
   const at6=(d)=>{ const x=new Date(Date.now()-d*86400000); x.setHours(6,0,0,0); return x.toISOString(); };
   const AUTO=[
     { id:"s1", kind:"schedule", text:[T("Repeat "),JO(1),T(" every month, due 7 days after it's created.")], name:"Tank T-1 monthly external walkdown", on:true, schedule:{ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", last:at6(9), template:tplOf(1),
@@ -3308,8 +3290,6 @@ async function demoSeed(DB){
     { id:"r2", kind:"rule", name:"UT results go to Karen Liu", on:true, text:[T("I want every "),OP("worktype","UT thickness"),T(" job to notify "),PE(karen),T(" when it's completed for her review.")], runs:[] },
     { id:"r3", kind:"rule", name:"Tell the crew when a job is ready to start", on:true, text:[T("When a job is ready to start, email the people on it.")], runs:[] },
     { id:"r4", kind:"rule", name:"Book the strip-down when restore is due", on:true, text:[T("When a restore is due, email "),PE(priya),T(" to book it and set the deadline 7 days out.")], runs:[] },
-    { id:"r5", kind:"rule", name:"Rail corridor jobs need track protection", on:true, text:[T("Every job drawn in the "),ZO("rail","Rail corridor"),T(" gets "),OP("permits","Track protection"),T(" and tags "),PE(railops),T(".")],
-      runs:[[3,"J-26-012","added permit Track protection · tagged Rail operations"]] },
     { id:"r6", kind:"rule", name:"Deadline reminders", on:true, text:[T("3 days before the deadline, remind the people on it.")], runs:[[0.2,"J-26-008","emailed Marco Bellini"]] },
     { id:"r7", kind:"rule", name:"Hot work check before starting", on:true, text:[T("Before a "),OP("permits","Hot work"),T(" job goes "),ST("in_progress","In progress"),T(", ask “Is the hot work permit issued and posted?”")], runs:[] },
   ];
@@ -3319,13 +3299,10 @@ async function demoSeed(DB){
     for(const [k,[d,job,did]] of rs.entries()) await DB.set(AU_COL+"/"+id+"/runs/x"+k,{ t:ago(d), job, did, result:"Done" }); }
   const autoBy=a=>({ uid:"automation", name:"Automation", email:"", auto:a, autoName:AUTO.find(x=>x.id===a).name });
   for(const [n,d] of [[13,12],[10,12],[6,8]]) await act(n,ago(d),"tagged Priya Nair (Scaffold requests include Priya Nair)",autoBy("r1"));
-  await act(12,ago(3),"added permit Track protection (Rail corridor jobs need track protection)",autoBy("r5")); await act(12,ago(3),"tagged Rail operations (Rail corridor jobs need track protection)",autoBy("r5"));
   await act(1,ago(9),"created this job from “Tank T-1 monthly external walkdown” (4th in the series)",autoBy("s1"));
   await th("t4",{ jobId:"J-26-008", n:1, addr:"j-26-008-t1@mail.skygauge.co", subject:"Due "+ahead(1)+" · J-26-008 · Pump P-402 mechanical seal replacement", about:{ kind:"auto", label:"Deadline reminders", auto:"r6" }, participants:[marco], created:ago(0.2), createdBy:autoBy("r6") },
     [{ dir:"out", from:{ email:"j-26-008@mail.skygauge.co", name:"Dispatch automation" }, to:[marco], t:ago(0.2), text:"J-26-008 · Pump P-402 mechanical seal replacement is due tomorrow and is In progress.", auto:"r6" }]);
   await act(8,ago(0.2),"will email Marco Bellini a deadline reminder (Deadline reminders)",autoBy("r6"));
-  const railZ=polyU([1300,560],[1300,700],[1292,840],[1287,930],[1272,1040],[1252,1120],[1222,1200],[1192,1280],[1172,1330],[1212,1330],[1268,1280],[1298,1200],[1330,1120],[1355,1040],[1392,930],[1432,840],[1500,700],[1565,560]);
-  await DB.set(ZONE_COL+"/rail",{ name:"Rail corridor", color:"yellow", points:railZ });
 }
 
 /* =====================================================================
