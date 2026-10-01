@@ -2969,7 +2969,7 @@ function rhythmLong(a){ const s=a.schedule||{};
   const d=s.last?new Date(s.last).getDate():1; return `Every ${(s.every||1)>1?s.every+" months":"month"} on the ${ordinal(d)}`; }
 function nextOcc(a,after){ const s=a.schedule||{}; const base=new Date(after||s.last||a.created||now());
   if(s.unit==="week") return addDays(base,7*(s.every||1));
-  if(s.unit==="year"){ const ds=(s.dates||[{m:1,d:1}]); for(let y=base.getFullYear();y<=base.getFullYear()+2;y++) for(const {m,d} of ds.slice().sort((p,q)=>p.m-q.m||p.d-q.d)){ const c=new Date(y,m-1,d,6,0,0); if(c>base) return c; } return addMonths(base,12); }
+  if(s.unit==="year"){ const ds=(s.dates||[{m:1,d:1}]); for(let y=base.getFullYear();y<=base.getFullYear()+2;y++) for(const {m,d} of ds.slice().sort((p,q)=>p.m-q.m||p.d-q.d)){ const c=new Date(y,m-1,d,6,0,0); if(ymd(c)>ymd(base)) return c; /* by calendar day: the demo shifts stored times, and 06:00 here is not 06:00 UTC */ } return addMonths(base,12); }
   return addMonths(base,s.every||1); }
 function lastDone(a){ const done=seriesJobs(a).filter(isDone).map(w=>w.completedAt).filter(Boolean).sort(); return done.length?done[done.length-1]:(a.schedule?.lastDone||null); }
 /* when the next job will be created (Date), or null when it waits on an open one */
