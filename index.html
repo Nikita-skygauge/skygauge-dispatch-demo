@@ -634,7 +634,7 @@ function defaultSchema(){
     cardProps:["asset","deadline","people"],
   };
 }
-const GROUPS = { todo:"To-do", progress:"In progress", complete:"Complete" };
+const GROUPS = { todo:"To-do", progress:"In progress", complete:"Completed" };
 
 /* =====================================================================
    DATA LAYER — one interface, two backends (Firestore / in-memory mock)
@@ -1362,7 +1362,7 @@ function renderCreate(w){
 /* =====================================================================
    VIEWS — Board, Table, Trash + register + top bar
    ===================================================================== */
-function filtered(){ const q=S.q.trim().toLowerCase(); return live().filter(w=>(!q||textOf(w).includes(q))&&(typeof lkPass!=="function"||lkPass(w))); }
+function filtered(links=true){ const q=S.q.trim().toLowerCase(); return live().filter(w=>(!q||textOf(w).includes(q))&&(!links||typeof lkPass!=="function"||lkPass(w))); }   // the Waiting/Ready filter belongs to the Jobs tab; the Viewer list only follows the search
 function renderAll(){
   if(!S.schema) return;
   const open=live().filter(isOpen); $("#tab-open").textContent=open.length||"";
@@ -1432,7 +1432,7 @@ function propsToggle(anchor){
 function renderTree(){
   const q=S.q.trim().toLowerCase();
   if(S.sub==="wo"){
-    const rows=filtered();
+    const rows=filtered(false);
     $("#tree").innerHTML=["todo","progress","complete"].map(g=>{ const ws=rows.filter(w=>status(w.statusId)?.group===g); if(!ws.length) return ""; return `<div class="eyebrow" style="padding:8px 8px 2px">${GROUPS[g]} · ${ws.length}</div>${ws.map(w=>`<div class="it ${S.open===w.id?"sel":""}" data-wo="${w.id}"><span class="tag">${w.id.slice(-3)}</span><span class="n" title="${P(w.title)}">${P(w.title||"Untitled")}</span><i style="width:8px;height:8px;border-radius:50%;background:${col(status(w.statusId)?.color).map};flex:none"></i></div>`).join("")}`; }).join("")||`<div class="kempty">No jobs yet.<br><button class="link" id="tree-new">Create the first one</button></div>`;
     $("#tree-new")?.addEventListener("click",()=>startCreate());
   } else {
@@ -1745,7 +1745,7 @@ function onMapClick(e){
   if(V.draw){ const d=V.draw; if(PV.overBox) return; if(!d.site&&!inPoly(p,BOUNDARY())){ toast("Outside the site boundary.",true); return; }
     if(d.moving&&d.sel!=null){ d.pts[d.sel]={ ...d.pts[d.sel], ...p }; d.moving=false; selChanged(); return; }   // stays selected: the box comes back on the moved point
     if(PV.seg){ selInsertAt(p,PV.seg.i); return; }
-    if(d.closed){ toast("The area is closed — click the line to add a corner, Reopen it, or press Done.",true); return; }
+    if(d.closed){ toast("The area is closed — click the line to add a point, Reopen it, or press Done.",true); return; }
     d.pts.push(p); d.sel=null; selChanged(); return; }
   if(V.placing){ if(!inPoly(p,BOUNDARY())){ toast("Outside the site boundary.",true); return; } const pl=V.placing; V.placing=null; map.classList.remove("placing"); resetMode(); pl.onPlace(p); orbitSync(); }
 }
@@ -1808,10 +1808,10 @@ function renderHint(){ const wrap=$("#canvas-wrap"); if(!wrap) return; if(!HINT)
   let txt, btns="";
   if(d.moving&&d.sel!=null){ txt=`${verb} the model where point <b>${d.sel+1}</b> goes`; btns=`<button type="button" data-hint="cancel-move">Cancel move</button>`; }
   else {
-    const v=verb.toLowerCase(), corner=d.closed?"Corner":"Point";
+    const v=verb.toLowerCase(), corner="Point";
     if(n===0) txt=d.live&&d.initial.points.length?`${d.label} cleared · ${verb} the model to start again`:`${verb} the model to place the first point`;
     else if(d.sel!=null) txt=`${corner} <b>${d.sel+1}</b> · pick a tool${d.closed?"":`, or ${v} the model to add`}`;
-    else if(d.closed) txt=`Area · <b>${n}</b> corners · ${v} the line to add a corner, a pin to edit`;
+    else if(d.closed) txt=`Area · <b>${n}</b> points · ${v} the line to add a point, a pin to edit`;
     else if(n===1) txt=`Point${d.live?" · saved":""} · ${v} the model to add`;
     else txt=`Line · <b>${n}</b> points · ${v} the model to add, a pin to edit${n>=3&&!d.needClosed?", or close the area":""}${d.needClosed?" · an area needs three, then Close":""}`;
     const ok=n>=1&&!(d.needClosed&&!d.closed); const label=d.primary?.label||"Done ✓";
@@ -1871,7 +1871,7 @@ function addPoints(id){ const w=W(id); if(!w||!map){ toast("The map is not loade
     onChange:sh=>setPoints(id,sh.points,undefined,true,sh.closed),
     onDone:sh=>{ setPoints(id,sh.points,undefined,true,sh.closed); syncPointHandles(); relock(); if(!W(id)?.draft&&JSON.stringify(sh)!==JSON.stringify(before)) log(id, sh.kind==="none"?"cleared the job area":before.kind==="none"?`set the job area (${shapeLabel(sh)})`:`changed the job area (${shapeLabel(sh)})`); if(typeof editLoc!=="undefined"&&editLoc===id){ editLoc=null; renderRecord(); } },
     onCancel:sh=>{ setPoints(id,sh.points,undefined,true,sh.closed); syncPointHandles(); relock(); if(typeof editLoc!=="undefined"&&editLoc===id){ editLoc=null; renderRecord(); } } }); }
-function shapeLabel(sh){ const n=sh.points.length; return sh.kind==="point"?"point":sh.kind==="line"?`line · ${n} points`:`area · ${n} corners`; }
+function shapeLabel(sh){ const n=sh.points.length; return sh.kind==="point"?"point":sh.kind==="line"?`line · ${n} points`:`area · ${n} points`; }
 function relock(){ if(S.woView&&S.open&&map){ const w=W(S.open); if(w&&pts(w).length) flyWO(w); } }
 function movePoint(id,i){ const w=W(id); if(!w||!map){ toast("The map is not loaded.",true); return; } if(S.tab!=="map") setTab("map"); if(!V.draw) addPoints(id); selMove(i); }
 /* clicking a placed point (numbered handle on the model, or a row in the job-area list) opens the 3D selector with that
@@ -2272,7 +2272,7 @@ const NEXP=new Set();
 const GLYPH={ pin:'<svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6z" fill="#FFD400" stroke="#0B0F1F" stroke-width="1.2"/></svg>',
   line:'<svg viewBox="0 0 20 20"><path d="M3 15l5-7 4 3 5-7" fill="none" stroke="#FFD400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   area:'<svg viewBox="0 0 20 20"><path d="M3 12l6-7 8 4-5 7z" fill="rgba(255,212,0,.3)" stroke="#FFD400" stroke-width="1.8" stroke-linejoin="round"/></svg>' };
-function noteMetaExtra(n){ if(n.kind==="model"){ const P=notePts(n), sh=noteShape(n); if(sh==="area") return `${P.length} corners`; if(sh==="line"){ let L=0; for(let i=1;i<P.length;i++) L+=dist3(P[i-1],P[i]); return `${P.length} points · ${fmtDist(L)}`; } return ""; }
+function noteMetaExtra(n){ if(n.kind==="model"){ const P=notePts(n), sh=noteShape(n); if(sh==="area") return `${P.length} points`; if(sh==="line"){ let L=0; for(let i=1;i<P.length;i++) L+=dist3(P[i-1],P[i]); return `${P.length} points · ${fmtDist(L)}`; } return ""; }
   if(n.kind==="file"){ const fs=n.files||[]; const b=fs.reduce((a,f)=>a+(f.size||0),0); return `${fs.length} file${fs.length===1?"":"s"}${b?" · "+fmtBytes(b):""}`; }
   if(n.kind==="text"&&n.text){ const t=n.text.trim().replace(/\s+/g," "); return t.length>48?`“${t.slice(0,48)}…”`:`“${t}”`; }
   if(n.kind==="photo"&&n.text) return n.text.trim().slice(0,48); return ""; }
@@ -2393,9 +2393,9 @@ function renderNoteView(w){
   $("#pk-id").textContent=w.id; const showFiles=n.kind==="file"||(n.files||[]).length>0||depth>=NOTE_DEPTH;
   $("#pbody").innerHTML=`<div class="nview">
     <div class="ctx"><span class="tag">Note</span><span class="lvl">${[1,2,3].map(l=>`<s class="${l<=depth?"on":""}"></s>`).join("")}</span><span class="crumbs">${crumbs.map(c=>c.here?`<b>${P(c.label)}</b>`:`<a href="#" data-crumb="${c.id||""}">${P(c.label)}</a><span class="sep">›</span>`).join("")}</span><button class="btn sm" id="nv-mail" title="Start an email thread about this note">✉ Email</button><button class="btn sm teal" id="nv-back" title="Back (Esc)">‹ ${depth>1?"Back":"Back to job"}</button></div>
-    <div class="nhead"><span class="kico big">${KIND_ICON[n.kind]}</span><input class="ntitle-in" id="nv-title" placeholder="${P(noteTitle(n))}" value="${P(n.title||"")}"><span class="chip soft">${n.kind==="model"?`${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}`:n.kind==="photo"?"Photo":n.kind==="file"?"Files":"Text"}</span></div>
+    <div class="nhead"><span class="kico big">${KIND_ICON[n.kind]}</span><input class="ntitle-in" id="nv-title" placeholder="${P(noteTitle(n))}" value="${P(n.title||"")}"><span class="chip soft">${n.kind==="model"?"On model":n.kind==="photo"?"Photo":n.kind==="file"?"Files":"Text"}</span></div>
     <textarea class="ntext big" id="nv-text" rows="2" placeholder="${n.kind==="text"?"Write the note…":"Add text to this note…"}">${P(n.text||"")}</textarea>
-    ${n.kind==="model"?`<section class="ps"><h3 style="cursor:default">Location <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span></h3><div class="strip" id="nv-loc"><span class="lab">Location</span><span class="val">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span><button class="btn sm teal" id="nv-move">${noteShape(n)==="pin"?"Move":"Edit"}</button></div></section>`:""}
+    ${n.kind==="model"?`<section class="ps"><h3 style="cursor:default">Location</h3><div class="strip" id="nv-loc"><span class="lab">Shape</span><span class="val">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span><button class="btn sm teal" id="nv-move">${noteShape(n)==="pin"?"Move":"Edit"}</button></div></section>`:""}
     ${n.kind==="photo"?`<section class="ps"><h3 style="cursor:default">Photo</h3>${p?`<div class="nphoto"><div class="pw" id="nv-img"><img src="${p.thumb}" alt=""><svg viewBox="0 0 1 1" preserveAspectRatio="none">${(p.marks||[]).map(markSVG).join("")}</svg></div><div class="acts" style="margin-top:8px"><button class="btn sm teal" id="nv-edit">✎ Open photo editor</button><button class="btn sm" id="nv-move-ph">Move on model</button></div><div class="strip ppos"><span class="lab">Position</span><span class="val">${P(photoPosText(p))}</span></div></div>
       ${p.marks?.length?`<div class="eyebrow" style="margin:10px 0 4px">Drawings on this photo · ${p.marks.length}</div><div class="marks nvmarks">${p.marks.map((m,i)=>`<div class="mk" data-mid="${m.id}"><span class="dot" style="background:${m.color}">${m.type==="point"?(m.n||""):""}</span><textarea class="in note" data-mid="${m.id}" rows="1" placeholder="${m.type==="point"?"Note for point "+(m.n||""):"Note for this drawing"}…">${P(m.note||"")}</textarea><button class="btn sm" data-open="${m.id}" title="Open in the editor">↗</button></div>`).join("")}</div>`:`<div class="hint" style="margin-top:6px">Open the editor to draw on the photo; each drawing becomes a note here.</div>`}`:`<div class="hint">This photo is no longer available.</div>`}</section>`:""}
     ${showFiles?`<section class="ps"><h3 style="cursor:default;display:flex;align-items:center;gap:8px">${n.kind==="file"?"Files":"Attached files"} <span class="mono" style="font-weight:400">${(n.files||[]).length}</span><button class="btn sm" id="nv-addfile" style="margin-left:auto">＋ Add file</button></h3><input type="file" id="nv-file" multiple hidden><span class="hint" id="nv-upstat"></span>
@@ -2957,13 +2957,14 @@ function actPhrase(x){ switch(x.type){
 
 /* ---------- schedules: timing ---------- */
 const seriesJobs=a=>S.wos.filter(w=>w.series?.auto===a.id&&!w.trashed&&!w.draft).sort((x,y)=>(x.series.n||0)-(y.series.n||0));
+const seriesInTrash=a=>S.wos.find(w=>w.series?.auto===a.id&&w.trashed&&!w.draft&&isOpen(w));   // restorable: the series waits for it; deleting it for good lets the next one be made
 function rhythm(a){ const s=a.schedule||{};
   if(s.mode==="after"){ const m=s.months||12; return m%12===0?(m===12?"Yearly after last":`${m/12}-yearly after last`):`Every ${m} mo after last`; }
   if(s.unit==="week") return s.every>1?`Every ${s.every} weeks`:"Weekly";
   if(s.unit==="year") return (s.dates||[]).length===2?"Twice a year":(s.dates||[]).length>2?`${s.dates.length}× a year`:"Yearly";
   return (s.every||1)>1?`Every ${s.every} months`:"Monthly"; }
 function rhythmLong(a){ const s=a.schedule||{};
-  if(s.mode==="after") return `${s.months||12} months after the last one is completed`;
+  if(s.mode==="after"){ const m=s.months||12; return `${m>=24&&m%12===0?m/12+" years":m+" months"} after the last one is completed`; }
   if(s.unit==="week") return `Every ${s.every>1?s.every+" weeks":"week"}`;
   if(s.unit==="year") return `Every year on ${(s.dates||[]).map(x=>MON[x.m-1]+" "+x.d).join(" and ")}`;
   const d=s.last?new Date(s.last).getDate():1; return `Every ${(s.every||1)>1?s.every+" months":"month"} on the ${ordinal(d)}`; }
@@ -2971,12 +2972,12 @@ function nextOcc(a,after){ const s=a.schedule||{}; const base=new Date(after||s.
   if(s.unit==="week") return addDays(base,7*(s.every||1));
   if(s.unit==="year"){ const ds=(s.dates||[{m:1,d:1}]); for(let y=base.getFullYear();y<=base.getFullYear()+2;y++) for(const {m,d} of ds.slice().sort((p,q)=>p.m-q.m||p.d-q.d)){ const c=new Date(y,m-1,d,6,0,0); if(ymd(c)>ymd(base)) return c; /* by calendar day: the demo shifts stored times, and 06:00 here is not 06:00 UTC */ } return addMonths(base,12); }
   return addMonths(base,s.every||1); }
-function lastDone(a){ const done=seriesJobs(a).filter(isDone).map(w=>w.completedAt).filter(Boolean).sort(); return done.length?done[done.length-1]:(a.schedule?.lastDone||null); }
+function lastDone(a){ const done=S.wos.filter(w=>w.series?.auto===a.id&&!w.draft&&isDone(w)).map(w=>w.completedAt).filter(Boolean).sort(); return done.length?done[done.length-1]:(a.schedule?.lastDone||null); }
 /* when the next job will be created (Date), or null when it waits on an open one */
 function nextFire(a){ const s=a.schedule||{};
-  if(s.mode==="after"){ if(seriesJobs(a).some(isOpen)) return null; const ld=lastDone(a); if(!ld) return null; return addDays(addMonths(ld,s.months||12),-(s.leadDays||0)); }
+  if(s.mode==="after"){ if(seriesJobs(a).some(isOpen)||seriesInTrash(a)) return null; const ld=lastDone(a); if(!ld) return null; return addDays(addMonths(ld,s.months||12),-(s.leadDays||0)); }
   return addDays(nextOcc(a),-(s.leadDays||0)); }
-function nextLabel(a){ const s=a.schedule||{}; if(s.mode==="after"){ const open=seriesJobs(a).find(isOpen); if(open) return `after ${open.id} is completed`; const f=nextFire(a); return f?fmtDate(ymd(f)):"—"; } const f=nextFire(a); return f?fmtDate(ymd(f)):"—"; }
+function nextLabel(a){ const s=a.schedule||{}; if(s.mode==="after"){ const open=seriesJobs(a).find(isOpen); if(open) return `after ${open.id} is completed`; const tr=seriesInTrash(a); if(tr) return `paused — ${tr.id} is in the Trash`; const f=nextFire(a); return f?fmtDate(ymd(f)):"—"; } const f=nextFire(a); return f?fmtDate(ymd(f)):"—"; }
 
 /* ---------- running ---------- */
 async function waitW(id){ for(let i=0;i<40;i++){ const w=W(id); if(w) return w; await new Promise(r=>setTimeout(r,50)); } return null; }
@@ -3042,19 +3043,21 @@ function askPrompt(w,a,q,sid){ return new Promise(res=>{ setTimeout(()=>{
 
 /* schedules create jobs; deadline rules remind; held emails are released */
 async function fireSchedule(a,manual){ const s=a.schedule||{}; const tpl=s.template||{};
-  const occ=manual?(s.mode==="after"?new Date():nextOcc(a)):nextOcc(a);
+  let occ=manual?(s.mode==="after"?new Date():nextOcc(a)):nextOcc(a);
+  const missed=[]; if(s.mode!=="after"){ for(let nx=nextOcc(a,occ);addDays(nx,-(s.leadDays||0))<=new Date()&&missed.length<500;nx=nextOcc(a,occ)){ missed.push(occ); occ=nx; } }   // several dates passed while nobody had Dispatch open: only the latest becomes a job
+  const missTxt=missed.length?` · ${missed.length} earlier date${missed.length===1?"":"s"} missed and not created (${missed.length>3?"…, ":""}${missed.slice(-3).map(d=>fmtDate(ymd(d))).join(", ")})`:"";
   const open=seriesJobs(a).filter(isOpen);
-  if(s.mode!=="after"&&open.length&&s.ifOpen==="skip"&&!manual){ await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString() }); open.forEach(o=>auLog(o,a,`skipped the ${fmtDate(ymd(occ))} occurrence because this one is still open`)); await recordRun(a,open[0],`skipped ${fmtDate(ymd(occ))}: ${open[0].id} still open`,"Skipped"); return null; }
+  if(s.mode!=="after"&&open.length&&s.ifOpen==="skip"&&!manual){ await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString() }); open.forEach(o=>auLog(o,a,`skipped the ${fmtDate(ymd(occ))} occurrence because this one is still open${missTxt}`)); await recordRun(a,open[0],`skipped ${fmtDate(ymd(occ))}: ${open[0].id} still open${missTxt}`,"Skipped"); return null; }
   const n=Math.max(0,...seriesJobs(a).map(w=>w.series?.n||0),(s.history||[]).length)+1;
   const values=structuredClone(tpl.values||{});
   const due=s.mode==="after"?(manual?addDays(new Date(),(s.leadDays||30)):addMonths(lastDone(a),s.months||12)):addDays(occ,s.dueDays??7);
   values.deadline={ start:ymd(due) };
   const id=await createWO({ title:tpl.title||a.name, values, location:structuredClone(tpl.location||{points:[],height:0,closed:false}), series:{ auto:a.id, n }, quiet:true });
   const w=await waitW(id);
-  if(w){ auLog(w,a,`created this job from “${a.name}” (${ordinal(n)} in the series)`); open.forEach(o=>auLog(o,a,`a newer one, ${id}, was created while this one is still open`)); }
+  if(w){ auLog(w,a,`created this job from “${a.name}” (${ordinal(n)} in the series)${missTxt}`); open.forEach(o=>auLog(o,a,`a newer one, ${id}, was created while this one is still open`)); }
   if(s.mode!=="after") await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString() });
   if(s.enabling&&typeof addEnabling==="function"&&w) await addEnabling(id,s.enabling);
-  await recordRun(a,w||{id},`created ${id}, due ${fmtDate(ymd(due))}`);
+  await recordRun(a,w||{id},`created ${id}, due ${fmtDate(ymd(due))}${missTxt}`);
   if(w) autoEvent("created",w);
   return id; }
 async function autoTick(){ if(AU_BUSY||!S.schema) return; AU_BUSY=true;
@@ -3077,7 +3080,7 @@ function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
     return false; })()); }
 function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
   const a=w.series?AUX(w.series.auto):null;
-  if(a) h+=`<div class="strip austrip"><span class="lab">Repeats</span><span class="val">↻ ${P(rhythmLong(a))} · ${ordinal(w.series.n||1)} in the series${a.on?` · next ${P(nextLabel(a))}`:" · schedule is off"}</span><button class="btn sm" data-au-open="${a.id}">Open</button></div>`;
+  if(a) h+=`<div class="strip austrip"><span class="lab">Repeats</span><span class="val">↻ ${P(rhythmLong(a))} · ${ordinal(w.series.n||1)} in the series${a.on?` · ${/^paused/.test(nextLabel(a))?"":"next "}${P(nextLabel(a))}`:" · schedule is off"}</span><button class="btn sm" data-au-open="${a.id}">Open</button></div>`;
   const rs=rulesFor(w);
   if(rs.length) h+=`<div class="strip austrip"><span class="lab">Rules</span><div class="val" style="display:flex;flex-direction:column;gap:3px">${rs.map(r=>`<div><b>${P(whenPhrase(r.rule.trigger))}:</b> ${P((r.rule.actions||[]).map(actPhrase).join(", "))} <button class="link" data-au-open="${r.id}">${P(r.name)}</button></div>`).join("")}</div></div>`;
   return h; }
@@ -3098,7 +3101,7 @@ function renderAuto(){ const root=$("#auto-root"); if(!root) return;
   const f=AUV.f==="schedule"?"schedule":"rule"; AUV.f=f; const ed=auCanEdit();
   const sch=AU.filter(a=>a.kind==="schedule"), rul=AU.filter(a=>a.kind==="rule"), mine=f==="schedule"?sch:rul;
   if(!AUV.sel||AUX(AUV.sel)?.kind!==f) AUV.sel=mine[0]?.id||null;
-  const row=a=>{ const meta=a.kind==="schedule"?(a.on?(a.schedule?.mode==="after"&&seriesJobs(a).some(isOpen)?`after ${seriesJobs(a).find(isOpen).id}`:`next ${nextLabel(a)}`):"off"):(a.runCount?`${a.runCount}× · ${fmtDate(a.lastRun)}`:"not run yet");
+  const row=a=>{ const meta=a.kind==="schedule"?(a.on?(a.schedule?.mode==="after"&&seriesJobs(a).some(isOpen)?`after ${seriesJobs(a).find(isOpen).id}`:(/^paused/.test(nextLabel(a))?nextLabel(a):`next ${nextLabel(a)}`)):"off"):(a.runCount?`${a.runCount}× · ${fmtDate(a.lastRun)}`:"not run yet");
     const line=(a.text||[]).length&&segText(a.text).trim()?segText(a.text):a.kind==="schedule"?`${rhythmLong(a)}${a.schedule?.template?.from?` · copy of ${a.schedule.template.from}`:""}`:`${trigText(a.rule.trigger)} → ${(a.rule.actions||[]).map(actPhrase).join(", ")||"nothing yet — write it"}`;
     return `<div class="au-row ${AUV.sel===a.id?"sel":""} ${a.on?"":"off"}" data-au="${a.id}"><button class="au-main" data-au-pick="${a.id}"><span class="au-ic ${a.kind}">${a.kind==="schedule"?"↻":BOLT}</span><span class="au-txt"><b>${P(a.name)}</b><span>${P(line)}</span></span><span class="au-meta mono">${P(meta)}</span></button><button class="au-sw ${a.on?"on":""}" data-au-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Turn ${P(a.name)} on or off" ${ed?"":"disabled"}><i></i></button></div>`; };
   const list=`${f==="schedule"?`<section class="au-sec">${sch.map(row).join("")||`<div class="hint" style="padding:6px">No schedules yet. Use ＋ New schedule and pick a job you repeat.</div>`}</section>`:""}${f==="rule"?`<section class="au-sec">${rul.map(row).join("")||`<div class="hint" style="padding:6px">No rules yet.</div>`}</section>`:""}`;
@@ -3126,24 +3129,29 @@ function compileRule(segs){
   const statusToks=toks.map((t,i)=>({ t, i })).filter(x=>x.t.k==="status");
   let trigger=null; let m;
   if(/\bbefore\b/.test(s)&&(statusToks.length||/\b(in progress|starts?|starting|begins?|work begins|goes live)\b/.test(s))){ const st=statusToks[0]?.t; trigger={ type:"before", to:st?st.id:"progress" }; }
-  else if((m=s.match(/(\d+)\s*(?:working\s*|business\s*)?days?\s*(?:before|ahead of|prior to|out from)\s*(?:the\s*|its\s*)?(?:deadline|due)/))) trigger={ type:"deadline", days:+m[1] };
+  else if((m=s.match(/(\d+|an?|one|two|three|four|five|six|seven|ten|fourteen)\s*(?:working\s*|business\s*)?(days?|weeks?)\s*(?:before|ahead of|prior to|out from)\s*[^,.;]{0,40}?(?:deadline|due date|due)\b/))){ const N={ a:1, an:1, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, ten:10, fourteen:14 }; trigger={ type:"deadline", days:(N[m[1]]??+m[1])*(/week/.test(m[2])?7:1) }; }
   else if(/\b(ready to start|released|unblocked|free to start)\b/.test(s)) trigger={ type:"ready" };
   else if(/\b(restore|strip(?:ped)?[- ]down|reinstate(?:ment)?|come down)\b/.test(s)&&/\bdue\b/.test(s)) trigger={ type:"restore" };
   else if(statusToks.length) trigger={ type:"status", to:statusToks[0].t.id };
   else if(/\b(completed|complete|done|finished|closed|signed off)\b/.test(s)) trigger={ type:"status", to:"complete" };
   else if(/\b(in progress|started|starts|begins|kicks off|gets going)\b/.test(s)) trigger={ type:"status", to:"progress" };
-  else if(/\bon hold\b/.test(s)){ const h=statuses().find(o=>/hold/i.test(o.name)); trigger={ type:"status", to:h?.id||"todo" }; }
+  else if((m=statuses().find(o=>new RegExp("\\b"+o.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(s)))) trigger={ type:"status", to:m.id };
   else trigger={ type:"change" };
   const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="restore"?"restore":trigger.type==="deadline"?"reminder":"note";
   const hold=/\b(right away|immediately|straight away|at once|without waiting|instantly)\b/.test(s)?0:(m=s.match(/wait(?:ing)?\s*(\d+)\s*min/))?+m[1]:trigger.type==="deadline"?0:5;
   toks.forEach((t,i)=>{ const v=lastVerb(before(i));
     if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); if(/include|loop|cc/.test(v.w)) actions.push({ type:"cc", person:{ name:t.name||"", email:t.email } }); }
       else actions.push({ type:"email", to:"person", person:{ name:t.name||"", email:t.email }, what, hold }); }
-    else if(t.k==="opt"){ const lead=before(i).slice(-40); if(v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
+    else if(t.k==="opt"){ const lead=before(i).slice(-40); const clause=before(i).split(/[,.;]/).pop(); const which=/\b(when|whenever|if|once|that|which|where|whose)\b.*\b(gets?|getting|requires?|requiring|needs?|needing|has|have|having|includes?|got)\b(?:(?!\b(?:add|adds|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b).)*$/.test(clause); if(!which&&v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
     else if(t.k==="job") note.push(`${t.id} is ignored here: rules apply to every job that matches.`); });
   if(/\b(the people on it|people on the job|people on it|the crew|everyone on (?:it|the job)|tagged people|the people tagged|assignees|whoever is (?:on|tagged))\b/.test(s)) actions.unshift({ type:"email", to:"people", what, hold });
   const q=s.match(/\bask(?:s|ing)?\b\s*(?:them\s*|the user\s*|people\s*)?(?:"([^"]+)"|“([^”]+)”|(?:if|whether)\s+([^.⟦]+))/); if(q){ const raw=(q[1]||q[2]||q[3]||"").trim(); const src=segText(segs); const exact=src.match(/[“"]([^”"]+)[”"]/); let qt=exact?exact[1]:raw; qt=qt.charAt(0).toUpperCase()+qt.slice(1); if(!/\?$/.test(qt)) qt+="?"; actions.push({ type:"ask", q:qt }); }
   if((m=s.match(/\b(?:set|move|push)\s*(?:the\s*|its\s*)?deadline\s*(?:to\s*)?(\d+)\s*days?/))||(m=s.match(/\bdue in (\d+) days?/))) actions.push({ type:"deadline", days:+m[1] });
+  const neg=s.replace(/[“"][^”"]*[”"]/g," ").replace(/\bwithout waiting\b/g,"").match(/\b(don't|dont|do not|does not|doesn't|doesnt|didn't|didnt|never|not|no longer|unless|except|excluding|exclude|without|other than|isn't|isnt|aren't|arent|wasn't|won't|wont|shouldn't|can't|cant|hasn't|hasnt|haven't|havent|nor)\b|\bno(?= ⟦)/);
+  if(neg) err.push(`Rules can't say “${neg[1]||neg[0]}” yet, so this would do the opposite of what it says. Write what should happen and when — for example only for /a property or /a status.`);
+  if(trigger.type==="change"&&(m=s.replace(/[“"][^”"]*[”"]/g," ").match(/\b(?:when|whenever|once|as soon as)\b[^,.;]*?\b(?:is|goes|moves to|becomes|turns|gets)\s+(?!⟦)([a-z'-]+)/))&&!/^(created|changed|changing|edited|updated|added|new|opened|open|still|being|set|marked|tagged|assigned|moved|a|an|the|its|it|on|in|for|at|by|with|about|placed|logged|saved|any|anything|ready|due|got)$/.test(m[1])&&!statuses().some(o=>o.name.toLowerCase().split(" ")[0]===m[1])) err.push(`I didn't follow “${m[1]}”, so this would run on every change to the jobs it names. Use a status (type /), “is created or changes”, “is ready to start”, or “3 days before the deadline”.`);
+  if(/\b(\d+|an?|one|two|three|a few|several)\s*(hours?|days?|weeks?|months?)\s+(?:after|later)\b/.test(s.replace(/[“"][^”"]*[”"]/g," "))) err.push("Rules run the moment something happens — they can't wait days yet. For a reminder ahead of a date, use “3 days before the deadline”.");
+  if(trigger.type==="change"&&!conds.length&&!/\b(created|create|changed|changes|change|edited|updated|new job|any update)\b/.test(s)&&actions.length) err.push(`I can't tell when this should run, so it would run on every change to every job${(m=s.match(/\b(?:when|whenever|once|after|as soon as)\s+([^⟦,.]{1,40})/))?` (I didn't follow “${m[1].trim()}”)`:""}. Say when — a status (type /), “is created or changes”, “is ready to start”, or “3 days before the deadline” — or which jobs (type / for a property).`);
   if(trigger.type==="before"&&!actions.some(x=>x.type==="ask")) err.push("A rule that runs before a status change can only ask a question — write it in quotes after “ask”.");
   if(trigger.type!=="before"&&actions.some(x=>x.type==="ask")) note.push("Questions are only asked by rules that start with “Before …”; this one will ignore it.");
   if(!actions.length) err.push("Say what should happen: for example “notify /someone”, “tag /someone” or “gets /a permit”.");
@@ -3153,7 +3161,7 @@ const MONTHS=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov",
 function compileSchedule(segs,prev={}){
   const { s, toks }=segFlat(segs); const err=[], note=[]; let m;
   const job=toks.find(t=>t.k==="job"); if(!job) err.push("Type / and pick the job to repeat.");
-  const sch={ ...(prev||{}) }; sch.ifOpen=/\bskip\b/.test(s)?"skip":"create";
+  const sch={ ...(prev||{}) }; sch.ifOpen=/\bskip\b/.test(s)?"skip":"create"; { const ng=s.match(/\b(don't|dont|do not|never|not|unless|except)\b/); if(ng) err.push(`Schedules can't say “${ng[1]}” yet. Write what should happen: “skip it if the last one is still open”, or leave that out to always create one.`); }
   const en=s.match(/\bwith (?:its |the |an? )?(insulation|scaffold|isolation|lockout|excavation|surface prep|cleaning)/); sch.enabling=en?({ insulation:"insulation", scaffold:"scaffold", isolation:"isolation", lockout:"isolation", excavation:"excavation", "surface prep":"cleaning", cleaning:"cleaning" })[en[1]]:null;
   const lead=(m=s.match(/(\d+)\s*(days?|weeks?)\s*(?:ahead|early|in advance|before (?:it'?s|it is) due|before the due date)/))?(+m[1])*(/week/.test(m[2])?7:1):null;
   if((m=s.match(/(\d+|a|one|two|three|five|ten)\s*(months?|years?)\s*after\b/))&&/\b(complet|done|finish|clos|last one)/.test(s)){ const n={ a:1, one:1, two:2, three:3, five:5, ten:10 }[m[1]]??+m[1]; sch.mode="after"; sch.months=/year/.test(m[2])?n*12:n; sch.leadDays=lead??30; delete sch.unit; delete sch.every; delete sch.dates; }
@@ -3477,7 +3485,7 @@ async function demoSeed(DB){
   const autoBy=a=>({ uid:"automation", name:"Automation", email:"", auto:a, autoName:AUTO.find(x=>x.id===a).name });
   for(const [n,d] of [[13,12],[10,12],[6,8]]) await act(n,ago(d),"tagged Priya Nair (Scaffold requests include Priya Nair)",autoBy("r1"));
   await act(1,ago(9),"created this job from “Tank T-1 monthly external walkdown” (4th in the series)",autoBy("s1"));
-  await th("t4",{ jobId:"J-26-008", n:1, addr:"j-26-008-t1@mail.skygauge.co", subject:"Due "+ahead(1)+" · J-26-008 · Pump P-402 mechanical seal replacement", about:{ kind:"auto", label:"Deadline reminders", auto:"r6" }, participants:[marco], created:ago(0.2), createdBy:autoBy("r6") },
+  await th("t4",{ jobId:"J-26-008", n:1, addr:"j-26-008-t1@mail.skygauge.co", subject:"Due tomorrow · J-26-008 · Pump P-402 mechanical seal replacement", about:{ kind:"auto", label:"Deadline reminders", auto:"r6" }, participants:[marco], created:ago(0.2), createdBy:autoBy("r6") },
     [{ dir:"out", from:{ email:"j-26-008@mail.skygauge.co", name:"Dispatch automation" }, to:[marco], t:ago(0.2), text:"J-26-008 · Pump P-402 mechanical seal replacement is due tomorrow and is In progress.", auto:"r6" }]);
   await act(8,ago(0.2),"will email Marco Bellini a deadline reminder (Deadline reminders)",autoBy("r6"));
 }
