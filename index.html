@@ -1222,7 +1222,6 @@ function renderRecord(){
   const areaTxt=P0.length?P(shapeLabel(locShape(w))+(locKindW(w)==="area"&&locHeight(w)>0?" · "+locHeight(w)+" m high":"")):"";
   $("#pbody").innerHTML=`
     <div class="trow"><textarea class="ptitle" id="ptitle" rows="1" placeholder="Untitled">${P(w.title||"")}</textarea><div class="pv" data-status>${statusPill(w)}</div></div>
-    ${typeof linkBannerHTML==="function"?linkBannerHTML(w):""}
     ${custom.length?`<div class="chips">${custom.map(p=>`<div class="pv chip" data-edit="${p.id}" title="${P(p.name)}">${renderValue(p,w.values?.[p.id],w)}</div>`).join("")}</div>`:""}
     <div class="metaline">${P(w.createdBy?.name||"")} · ${P(fmtDate(w.created,true))}${w.edited?` · edited ${P(rel(w.edited))}`:""}${w.completedAt?` · completed ${P(fmtDate(w.completedAt,true))}`:""}</div>
     ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span style="color:var(--crit)">required — mark it on the model</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
@@ -2574,11 +2573,11 @@ function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el
    (scaffold up and tagged); the enabling job itself stays open until its restore step (strip, reinstate) is done.
    ===================================================================== */
 const EN_KINDS={
-  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", restore:"Strip scaffold" },
-  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        restore:"Reinstate insulation" },
-  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     restore:"Remove isolation" },
-  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        restore:"Backfill" },
-  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          restore:null },
+  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", pending:"scaffold not up yet", restore:"Strip scaffold" },
+  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        pending:"insulation not removed yet", restore:"Reinstate insulation" },
+  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     pending:"not isolated yet", restore:"Remove isolation" },
+  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        pending:"not excavated yet", restore:"Backfill" },
+  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          pending:"surface not prepared yet", restore:null },
 };
 const HOLD_REASONS=["Waiting on scaffold","Waiting on insulation removal","Waiting on parts / materials","Waiting on a shutdown window","Waiting on a permit","Waiting on engineering"];
 const enKind = w => w?.enabling?EN_KINDS[w.enabling.kind]||{ name:"Enabling work", title:"Enabling work", ready:"Ready", restore:null }:null;
@@ -2661,31 +2660,28 @@ function goJob(id){ if(S.woView) enterWOView(id); else openWO(id); }
 function stDot(w){ const o=status(w.statusId); return `<i class="lkdot" style="background:${col(o?.color).map}"></i>`; }
 function lkChip(b,unlinkAttr,showRel){
   const o=status(b.statusId); const ok=showRel&&released(b);
-  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
+  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):showRel&&b.enabling&&!released(b)&&enKind(b)?.pending?P(enKind(b).pending):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
 }
-function linkBannerHTML(w){
-  if(w.trashed||w.draft) return ""; const out=[];
-  if(restoreDue(w)) out.push(`<div class="lkban due"><b>↻ Restore due</b> — ${P(enKind(w).restore)}: every job this enabled is complete. <button class="btn sm teal" id="en-restore2">Mark done</button></div>`);
-  const bl=blockersOf(w);
-  if(isOpen(w)&&bl.length) out.push(`<div class="lkban wait"><b>‖ Waiting on ${bl.length===1?bl[0].id:bl.length+" jobs"}</b> — ${bl.map(b=>`<a data-go="${b.id}">${P(b.id)} ${P(b.title||"Untitled")}</a> (${P(b.enabling?"not yet "+enKind(b).ready.toLowerCase():status(b.statusId)?.name)})`).join(", ")}${onHold(w)?`<div class="lkhold">Hold reason: ${w.holdReason?P(w.holdReason):`<i>none</i>`} <button class="link" id="hold-edit">${w.holdReason?"Edit":"Add"}</button></div>`:""}</div>`);
-  else if(readyToStart(w)) out.push(`<div class="lkban go"><b>✓ Ready to start</b> — everything this job waits on is done${waitsOnIds(w).some(id=>!isDone(W(id)))?" or in place":""}.${onHold(w)?` It is still marked ${P(status(w.statusId).name)}.`:""}</div>`);
-  else if(onHold(w)) out.push(`<div class="lkban wait"><b>‖ ${P(status(w.statusId).name)}</b> — ${w.holdReason?P(w.holdReason):`<i>no reason given</i>`} <button class="link" id="hold-edit">${w.holdReason?"Edit":"Add a reason"}</button></div>`);
-  return out.join("");
-}
+/* The yellow / green / purple banner under the title was removed (1 Oct 2026, Nikita: it repeated the Linked box).
+   Waiting, ready-to-start, restore-due and the hold reason are all shown in the Linked / Enabling boxes. */
+/* a hold reason that only names a job this one already waits on adds nothing — the Linked box shows that job */
+function holdRestatesLink(w){ const r=w.holdReason||""; return !!r&&blockersOf(w).some(b=>r.includes(b.id)); }
 function linksStripHTML(w){
   if(w.trashed||w.draft) return "";
   const wo=waitsOnIds(w).map(W), bl=blocksOf(w);
-  let html=`<div class="strip lkstrip" id="lkstrip"><span class="lab">Linked</span><div class="val">`;
-  if(wo.length) html+=`<div class="lkrow"><span class="lkdir">Waits on</span>${wo.map(b=>lkChip(b,`data-unlink="${b.id}"`,true)).join("")}</div>`;
+  const blocked=isOpen(w)&&blockersOf(w).length>0, ready=!blocked&&readyToStart(w);
+  let html=`<div class="strip lkstrip${blocked?" blocked":ready?" ready":""}" id="lkstrip"><span class="lab">Linked</span><div class="val">`;
+  if(wo.length) html+=`<div class="lkrow"><span class="lkdir${blocked?" wait":""}">${blocked?"‖ Waiting on":"Waits on"}</span>${wo.map(b=>lkChip(b,`data-unlink="${b.id}"`,true)).join("")}${ready?`<span class="lkok">✓ Ready to start${onHold(w)?` · still marked ${P(status(w.statusId).name)}`:""}</span>`:""}</div>`;
+  if(onHold(w)&&!holdRestatesLink(w)&&(w.holdReason||!blocked)) html+=`<div class="lkrow"><span class="lkdir wait">‖ ${P(status(w.statusId).name)}</span><span class="lkreason">${w.holdReason?P(w.holdReason):`<i>no reason given</i>`}</span><button class="link" id="hold-edit">${w.holdReason?"Edit":"Add a reason"}</button></div>`;
   if(bl.length) html+=`<div class="lkrow"><span class="lkdir">Blocks</span>${bl.map(d=>lkChip(d,`data-unblock="${d.id}"`,false)).join("")}</div>`;
-  if(!wo.length&&!bl.length) html+=`<span class="hint">No linked jobs</span>`;
+  if(!wo.length&&!bl.length&&!onHold(w)) html+=`<span class="hint">No linked jobs</span>`;
   html+=`<div class="lkacts"><button class="btn sm" id="lk-add">＋ Link a job</button>${w.enabling?"":`<button class="btn sm" id="lk-en">＋ Enabling work</button>`}</div></div></div>`;
   if(w.enabling){ const k=enKind(w), e=w.enabling, dn=bl.map(d=>d.id);
-    html+=`<div class="strip lkstrip en"><span class="lab">Enabling</span><div class="val"><div><b>${P(k.name)}</b>${dn.length?` · for ${dn.map(P).join(", ")}`:` · <span class="hint">not linked to a job yet</span>`}</div>`;
+    html+=`<div class="strip lkstrip en${restoreDue(w)?" due":""}"><span class="lab">Enabling</span><div class="val"><div><b>${P(k.name)}</b>${dn.length?` · for ${dn.map(P).join(", ")}`:` · <span class="hint">not linked to a job yet</span>`}</div>`;
     if(!e.ready) html+=`<div class="lkacts"><button class="btn sm teal" id="en-ready">Mark “${P(k.ready)}”</button><span class="hint">Releases the jobs it blocks</span></div>`;
     else { html+=`<div class="lkok">✓ ${P(k.ready)} · ${P(fmtDate(e.readyAt,true))}${e.readyBy?.name?" · "+P(e.readyBy.name):""} ${isDone(w)?"":`<button class="link" id="en-undo">Undo</button>`}</div>`;
       if(k.restore){ if(e.restored||isDone(w)) html+=`<div class="lkok">✓ ${P(k.restore)}${e.restoredAt?" · "+P(fmtDate(e.restoredAt,true)):""}</div>`;
-        else if(restoreDue(w)) html+=`<div class="lkacts"><button class="btn sm teal" id="en-restore">Mark “${P(k.restore)}” done</button><span class="hint">Every job it enabled is complete</span></div>`;
+        else if(restoreDue(w)) html+=`<div class="lkacts"><button class="btn sm teal" id="en-restore">Mark “${P(k.restore)}” done</button><span class="lkdue">↻ Restore due — every job it enabled is complete</span></div>`;
         else html+=`<div class="hint">Next: ${P(k.restore)}, once ${dn.filter(d=>!isDone(W(d))).map(P).join(", ")||"the linked jobs"} ${dn.filter(d=>!isDone(W(d))).length===1?"is":"are"} complete</div>`; } }
     html+=`</div></div>`; }
   return html;
@@ -2720,7 +2716,7 @@ function enablingMenu(w,anchor){
 }
 function holdPrompt(w){
   const anchor=$("#pbody [data-status]")||$(`#views [data-id="${w.id}"]`); if(!anchor) return;
-  const sugg=[...blockersOf(w).map(b=>`Waiting on ${b.id} · ${b.title||"Untitled"}`),...HOLD_REASONS];
+  const sugg=[...HOLD_REASONS];
   const el=openPop(anchor,`<div class="sec">Why is ${P(w.id)} on hold?</div>${sugg.map((s,i)=>`<div class="mi" data-r="${i}">${P(s)}</div>`).join("")}<div class="fr"><input type="text" id="hold-txt" placeholder="Or type a reason" value="${P(w.holdReason||"")}"></div><div class="fr" style="justify-content:flex-end"><button class="btn sm" id="hold-skip">Skip</button><button class="btn sm teal" id="hold-ok">Save</button></div>`,{width:300,noFocus:true});
   el.querySelectorAll("[data-r]").forEach(m=>m.onclick=()=>{ closePop(); setHold(w.id,sugg[+m.dataset.r]); });
   const ok=()=>{ const v=el.querySelector("#hold-txt").value; closePop(); setHold(w.id,v); };
@@ -2774,11 +2770,6 @@ function syncLinkOverlays(){ if(!map||!lib) return;
 if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRestored, setHold, isBlocked, readyToStart, restoreDue, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
-.lkban{border-radius:10px;padding:8px 12px;margin:6px 0;font-size:13px;line-height:1.45;border:1px solid var(--line)}
-.lkban.wait{background:rgba(232,169,58,.12);border-color:rgba(232,169,58,.55)}.lkban.wait b{color:var(--warn)}
-.lkban.go{background:rgba(47,201,138,.12);border-color:rgba(47,201,138,.55)}.lkban.go b{color:var(--ok)}
-.lkban.due{background:rgba(213,194,255,.14);border-color:rgba(213,194,255,.6)}
-.lkban a{cursor:pointer;text-decoration:underline;color:inherit}.lkban .btn{margin-left:6px}.lkhold{margin-top:3px;color:var(--ink-2)}
 .lkstrip{align-items:flex-start}.lkstrip .val{display:flex;flex-direction:column;gap:6px;min-width:0}
 .lkrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.lkdir{font-size:11.5px;color:var(--ink-3);min-width:56px}
 .lkchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 4px 3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:12px;cursor:pointer;color:var(--ink)}
@@ -2787,6 +2778,8 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
 .lkchip .x{border:0;background:transparent;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}.lkchip .x:hover{color:var(--crit)}
 .lkdot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
 .lkacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lkok{color:var(--ok);font-size:12.5px}
+.lkstrip.blocked{border-color:rgba(232,169,58,.6)}.lkstrip.ready{border-color:rgba(47,201,138,.6)}.lkstrip.en.due{border-color:rgba(213,194,255,.7)}
+.lkdir.wait{color:var(--warn);font-weight:600}.lkreason{font-size:12.5px;color:var(--ink-2)}.lkdue{font-size:12.5px;color:var(--ink-2)}
 .lkb{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .lkb.wait{background:rgba(232,169,58,.18);color:var(--warn)}.lkb.go{background:rgba(47,201,138,.18);color:var(--ok)}
 .lkb.en{background:rgba(213,194,255,.16);color:var(--ink-2)}.lkb.due{background:rgba(213,194,255,.3);color:var(--ink)}
