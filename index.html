@@ -662,6 +662,7 @@ function makeMock(){
     load(obj){ store.clear(); for(const [k,v] of Object.entries(obj||{})) store.set(k,structuredClone(v)); notify(); },
     onChange(f){ hook=f; },
     async nextSeq(){ const c=store.get("workspace/counters")||{wo:0}; c.wo=(c.wo||0)+1; store.set("workspace/counters",c); return c.wo; },
+    async nextThreadNo(jobPath,floor=0){ const j=store.get(jobPath)||{}; const n=Math.max(j.mailSeq||0,floor)+1; if(store.has(jobPath)){ j.mailSeq=n; store.set(jobPath,j); } return n; },
   };
   return api;
 }
@@ -680,6 +681,7 @@ function makeFirestore(F, db){
     watchDoc(p,cb,onErr){ return F.onSnapshot(D(p),s=>cb(s.exists()?{id:s.id,...s.data()}:null),e=>onErr?onErr(e):onDbError(e,p)); },
     watchCol(col,cb,onErr){ return F.onSnapshot(C(col),s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),e=>onErr?onErr(e):onDbError(e,col)); },
     async nextSeq(){ return F.runTransaction(db, async tx=>{ const ref=D("workspace/counters"); const s=await tx.get(ref); const n=((s.exists()&&s.data().wo)||0)+1; tx.set(ref,{wo:n},{merge:true}); return n; }); },
+    async nextThreadNo(jobPath,floor=0){ return F.runTransaction(db, async tx=>{ const ref=D(jobPath); const s=await tx.get(ref); const n=Math.max((s.exists()&&s.data().mailSeq)||0,floor)+1; if(s.exists()) tx.update(ref,{ mailSeq:n }); return n; }); },
   };
 }
 function onDbError(e,p){ console.error("db",p,e); if(String(e.code||e).includes("permission")) showGate("denied"); else toast("Database error: "+(e.message||e),true); }
@@ -818,7 +820,7 @@ function startApp(){
     if(shared!==S.mapsKey){ S.mapsKey=shared; if(S.site && !map) initMap(); }
   }));
   watchMail();
-  if(typeof startAuto==="function") startAuto();
+  if(typeof startAuto==="function") try{ startAuto(); }catch(e){ console.error("automations did not start",e); }
   if(!booted){ booted=true; wireUI(); const id=(PARAMS.get("wo")||PARAMS.get("job")||"").replace(/^WO-/,"J-"); const tid=PARAMS.get("thread"); if(tid) setTimeout(()=>openThread(tid),900); else if(id) setTimeout(()=>openWO(id),600); }
 }
 const initials = n => (n||"?").split(/[\s@._]+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join("");
@@ -912,7 +914,8 @@ async function setPoints(id,points,height,quiet,closed){   // quiet: the selecto
 /* ---------- Save tracker: every write goes through here, so the status reflects the server, not a timer ----------
    Saving… while any write is in flight · Saved ✓ · just now once all settle · Couldn't save · Retry on any rejection. */
 const SAVE={ pending:0, failed:[], last:null, timer:null };
-function trackDB(api){ for(const k of ["set","update","add","del"]){ const f=api[k].bind(api); api[k]=(...a)=>runWrite(()=>f(...a),a[0]); } return api; }
+const QUIET={ quiet:true };   // pass as the last argument: the caller handles a failure itself
+function trackDB(api){ for(const k of ["set","update","add","del"]){ const f=api[k].bind(api); api[k]=(...a)=>a[a.length-1]===QUIET?f(...a.slice(0,-1)):runWrite(()=>f(...a),a[0]); } return api; }
 function runWrite(thunk,path){
   SAVE.pending++; renderSave(); let p; try{ p=Promise.resolve(thunk()); }catch(e){ p=Promise.reject(e); }
   return p.then(r=>{ SAVE.pending--; SAVE.last=Date.now(); renderSave(); return r; },
@@ -1493,8 +1496,9 @@ function wireUI(){
 function jobFilterMenu(anchor){ const el=openPop(anchor,`<div class="mi" data-j="">All jobs</div><div class="hr"></div>${live().filter(w=>jobThreads(w.id).length).map(w=>`<div class="mi" data-j="${w.id}"><span class="mono" style="margin-right:6px">${w.id}</span>${P(w.title||"Untitled")}<span class="r">${jobThreads(w.id).length}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No job has threads yet.</div>`}`,{width:300,noFocus:true}); el.onclick=e=>{ const j=e.target.closest("[data-j]"); if(!j) return; closePop(); if(j.dataset.j){ IB.f="job"; IB.job=j.dataset.j; } else { IB.f="all"; IB.job=null; } renderInbox(); }; }
 function userMenu(anchor){
   const el=openPop(anchor,`<div class="fr" style="flex-direction:column;align-items:flex-start;gap:0"><b>${P(S.user.name)}</b><span class="hint">${P(S.user.email)}${S.admin?" · Admin":""}</span></div><div class="hr"></div>
-    ${S.admin?`<div class="mi" data-a="admin">Who can enter…</div>`:""}<div class="mi" data-a="members">Members<span class="r">${S.members.length}</span></div>${S.admin?`<div class="mi" data-a="key">Change the shared Google Maps key</div>`:""}<div class="mi" data-a="theme">Toggle dark mode</div><div class="hr"></div><div class="mi" data-a="out">Sign out</div>`,{width:240,noFocus:true});
+    ${S.admin?`<div class="mi" data-a="admin">Who can enter…</div>`:""}<div class="mi" data-a="members">Members<span class="r">${S.members.length}</span></div>${S.admin?`<div class="mi" data-a="key">Change the shared Google Maps key</div>`:""}${S.admin&&!MOCK?`<div class="mi" data-a="mail">Email sending<span class="r">${MAILCFG?.enabled?"On":"Off"}</span></div>`:""}<div class="mi" data-a="theme">Toggle dark mode</div><div class="hr"></div><div class="mi" data-a="out">Sign out</div>`,{width:240,noFocus:true});
   el.onclick=e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return;
+    if(a==="mail"){ const on=!MAILCFG?.enabled; if(on&&!confirm("Turn email sending on? Messages people write in Dispatch, and automation emails, will go out by email through the mail service. Anything queued while it was off is sent now.")) return; closePop(); DB.set("config/mail",{ enabled:on, updated:now(), updatedBy:S.user.email }).then(()=>toast(on?"Email sending is on.":"Email sending is off — new messages wait in Dispatch until it is on again.")); return; }
     if(a==="admin") adminPanel(anchor); if(a==="members") membersPanel(anchor);
     if(a==="key"){ try{ localStorage.removeItem(LSK.key); }catch{} DB.del("config/maps").then(()=>location.reload()); }
     if(a==="theme"){ const r=document.documentElement; const dark=matchMedia("(prefers-color-scheme: dark)").matches; const cur=r.dataset.theme||(dark?"dark":"light"); r.dataset.theme=cur==="dark"?"light":"dark"; closePop(); }
@@ -2466,7 +2470,7 @@ if(MOCK) window.__notes={ get NT(){ return NT; }, canPlace, moveNote, tree:()=>t
    Routing is the address: j-26-008@mail.skygauge.co → new thread in J-26-008; j-26-008-t2@ → thread 2. The mail
    service (functions/) writes inbound messages here in exactly the shape this file writes them; nothing guesses.
    ===================================================================== */
-const MAIL_COL="workspace/main/threads", MAIL_DOMAIN="mail.skygauge.co";
+const MAIL_COL="workspace/main/threads", MAIL_DOMAIN=window.SG_MAIL_DOMAIN||"mail.skygauge.co";
 let MAILDENIED=false; let TH=[], thUnsub=null, MSG=[], msgUnsub=null, msgThread=null, IB={ f:"all", job:null, sel:null, compose:null }, MAILCFG=null;
 const jobAddr = id => `${String(id).toLowerCase()}@${MAIL_DOMAIN}`;
 const threadAddr = (id,n) => `${String(id).toLowerCase()}-t${n}@${MAIL_DOMAIN}`;
@@ -2485,7 +2489,10 @@ function snippet(s,n=90){ return String(s||"").replace(/\s+/g," ").trim().slice(
 /* ---------- subscriptions ---------- */
 function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note&&!S.creating) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
   S.unsub.push(()=>{ thUnsub?.(); thUnsub=null; msgUnsub?.(); msgUnsub=null; });
-  S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; if(S.tab==="inbox") renderInbox(); },e=>{ console.warn("config/mail",e); MAILCFG=null; })); }
+  S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; if(S.tab==="inbox") renderInbox(); },e=>{ console.warn("config/mail",e); MAILCFG=null; }));
+  if(S.admin) S.unsub.push(DB.watchCol("workspace/main/mail_undelivered",rows=>{ UNDEL=rows.sort((a,b)=>String(b.t).localeCompare(String(a.t))); if(S.tab==="inbox") renderInbox(); },()=>{ UNDEL=[]; })); }
+let UNDEL=[];
+function undeliveredMenu(anchor){ openPop(anchor,`<div class="sec">Email that could not be filed · ${UNDEL.length}</div>${UNDEL.slice(0,30).map(u=>`<div class="mi" style="flex-direction:column;align-items:flex-start;gap:0"><b>${P(u.subject||"(no subject)")}</b><span class="hint">${P(u.from?.email||"")} → ${P((u.to||[]).join(", "))} · ${P(fmtDate(u.t,true))}</span><span class="hint">${P(u.why||"")}${u.auth==="fail"?" · sender not verified":""}</span></div>`).join("")}<div class="hint" style="padding:6px 8px">Sent to an address that is not an open job. Senders from your own domains got a short reply; others did not.</div>`,{width:360,noFocus:true}); }
 function watchMessages(tid){ if(msgThread===tid) return; msgUnsub?.(); MSG=[]; msgThread=tid; if(!tid) return;
   msgUnsub=DB.watchCol(MAIL_COL+"/"+tid+"/messages",rows=>{ MSG=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); if(IB.sel===tid&&S.tab==="inbox") renderThreadPane(); }); }
 function renderMailBadge(){ const n=unreadCount(); const b=$("#tab-inbox"); if(b) b.textContent=n||""; const u=$("#ib-unread-n"); if(u) u.textContent=n||""; }
@@ -2493,7 +2500,7 @@ function renderMailBadge(){ const n=unreadCount(); const b=$("#tab-inbox"); if(b
 /* ---------- thread creation ---------- */
 async function createThread(jobId,opts={}){
   const w=W(jobId); if(!w) return null;
-  const n=Math.max(0,...jobThreads(jobId).map(t=>t.n||0))+1;
+  const floor=Math.max(0,...jobThreads(jobId).map(t=>t.n||0)); const n=DB.nextThreadNo?await DB.nextThreadNo(WO_COL+"/"+jobId,floor):floor+1;
   const me={ email:meEmail(), name:S.user.name, uid:S.user.uid };
   const parts=[me,...(opts.participants||[])].filter((p,i,a)=>a.findIndex(x=>x.email===p.email)===i);
   const t={ jobId, n, addr:threadAddr(jobId,n), subject:opts.subject||`${jobId} · ${w.title||"Untitled"}`, about:opts.about||{kind:"job"}, participants:parts, created:now(), createdBy:userRef(), last:null, count:0, readBy:{ [S.user.uid]:now() } };
@@ -2542,7 +2549,7 @@ async function receiveMail(msg){
 }
 async function mergePeople(jobId,parts){ const w=W(jobId); const p=prop("people"); if(!w||!p||p.type!=="person") return; const cur=w.values?.people||[]; const add=parts.filter(x=>x.email&&x.email!==meEmail()&&!cur.some(c=>(c.email||"").toLowerCase()===x.email)).map(x=>({ email:x.email, name:x.name||"" })); if(!add.length) return; const next=[...cur,...add]; w.values={ ...(w.values||{}), people:next }; await DB.update(WO_COL+"/"+jobId,{ "values.people":next, ...stamp() }).catch(()=>{}); }
 window.__mail={ receive:receiveMail, extractPO, routeAddress };
-if(MOCK) window.__t={ createWO, createThread, W, T, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, openThread, extractPO, routeAddress, unreadCount, get TH(){ return TH; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; } };   // test harness only
+if(MOCK) window.__t={ createWO, createThread, W, T, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, openThread, sendMessage, extractPO, routeAddress, unreadCount, get TH(){ return TH; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; } };   // test harness only
 
 /* ---------- outbound ---------- */
 async function sendMessage(tid,{to,cc,body,attachments}){
@@ -2571,6 +2578,7 @@ function renderThreadList(){
   const rows=inboxRows(); const byJob=new Map(); rows.forEach(t=>{ if(!byJob.has(t.jobId)) byJob.set(t.jobId,[]); byJob.get(t.jobId).push(t); });
   const jobs=[...byJob.entries()].map(([id,ts])=>({ id, ts:ts.sort((a,b)=>(b.last?.t||b.created||"").localeCompare(a.last?.t||a.created||"")) })).sort((a,b)=>(b.ts[0].last?.t||b.ts[0].created||"").localeCompare(a.ts[0].last?.t||a.ts[0].created||""));
   const when=t=>{ const s=t.last?.t||t.created; if(!s) return ""; const d=new Date(s); const today=new Date(); return d.toDateString()===today.toDateString()?d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):(Date.now()-d<6*86400000?d.toLocaleDateString(undefined,{weekday:"short"}):fmtDate(s)); };
+  const ul=$("#ib-undel"); if(!ul&&S.admin&&UNDEL.length){ const b=document.createElement("button"); b.id="ib-undel"; b.className="btn sm"; b.onclick=e=>undeliveredMenu(e.currentTarget); $("#ib-filters")?.append(b); } const ub=$("#ib-undel"); if(ub){ ub.hidden=!(S.admin&&UNDEL.length); ub.textContent=`${UNDEL.length} not filed`; ub.title="Email sent to an address that is not an open job"; }
   if(MAILDENIED&&!TH.length){ $("#ib-rows").innerHTML=`<div class="ib-empty"><b>The database rules don’t allow email threads yet.</b><br>Paste <span class="mono">firestore.rules.snippet</span> from the mail-service folder into Firebase → Firestore → Rules and publish. Everything else works meanwhile.</div>`; return; }
   $("#ib-rows").innerHTML=jobs.length?jobs.map(({id,ts})=>`<div class="ib-grp" data-job="${id}" title="Open the job"><span class="jid">${id}</span><span class="jt">${P(W(id)?.title||"Untitled")}</span></div>${ts.map(t=>`<div class="ib-row ${isUnread(t)?"unread":""} ${IB.sel===t.id?"sel":""}" data-tid="${t.id}"><span class="u"></span><div class="s"><b>${P(t.subject)}</b><span class="re">${P(aboutLabel(t))}${t.count?` · ${t.count} message${t.count===1?"":"s"}`:""}</span><span>${t.last?`${P(nameOf(t.last.from).split(" ")[0]||"")}: ${P(t.last.snippet||"")}`:`Started by ${P(t.createdBy?.name||"")} · nothing sent yet`}</span></div><span class="w">${P(when(t))}</span></div>`).join("")}`).join("")
     :`<div class="ib-empty">${TH.length?"Nothing matches this filter.":`<b>No email threads yet.</b><br>Every job has an address — <span class="mono">j-26-008@${MAIL_DOMAIN}</span> — and every thread inside it has one too. CC it from Outlook, or forward a message to it, and the mail shows up here, inside the job.<br><br>Or open a job and press <b>＋ New thread</b>.`}</div>`;
@@ -2596,7 +2604,7 @@ function renderThreadPane(){
       <div class="row"><span class="lab">CC</span><input id="c-cc" placeholder="optional" value="${P(c.cc||"")}"></div>
       <textarea id="c-body" placeholder="Write a reply…">${P(c.body||"")}</textarea>
       <div class="catt" id="c-att">${(c.attachments||[]).map(a=>`<span class="file"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.marks?` <span class="sz">✎${a.marks}</span>`:""}<button class="btn sm ghost" data-rmatt="${a.id}" title="Remove">✕</button></span>`).join("")}</div>
-      <div class="foot"><button class="btn sm" id="c-attnote">Attach a note or photo</button><span class="sp"></span><span class="hint" id="c-hint">${newTo.length?`${newTo.map(p=>P(p.email)).join(", ")} ${newTo.length===1?"is":"are"} new here → they can read this thread and the read-only job link, not other threads.`:"Recipients get a read-only link to this job at the bottom of the message."}</span><button class="btn teal" id="c-send">Send</button></div></div>`;
+      <div class="foot"><button class="btn sm" id="c-attnote">Attach a note or photo</button><span class="sp"></span><span class="hint" id="c-hint">${newTo.length?`${newTo.map(p=>P(p.email)).join(", ")} ${newTo.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."}</span><button class="btn teal" id="c-send">Send</button></div></div>`;
   $("#ib-back").onclick=()=>{ enterWOView(t.jobId); }; $("#ib-back-list").onclick=closeThread;
   $("#ib-more").onclick=e=>threadMenu(t,e.currentTarget);
   $$("#ib-thread [data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Address copied"); }catch{ prompt("Copy this address",b.dataset.copy); } });
@@ -2605,7 +2613,7 @@ function renderThreadPane(){
   $$("#ib-thread [data-ignorepo]").forEach(b=>b.onclick=async()=>{ const m=MSG.find(x=>x.id===b.dataset.mid); if(!m) return; const po=(m.extracted?.po||[]).map(x=>x.value===b.dataset.ignorepo?{ ...x, ignored:true }:x); await DB.update(MAIL_COL+"/"+t.id+"/messages/"+m.id,{ "extracted.po":po }); });
   $$("#ib-thread .qtog").forEach(b=>b.onclick=()=>b.closest(".msg").classList.toggle("showq"));
   const keep=()=>{ IB.compose={ to:$("#c-to").value, cc:$("#c-cc").value, body:$("#c-body").value, attachments:c.attachments||[] }; };
-  ["#c-to","#c-cc","#c-body"].forEach(s=>{ const el=$(s); el.oninput=()=>{ keep(); if(s==="#c-to"){ const nt=parseAddrs(el.value).filter(p=>!parts.some(x=>x.email===p.email)); $("#c-hint").textContent=nt.length?`${nt.map(p=>p.email).join(", ")} ${nt.length===1?"is":"are"} new here → they can read this thread and the read-only job link, not other threads.`:"Recipients get a read-only link to this job at the bottom of the message."; } }; });
+  ["#c-to","#c-cc","#c-body"].forEach(s=>{ const el=$(s); el.oninput=()=>{ keep(); if(s==="#c-to"){ const nt=parseAddrs(el.value).filter(p=>!parts.some(x=>x.email===p.email)); $("#c-hint").textContent=nt.length?`${nt.map(p=>p.email).join(", ")} ${nt.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."; } }; });
   $$("#c-att [data-rmatt]").forEach(b=>b.onclick=()=>{ keep(); IB.compose.attachments=IB.compose.attachments.filter(a=>a.id!==b.dataset.rmatt); renderThreadPane(); });
   $("#c-attnote").onclick=e=>{ keep(); attachPicker(t,e.currentTarget); };
   $("#c-send").onclick=async()=>{ keep(); const b=$("#c-send"); b.disabled=true; try{ await sendMessage(t.id,IB.compose); IB.compose=null; }catch(err){ toast("Could not send: "+(err.message||err),true); } b.disabled=false; renderThreadPane(); };
@@ -2615,10 +2623,10 @@ function renderThreadPane(){
 function msgHTML(t,m){
   const mine=(m.from?.email||"").toLowerCase()===meEmail();
   const po=(m.extracted?.po||[]).filter(x=>!x.ignored);
-  const via=m.dir==="out"?(m.status==="scheduled"?`automation · sends ${fmtDate(m.sendAt,true)}`:m.status==="cancelled"?"automation · cancelled, not sent":m.status==="queued"?"sent from Dispatch · queued":m.status==="failed"?"sent from Dispatch · failed":"sent from Dispatch"):(m.from?.email||"")+" · via email";
-  return `<div class="msg ${mine?"mine":""} ${m.status==="queued"?"queued":""}"><div class="h"><span class="avatar sm">${P(initials(nameOf(m.from)))}</span><b>${P(nameOf(m.from))}</b><span class="via">${P(via)}</span>${["queued","failed","scheduled","cancelled"].includes(m.status)?`<span class="st ${m.status}">${m.status}</span>`:""}${m.status==="scheduled"?`<button class="btn sm" data-au-cancel="${t.id}" data-mid="${m.id}">Cancel email</button>`:""}<span class="t" title="${P(fmtDate(m.t,true))}">${P(fmtDate(m.t,true))}</span></div>
+  const via=m.dir==="out"?(m.status==="scheduled"?`automation · sends ${fmtDate(m.sendAt,true)}`:m.status==="cancelled"?"automation · cancelled, not sent":m.status==="queued"?"sent from Dispatch · queued":m.status==="failed"?`sent from Dispatch · failed${m.error?" — "+m.error:""}`:m.status==="sending"?"sent from Dispatch · sending…":"sent from Dispatch"):(m.from?.email||"")+" · via email";
+  return `<div class="msg ${mine?"mine":""} ${m.status==="queued"?"queued":""}"><div class="h"><span class="avatar sm">${P(initials(nameOf(m.from)))}</span><b>${P(nameOf(m.from))}</b><span class="via">${P(via)}</span>${m.unverified?`<span class="st failed" title="${m.auth==="fail"?"This email failed the sender check (or looks like spam), so it may not be from who it says. No PO number is offered from it.":"Dispatch could not confirm this email came from "+P((m.from?.email||"").split("@")[1]||"the sender")+" (mail sent through other systems, or forwarded, often looks like this). Check before acting on it."}">${m.auth==="fail"?"sender check failed":"sender not verified"}</span>`:""}${["queued","failed","scheduled","cancelled","sending"].includes(m.status)?`<span class="st ${m.status}">${m.status}</span>`:""}${m.status==="scheduled"?`<button class="btn sm" data-au-cancel="${t.id}" data-mid="${m.id}">Cancel email</button>`:""}<span class="t" title="${P(fmtDate(m.t,true))}">${P(fmtDate(m.t,true))}</span></div>
     ${m.to?.length&&m.dir==="out"?`<div class="h" style="border-bottom:1px solid var(--line);color:var(--ink-3)">to ${m.to.map(x=>P(nameOf(x))).join(", ")}${m.cc?.filter(x=>!String(x.email).endsWith("@"+MAIL_DOMAIN)).length?` · cc ${m.cc.filter(x=>!String(x.email).endsWith("@"+MAIL_DOMAIN)).map(x=>P(nameOf(x))).join(", ")}`:""}</div>`:""}
-    <div class="b">${P(m.text||"")}${m.link?`\n\n<span class="hint">↳ View job ${P(t.jobId)} (read-only link, expires in 30 days)</span>`:""}</div>
+    <div class="b">${P(m.text||"")}${m.link?`\n\n<span class="hint">↳ Link to job ${P(t.jobId)} (opens for Dispatch users)</span>`:""}${m.notSentTo?.length?`\n<span class="hint">Not sent to ${P(m.notSentTo.join(", "))}</span>`:""}${m.notAttached?.length?`\n<span class="hint">Not attached (too large or unavailable): ${P(m.notAttached.join(", "))}</span>`:""}${m.dropped?.length?`\n<span class="hint">Not kept: ${P(m.dropped.map(d=>d.name).join(", "))} — too large</span>`:""}</div>
     ${po.map(x=>`<div class="ext ${x.applied?"done":""}"><span class="k">${x.applied?"Set":"Found"}</span><span class="v">PO ${P(x.value)}</span><span class="why">${x.applied?"on the job":"in this message"}${x.src?` · “…${P(x.src)}…”`:""}</span><span class="sp"></span>${x.applied?"":`<button class="btn sm teal" data-po="${P(x.value)}" data-mid="${m.id}">Set as job PO #</button><button class="btn sm ghost" data-ignorepo="${P(x.value)}" data-mid="${m.id}">Ignore</button>`}</div>`).join("")}
     ${m.quote?`<button class="qtog">▸ quoted text</button><div class="q">${P(m.quote)}</div>`:""}
     ${m.attachments?.length?`<div class="att">${m.attachments.map(a=>`<a class="file" href="${P(a.url||"#")}" target="_blank" rel="noopener"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.size?` <span class="sz">${fmtBytes(a.size)}</span>`:""}${m.dir==="in"?` <span class="to">→ in job Files</span>`:a.noteId?` <span class="to">from a note</span>`:""}</a>`).join("")}</div>`:""}</div>`;
@@ -2878,18 +2886,18 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
 /* =====================================================================
    AUTOMATIONS — schedules (jobs that repeat) and rules (when this happens to a job, do that).
    Map zones were taken out on 1 Oct 2026 (parked for later: docs/parked/zones-2026-10-01).
-   workspace/automations/{id}: { kind:"schedule"|"rule", name, on, order, created, createdBy, lastRun, runCount,
+   workspace/main/automations/{id}: { kind:"schedule"|"rule", name, on, order, created, createdBy, lastRun, runCount,
        schedule:{ mode:"calendar"|"after", unit:"month"|"week"|"year", every, dates:[{m,d}..], months, leadDays, dueDays,
                   ifOpen:"create"|"skip", last (ISO occurrence last created), lastDone (ISO, before the app), enabling,
                   template:{ from, title, values, location }, history:[{when,state,label}] },
        rule:{ trigger:{type,to?,days?}, conds:[{type:"prop",pid,value}], actions:[{type,...}] } }
-   workspace/automations/{id}/runs/{rid}: { t, job, did, result }
+   workspace/main/automations/{id}/runs/{rid}: { t, job, did, result }
    Everything an automation does is written to the job's Activity as "Automation", the job panel says in advance what
    will fire, and its emails wait (hold minutes) in the thread as "scheduled" so they can be cancelled.
    Where it runs: in whichever browser has Dispatch open (the demo; one user). A server scheduler is needed before this
    can be trusted at a real site, where nobody may have the app open at 06:00.
    ===================================================================== */
-const AU_COL="workspace/automations";
+const AU_COL="workspace/main/automations";   // was workspace/automations, which Firestore rejects as a collection (1 Oct review)
 let AU=[], AU_DENIED=false, AU_BUSY=false, auTimer=null, auUnsub=[];
 const AUV={ sel:null, f:"rule" };   // f = the page: "schedule" or "rule"
 const auCanEdit=()=>!!S.admin||(typeof DEMO!=="undefined"&&!!DEMO);
@@ -3018,14 +3026,16 @@ async function queueEmail(a,w,x){
   const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email).map(p=>({ email:p.email.toLowerCase(), name:p.name||"" }));
   if(!to.length) return null;
   const b=emailBody(x.what,w,x,a); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
-  const n=Math.max(0,...jobThreads(w.id).map(t=>t.n||0))+1; const from={ email:jobAddr(w.id), name:"Dispatch automation" };
+  const floor=Math.max(0,...jobThreads(w.id).map(t=>t.n||0)); const n=DB.nextThreadNo?await DB.nextThreadNo(WO_COL+"/"+w.id,floor):floor+1; const from={ email:jobAddr(w.id), name:"Dispatch automation" };
   const t={ jobId:w.id, n, addr:threadAddr(w.id,n), subject:b.subject, about:{ kind:"auto", label:a.name, auto:a.id }, participants:to, created:now(), createdBy:AUTO_BY(a), last:{ t:now(), from, snippet:snippet(b.text) }, count:1, readBy:{} };
   const tid=await DB.add(MAIL_COL,t);
   const mid=await DB.add(MAIL_COL+"/"+tid+"/messages",{ dir:"out", from, to, cc:[{ email:t.addr }], t:now(), subject:b.subject, text:b.text, quote:"", attachments:b.attachments, extracted:{po:[]}, status:hold>0?"scheduled":"queued", sendAt:at, auto:a.id, link:location.origin+location.pathname+"?job="+w.id+"&view=ro" });
   if(hold>0) await DB.update(MAIL_COL+"/"+tid,{ pending:{ mid, at } });
   return { tid, mid, at, hold, names:to.map(personLabel).join(", ") }; }
 async function releaseEmail(t){ if(!t.pending) return; await DB.update(MAIL_COL+"/"+t.id+"/messages/"+t.pending.mid,{ status:"queued" }); await DB.update(MAIL_COL+"/"+t.id,{ pending:null }); }
-async function cancelEmail(tid,mid){ const t=T(tid); const msg=await DB.get(MAIL_COL+"/"+tid+"/messages/"+mid).catch(()=>null); if(msg&&msg.status!=="scheduled"){ toast(msg.status==="cancelled"?"That email was already cancelled.":"Too late — that email has already gone."); return false; } await DB.update(MAIL_COL+"/"+tid+"/messages/"+mid,{ status:"cancelled" }); await DB.update(MAIL_COL+"/"+tid,{ pending:null, last:{ ...(t?.last||{}), snippet:"Cancelled before sending" } }); if(t) log(t.jobId,`cancelled the automated email “${t.subject}”`); toast("Email cancelled — it was not sent."); }
+async function cancelEmail(tid,mid){ const t=T(tid); const msg=await DB.get(MAIL_COL+"/"+tid+"/messages/"+mid).catch(()=>null); if(msg&&msg.status!=="scheduled"){ toast(msg.status==="cancelled"?"That email was already cancelled.":"Too late — that email has already gone."); return false; }
+  try{ await DB.update(MAIL_COL+"/"+tid+"/messages/"+mid,{ status:"cancelled" },QUIET); }catch(e){ toast("Too late — that email is already on its way."); return false; }   /* the mail service took it a moment ago */
+  await DB.update(MAIL_COL+"/"+tid,{ pending:null, last:{ ...(t?.last||{}), snippet:"Cancelled before sending" } }); if(t) log(t.jobId,`cancelled the automated email “${t.subject}”`); toast("Email cancelled — it was not sent."); }
 
 /* the rule that asks before a status change (hot work check): resolves true to go ahead */
 async function autoBeforeStatus(w,sid){
@@ -3062,7 +3072,7 @@ async function fireSchedule(a,manual){ const s=a.schedule||{}; const tpl=s.templ
   return id; }
 async function autoTick(){ if(AU_BUSY||!S.schema) return; AU_BUSY=true;
   try{
-    for(const t of TH) if(t.pending?.at&&t.pending.at<=now()) await releaseEmail(t);
+    if(!MAILCFG?.enabled) for(const t of TH) if(t.pending?.at&&t.pending.at<=now()) await releaseEmail(t);   // connected: the mail service releases them, so a message can never be sent twice
     for(const a of AU){ if(!a.on) continue;
       if(a.kind==="schedule"){ if(!a.schedule?.template?.from) continue; const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
       else if(a.rule?.trigger?.type==="deadline"){ for(const w of live().filter(isOpen)){ const d=w.values?.deadline?.start; if(!d) continue; const left=daysUntil(d); const key=a.id+"_"+d.replace(/-/g,"");
@@ -3353,7 +3363,7 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
    ===================================================================== */
 async function demoSeed(DB){
   const ago=(d,h=0)=>new Date(Date.now()-d*86400000-h*3600000).toISOString();
-  const ahead=d=>new Date(Date.now()+d*86400000).toISOString().slice(0,10);
+  const ahead=d=>localDay(new Date(Date.now()+d*86400000));   // calendar days where the base is made, matching baseDay
   // pixel positions on a top-down Google satellite capture centred on the site (zoom 18.7, 0.268 m per pixel, centre at 756,402)
   const P0={ lat:43.107411, lng:-79.193565, px:756, py:402 }, MPP=0.26833;
   const at=(px,py)=>({ lat:+(P0.lat-(py-P0.py)*MPP/111100).toFixed(6), lng:+(P0.lng+(px-P0.px)*MPP/81260).toFixed(6) });
@@ -3502,15 +3512,22 @@ async function demoSeed(DB){
    ===================================================================== */
 const AUTHOR = DEMO && PARAMS.has("author");
 const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/");
-function baseOf(DB){ const all=DB.dump(); const store={}; for(const [k,v] of Object.entries(all)) if(!BASE_DROP(k)) store[k]=v; return { v:1, savedAt:new Date().toISOString(), store }; }
-function shiftDates(x,ms){
-  if(!ms) return x;
+function baseOf(DB){ const all=DB.dump(); const store={}; for(const [k,v] of Object.entries(all)) if(!BASE_DROP(k)) store[k]=v; return { v:1, savedAt:new Date().toISOString(), baseDay:localDay(new Date()), store }; }
+/* Times move by the time since the base was saved; due dates (plain days) move by whole calendar days, so a job due
+   "tomorrow" when the base was saved is due tomorrow for every visitor, whatever the time of day or time zone. */
+const localDay=d=>{ const x=new Date(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
+function shiftDates(x,ms,days){
+  if(!ms&&!days) return x; if(days==null) days=Math.round(ms/86400000);
   const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/, day=/^\d{4}-\d{2}-\d{2}$/;
-  const f=v=>{ if(typeof v==="string"){ if(iso.test(v)) return new Date(Date.parse(v)+ms).toISOString(); if(day.test(v)){ const d=new Date(v+"T12:00:00Z"); return new Date(d.getTime()+ms).toISOString().slice(0,10); } return v; }
+  const f=v=>{ if(typeof v==="string"){ if(iso.test(v)) return new Date(Date.parse(v)+ms).toISOString(); if(day.test(v)){ const d=new Date(v+"T12:00:00Z"); return new Date(d.getTime()+days*86400000).toISOString().slice(0,10); } return v; }
     if(Array.isArray(v)) return v.map(f); if(v&&typeof v==="object"){ const o={}; for(const k in v) o[k]=f(v[k]); return o; } return v; };
   return f(x);
 }
-function loadBase(DB,base){ const ms=Math.max(0,Date.now()-Date.parse(base.savedAt||new Date().toISOString())); DB.load(shiftDates(base.store,ms)); }
+function shiftedBase(base){ const ms=Math.max(0,Date.now()-Date.parse(base.savedAt||new Date().toISOString()));
+  const days=base.baseDay?Math.round((Date.parse(localDay(new Date())+"T12:00:00Z")-Date.parse(base.baseDay+"T12:00:00Z"))/86400000):null;   // can be -1: a visitor west of where the base was made may still be on the day before
+  const store={}; for(const [k,v] of Object.entries(base.store)) store[k.replace(/^workspace\/automations\//,"workspace/main/automations/")]=v;   // older base files kept automations at the old path
+  return shiftDates(store,ms,days); }
+function loadBase(DB,base){ DB.load(shiftedBase(base)); }
 const IDB={ db:null,
   open(){ return this.db||(this.db=new Promise((res,rej)=>{ const r=indexedDB.open("sgdemo-author",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); },
   async get(k){ const d=await this.open(); return new Promise((res,rej)=>{ const q=d.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); },
