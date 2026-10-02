@@ -647,14 +647,24 @@ function makeMock(){
   const store=new Map(), subs=new Set();
   let hook=null; const notify=()=>{ subs.forEach(f=>{ try{ f(); }catch(e){ console.error(e); } }); try{ hook?.(); }catch(e){ console.error(e); } };
   // mirror a Firestore constraint so tests catch it: arrays may not directly contain arrays
-  const chk=(v,inArr)=>{ if(!inArr&&window.__failWrites>0){ window.__failWrites--; throw new Error("Simulated write failure"); } if(v===undefined) throw new Error("Unsupported field value: undefined"); if(Array.isArray(v)){ if(inArr) throw new Error("Nested arrays are not supported"); v.forEach(x=>chk(x,true)); } else if(v&&typeof v==="object") Object.values(v).forEach(x=>chk(x,false)); };
+  const INC=Symbol.for("sg.inc");
+  const chk=(v,inArr)=>{ if(!inArr&&window.__failWrites>0){ window.__failWrites--; throw new Error("Simulated write failure"); } if(v===undefined) throw new Error("Unsupported field value: undefined");
+    if(Array.isArray(v)){ if(inArr) throw new Error("Nested arrays are not supported"); v.forEach(x=>chk(x,true)); }
+    else if(v&&typeof v==="object"){ if(v[INC]!==undefined) return; const proto=Object.getPrototypeOf(v); if(proto!==Object.prototype&&proto!==null) throw new Error("Unsupported field value: "+(v.constructor?.name||"object")+" (only plain objects, arrays, strings, numbers, booleans and null)");   // Firestore refuses Date, Map, class instances
+      for(const k of Object.keys(v)){ if(k===""||/^__.*__$/.test(k)) throw new Error("Invalid field name: "+JSON.stringify(k)); chk(v[k],false); } } };
+  const sizeChk=(p,d)=>{ const n=JSON.stringify(d).length; if(n>1048576) throw new Error(`Document ${p} is too large (${(n/1048576).toFixed(2)} MiB; Firestore allows 1 MiB)`); };   // a photofull or a note full of data: URLs would be refused by Firestore
+  const deepMerge=(a,b)=>{ const o={...a}; for(const [k,v] of Object.entries(b)){ o[k]=v&&typeof v==="object"&&!Array.isArray(v)&&a[k]&&typeof a[k]==="object"&&!Array.isArray(a[k])?deepMerge(a[k],v):structuredClone(v); } return o; };
+  const getPath=(o,f)=>f.split(".").reduce((x,k)=>x==null?undefined:x[k],o);
+  const applyVal=(cur,v)=>v&&typeof v==="object"&&v[INC]!==undefined?((typeof cur==="number"?cur:0)+v[INC]):structuredClone(v);
   const children=col=>[...store.entries()].filter(([k])=>k.startsWith(col+"/")&&!k.slice(col.length+1).includes("/")).map(([k,v])=>({id:k.slice(col.length+1),...structuredClone(v)}));
   const api={
     async get(p){ return store.has(p)?structuredClone(store.get(p)):null; },
-    async set(p,d,merge){ chk(d); store.set(p, merge&&store.has(p)?{...store.get(p),...structuredClone(d)}:structuredClone(d)); notify(); },
-    async update(p,patch){ chk(patch); const cur=store.get(p)||{}; for(const [k,v] of Object.entries(patch)){ const segs=k.split("."); let o=cur; for(let i=0;i<segs.length-1;i++){ o[segs[i]]??={}; o=o[segs[i]]; } o[segs.at(-1)]=structuredClone(v); } store.set(p,cur); notify(); },
+    async set(p,d,merge){ chk(d); const nd=merge&&store.has(p)?deepMerge(store.get(p),d):structuredClone(d); sizeChk(p,nd); store.set(p,nd); notify(); },
+    async update(p,patch){ chk(patch); if(!store.has(p)) throw new Error("No document to update: "+p); const cur=structuredClone(store.get(p)); for(const [k,v] of Object.entries(patch)){ const segs=k.split("."); let o=cur; for(let i=0;i<segs.length-1;i++){ o[segs[i]]??={}; o=o[segs[i]]; } o[segs.at(-1)]=applyVal(o[segs.at(-1)],v); } sizeChk(p,cur); store.set(p,cur); notify(); },
+    inc(n){ return { [INC]:n }; },   // a counter step applied on the server, like Firestore's increment()
+    async claim(p,field,value){ const cur=store.get(p); if(!cur) return false; if(getPath(cur,field)===value) return false; await api.update(p,{ [field]:value }); return true; },   // true for exactly one caller per value (field may be dotted)
     async del(p){ store.delete(p); [...store.keys()].filter(k=>k.startsWith(p+"/")).forEach(k=>store.delete(k)); notify(); },
-    async add(col,d){ chk(d); const id=uid(); store.set(col+"/"+id,structuredClone(d)); notify(); return id; },
+    async add(col,d){ chk(d); sizeChk(col,d); const id=uid(); store.set(col+"/"+id,structuredClone(d)); notify(); return id; },
     async list(col){ return children(col); },
     watchDoc(p,cb){ const f=()=>cb(store.has(p)?{id:p.split("/").at(-1),...structuredClone(store.get(p))}:null); subs.add(f); f(); return ()=>subs.delete(f); },
     watchCol(col,cb){ const f=()=>cb(children(col)); subs.add(f); f(); return ()=>subs.delete(f); },
@@ -674,11 +684,13 @@ function makeFirestore(F, db){
     async set(p,d,merge){ await F.setDoc(D(p),d,merge?{merge:true}:undefined); },
     async update(p,patch){ await F.updateDoc(D(p),patch); },
     async del(p){ // delete doc + known subcollections
-      for(const sub of ["activity","comments","blocks","photos","photofull","notes"]){ try{ const s=await F.getDocs(C(p+"/"+sub)); await Promise.all(s.docs.map(d=>F.deleteDoc(d.ref))); }catch{} }
+      for(const sub of ["activity","comments","blocks","photos","photofull","notes","runs","messages"]){ try{ const s=await F.getDocs(C(p+"/"+sub)); await Promise.all(s.docs.map(d=>F.deleteDoc(d.ref))); }catch{} }
       await F.deleteDoc(D(p)); },
     async add(col,d){ const r=await F.addDoc(C(col),d); return r.id; },
     async list(col){ const s=await F.getDocs(C(col)); return s.docs.map(d=>({id:d.id,...d.data()})); },
-    watchDoc(p,cb,onErr){ return F.onSnapshot(D(p),s=>cb(s.exists()?{id:s.id,...s.data()}:null),e=>onErr?onErr(e):onDbError(e,p)); },
+    watchDoc(p,cb,onErr){ return F.onSnapshot(D(p),s=>cb(s.exists()?{id:s.id,...s.data()}:null,{ fromCache:s.metadata.fromCache }),e=>onErr?onErr(e):onDbError(e,p)); },
+    inc(n){ return F.increment(n); },
+    async claim(p,field,value){ return F.runTransaction(db, async tx=>{ const ref=D(p); const s=await tx.get(ref); if(!s.exists()) return false; const cur=field.split(".").reduce((x,k)=>x==null?undefined:x[k],s.data()); if(cur===value) return false; tx.update(ref,{ [field]:value }); return true; }); },
     watchCol(col,cb,onErr){ return F.onSnapshot(C(col),s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),e=>onErr?onErr(e):onDbError(e,col)); },
     async nextSeq(){ return F.runTransaction(db, async tx=>{ const ref=D("workspace/counters"); const s=await tx.get(ref); const n=((s.exists()&&s.data().wo)||0)+1; tx.set(ref,{wo:n},{merge:true}); return n; }); },
     async nextThreadNo(jobPath,floor=0){ return F.runTransaction(db, async tx=>{ const ref=D(jobPath); const s=await tx.get(ref); const n=Math.max((s.exists()&&s.data().mailSeq)||0,floor)+1; if(s.exists()) tx.update(ref,{ mailSeq:n }); return n; }); },
@@ -729,7 +741,7 @@ async function sendLink(){
 async function boot(){
   if(MOCK){
     DB=trackDB(makeMock()); window.DB=DB; window.__migrate=()=>migrateToJobs();
-    ST={ async upload(path,file,onProgress){ onProgress?.(1); const url=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(file); }); return { path, url }; }, async del(){ } };   // exposed for the headless test harness only
+    ST={ async upload(path,file,onProgress){ onProgress?.(1); const url=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(file); }); return { path, url }; }, async del(){ } }; window.ST=ST;   // exposed for the headless test harness only
     AUTH={ google:async()=>{}, sendLink:async()=>{}, signOut:async()=>location.reload() };
     if(DEMO){ await demoBoot(DB); await enter({ uid:"demo", email:"demo@skygauge.co", displayName:"Demo user", emailVerified:true }); return; }
     await enter({ uid:"mock-admin", email:ADMIN_EMAIL, displayName:"Nikita (mock)", emailVerified:true });
@@ -775,7 +787,8 @@ async function enter(u){
     S.allow=(al?.domains||[]).map(d=>d.toLowerCase());
   }catch(e){ console.warn("allowlist read",e); showGate("denied"); return; }
   if(!S.admin && !S.allow.includes(domainOf(S.user.email))){ showGate("denied"); return; }
-  try{ await DB.set("workspace/main/members/"+S.user.uid,{ name:S.user.name, email:S.user.email, photo:S.user.photo, lastSeen:now() },true); }
+  try{ const w=DB.set("workspace/main/members/"+S.user.uid,{ name:S.user.name, email:S.user.email, photo:S.user.photo, lastSeen:now() },true); w.catch(e=>console.warn("member write",e));
+    await Promise.race([w, new Promise(r=>setTimeout(r,4000))]); }   // offline: the write waits for the server; the app must not
   catch(e){ console.warn("member write",e); showGate("denied"); return; }
   startApp();
 }
@@ -789,21 +802,21 @@ function startApp(){
   $("#gate").hidden=true; $("#bar").hidden=false; $("#app").hidden=false;
   $("#uav").textContent=initials(S.user.name); $("#uname").textContent=S.user.name.split(" ")[0];
   try{ const v=JSON.parse(localStorage.getItem(LSK.view)||"{}"); if(v.view) S.view=v.view; if(v.hb) S.hidden.board=new Set(v.hb); if(v.ht) S.hidden.table=new Set(v.ht); if(v.sort) S.sort=v.sort; }catch{}
-  S.unsub.push(DB.watchDoc("workspace/schema", d=>{
-    if(!d){ if(!S.schema){ S.schema=defaultSchema(); DB.set("workspace/schema",S.schema).catch(console.error); } return; }
+  S.unsub.push(DB.watchDoc("workspace/schema", (d,meta)=>{
+    if(!d){ if(meta?.fromCache) return;   /* offline with nothing cached is not "no schema" */ if(!S.schema){ S.schema=defaultSchema(); DB.set("workspace/schema",S.schema).catch(console.error); } return; }
     if(S.schema&&sameJSON(S.schema,d)) return;   // our own save coming back: keep the object open editors hold
     S.schema=d; renderAll();
   }));
-  S.unsub.push(DB.watchDoc("workspace/site", d=>{
+  S.unsub.push(DB.watchDoc("workspace/site", (d,meta)=>{
     const first=!S.site;
     const before=JSON.stringify(S.site?.boundary||null);
-    if(!d){ if(first){ S.site={ boundary:DEFAULT_BOUNDARY }; DB.set("workspace/site",S.site).catch(console.error); } }
+    if(!d){ if(meta?.fromCache) return;   /* offline with nothing cached is not "no boundary" */ if(first){ S.site={ boundary:DEFAULT_BOUNDARY }; DB.set("workspace/site",S.site).catch(console.error); } }
     else S.site=d;
     if(first){ if(S.mapsKey!==undefined) initMap(); } else if(map&&JSON.stringify(S.site?.boundary||null)!==before){ drawSite(); applyCameraLimits(); }   // only a real boundary change redraws and reframes
   }));
   S.unsub.push(DB.watchCol(WO_COL, rows=>{
     const was=S.open?W(S.open):null;
-    S.wos=rows.sort((a,b)=>(a.seq||0)-(b.seq||0));
+    S.wos=rows.sort((a,b)=>(a.seq||0)-(b.seq||0)); S.jobsLoaded=true;
     // the job we are inside was trashed or deleted elsewhere → leave it cleanly (every layer, every mode). A job opened from the Trash stays open.
     if(S.open){ const cur=W(S.open); if((!cur&&was)||(cur?.trashed&&was&&!was.trashed)){ const id=S.open; if(S.creating===id) cancelCreate(); else if(S.woView) exitWOView(); else closePeek(); if(!cur||cur.trashed) toast(`${id} was ${cur?"moved to Trash":"deleted"} by another user.`); } }
     purgeTrash(); syncOverlays(); renderAll();
@@ -921,7 +934,7 @@ function runWrite(thunk,path){
   return p.then(r=>{ SAVE.pending--; SAVE.last=Date.now(); renderSave(); return r; },
                 e=>{ SAVE.pending--; SAVE.failed.push({ thunk, path, err:e }); renderSave(); toast(`Couldn't save ${whatIs(path)} — ${e?.message||e}`,true); throw e; });
 }
-function whatIs(path){ path=String(path||""); if(/\/photofull\//.test(path)) return "the photo"; if(/\/photos\//.test(path)) return "the photo markup"; if(/\/activity/.test(path)) return "the activity entry"; if(/workorders\/[^/]+$/.test(path)) return "the job"; if(/assets/.test(path)) return "the asset"; if(/schema/.test(path)) return "the properties"; return "the change"; }
+function whatIs(path){ path=String(path||""); if(/\/photofull\//.test(path)) return "the photo"; if(/\/photos\//.test(path)) return "the photo markup"; if(/\/activity/.test(path)) return "the activity entry"; if(/\/notes\//.test(path)) return "the note"; if(/\/threads\//.test(path)) return "the email"; if(/(jobs|workorders)\/[^/]+$/.test(path)) return "the job"; if(/assets/.test(path)) return "the asset"; if(/schema/.test(path)) return "the properties"; return "the change"; }
 // a failed write is already reported via the status chip + toast; keep it out of the console as an "uncaught" error
 window.addEventListener("unhandledrejection",e=>{ if(SAVE.failed.some(f=>f.err===e.reason)||/Simulated write failure/.test(String(e.reason?.message))) e.preventDefault(); });
 async function retryFailed(){ const q=SAVE.failed.splice(0); renderSave(); for(const f of q){ try{ await runWrite(f.thunk,f.path); }catch{} } if(!SAVE.failed.length) toast("Everything is saved."); }
@@ -949,22 +962,26 @@ function flashSaved(el,run){   // run: a function that starts the write — the 
 }
 async function trashWO(id){ const w=W(id); if(!w) return; w.trashed=true; w.trashedAt=now(); refreshWOOverlay(w); if(S.open===id){ if(S.woView) exitWOView(); else closePeek(); } renderAll(); await DB.update(WO_COL+"/"+id,{ trashed:true, trashedAt:now(), ...stamp() }); log(id,"moved to Trash"); toast(`${id} moved to Trash · <button class="link" id="undo-t">Undo</button>`); $("#undo-t")?.addEventListener("click",()=>restoreWO(id)); }
 async function restoreWO(id){ const w=W(id); if(!w){ toast(`${id} was deleted permanently — it can't be restored.`,true); return; } w.trashed=false; w.trashedAt=null; refreshWOOverlay(w); renderAll(); await DB.update(WO_COL+"/"+id,{ trashed:false, trashedAt:null, ...stamp() }); log(id,"restored from Trash"); }
-async function purgeWO(id){ if(S.open===id){ if(S.creating===id) cancelCreate(); else if(S.woView) exitWOView(); else closePeek(); } const o=OV.wo[id]; if(o){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } await DB.del(WO_COL+"/"+id); }
+async function purgeWO(id){ if(S.open===id){ if(S.creating===id) cancelCreate(); else if(S.woView) exitWOView(); else closePeek(); } const o=OV.wo[id]; if(o){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } const w0=W(id), series=w0?.series?.auto; await DB.del(WO_COL+"/"+id);
+  if(series){ const patch={ "schedule.fired":null }; if(isDone(w0)&&w0.completedAt){ const cur=AUX?.(series)?.schedule?.lastDone||""; if(w0.completedAt>cur) patch["schedule.lastDone"]=w0.completedAt; }   // its completion still counts for "N months after the last one"
+    DB.update("workspace/main/automations/"+series,patch,QUIET).catch(()=>{}); } }   // an "after completion" series keys its next fire on this job existing: let it fire again
 function purgeTrash(){ const cut=Date.now()-30*86400000; trashed().filter(w=>w.trashedAt&&new Date(w.trashedAt)<cut).forEach(w=>purgeWO(w.id)); const dcut=Date.now()-86400000; S.wos.filter(w=>w.draft&&S.creating!==w.id&&w.createdBy?.uid===S.user.uid&&new Date(w.created)<dcut).forEach(w=>purgeWO(w.id)); }
 async function duplicateWO(id){ const w=W(id); if(!w) return; const nid=await createWO({ title:(w.title||"Untitled")+" (copy)", statusId:w.statusId, values:structuredClone(w.values||{}), location:structuredClone(w.location) }); openWO(nid); }
 async function saveSchema(){ S.schema.version=(S.schema.version||1); await DB.set("workspace/schema",S.schema); renderAll(); }
 
+/* a value of the wrong shape (a type changed elsewhere, old data) must never throw: lists are coerced, objects read loosely */
+const asList = v => Array.isArray(v)?v:v==null||v===""?[]:[v];
 function describe(p,v){
   if(v==null||v===""||(Array.isArray(v)&&!v.length)) return "";
   switch(p.type){
     case "select": return p.options?.find(o=>o.id===v)?.name||"";
-    case "multi": return v.map(id=>p.options?.find(o=>o.id===id)?.name).filter(Boolean).join(", ");
-    case "person": return v.map(x=>x.name||x.email).join(", ");
-    case "relation": return v.join(", ");
-    case "date": return v.end?`${v.start} → ${v.end}`:(v.start||"");
+    case "multi": return asList(v).map(id=>p.options?.find(o=>o.id===id)?.name).filter(Boolean).join(", ");
+    case "person": return asList(v).map(x=>x&&typeof x==="object"?(x.name||x.email):String(x)).join(", ");
+    case "relation": return asList(v).join(", ");
+    case "date": return v&&typeof v==="object"?(v.end?`${v.start} → ${v.end}`:(v.start||"")):String(v);
     case "checkbox": return v?"checked":"unchecked";
-    case "files": return v.length+" file"+(v.length===1?"":"s");
-    default: return String(v);
+    case "files": return asList(v).length+" file"+(asList(v).length===1?"":"s");
+    default: return typeof v==="object"?JSON.stringify(v):String(v);
   }
 }
 function isEmpty(v){ return v==null||v===""||(Array.isArray(v)&&!v.length)||(typeof v==="object"&&!Array.isArray(v)&&!v.start&&!v.length); }
@@ -992,12 +1009,14 @@ function openPop(anchor, html, opts={}){
   return el;
 }
 document.addEventListener("pointerdown",e=>{ if(POP&&!POP.contains(e.target)) closePop(); },true);
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(S.creating){ cancelCreate(); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ closeNote(true); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.open&&!S.woView) closePeek(); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(document.activeElement?.id==="q"){ document.activeElement.blur(); return; } if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(S.creating){ cancelCreate(true); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ document.activeElement?.blur?.(); closeNote(true); return; } if(S.open&&!S.woView) closePeek(); } });
 
 /* =====================================================================
    VALUE RENDERERS (record page, table cell, board card)
    ===================================================================== */
 function personHTML(x){ const m=x.uid?S.members.find(mm=>mm.id===x.uid):S.members.find(mm=>mm.email===x.email); const name=m?.name||x.name||x.email; return m||x.name?`<span class="person"><span class="avatar sm">${P(initials(name))}</span>${P(name)}</span>`:`<span class="person"><span class="em">✉</span>${P(x.email)}</span>`; }
+/* a link we will open: http(s) or mailto only — never javascript:/data: */
+const safeHref = u => /^(https?:\/\/|mailto:)/i.test(String(u||"").trim());
 function renderValue(p,v,w,compact){
   if(p.type==="created_by") return personHTML(w.createdBy||{name:"—"});
   if(p.type==="created_time") return `<span class="mono" style="font-size:12.5px">${P(fmtDate(w.created,true))}</span>`;
@@ -1007,14 +1026,14 @@ function renderValue(p,v,w,compact){
     case "number": { const f=p.format||{}; const n=Number(v); return `<span class="mono">${P(isFinite(n)?n.toLocaleString(undefined,{maximumFractionDigits:f.decimals??3}):v)}${f.unit?" "+P(f.unit):""}</span>`; }
     case "select": { const o=p.options?.find(o=>o.id===v); return o?pill(o.name,o.color):""; }
     case "multi": return (Array.isArray(v)?v:[v]).map(id=>p.options?.find(o=>o.id===id)).filter(Boolean).map(o=>pill(o.name,o.color)).join(" ");
-    case "date": { const late=p.id==="deadline"&&!isDone(w)&&v.start&&daysUntil(v.end||v.start)<0; const s=fmtDate(v.start,v.time)+(v.end?" → "+fmtDate(v.end,v.time):""); return `<span class="mono ${late?"late":""}" style="font-size:12.5px">${P(s)}${late&&!compact?` · ${-daysUntil(v.end||v.start)} d overdue`:""}</span>`; }
+    case "date": { if(!v||typeof v!=="object") return `<span class="mono">${P(String(v))}</span>`; const late=p.id==="deadline"&&!isDone(w)&&v.start&&daysUntil(v.end||v.start)<0; const s=fmtDate(v.start,v.time)+(v.end?" → "+fmtDate(v.end,v.time):""); return `<span class="mono ${late?"late":""}" style="font-size:12.5px">${P(s)}${late&&!compact?` · ${-daysUntil(v.end||v.start)} d overdue`:""}</span>`; }
     case "person": return (Array.isArray(v)?v:[v]).filter(x=>x&&typeof x==="object").map(personHTML).join(" ");
     case "checkbox": return `<span class="chk ${v?"on":""}">${v?"✓":""}</span>`;
-    case "url": return `<a href="${P(v)}" target="_blank" rel="noopener" class="link" style="overflow:hidden;text-overflow:ellipsis;max-width:100%">${P(v.replace(/^https?:\/\//,""))}</a>`;
+    case "url": { const u=String(v); return safeHref(u)?`<a href="${P(u)}" target="_blank" rel="noopener" class="link" style="overflow:hidden;text-overflow:ellipsis;max-width:100%">${P(u.replace(/^https?:\/\//,""))}</a>`:`<span>${P(u)}</span>`; }
     case "email": return `<a href="mailto:${P(v)}" class="link">${P(v)}</a>`;
     case "phone": return `<a href="tel:${P(v)}" class="link">${P(v)}</a>`;
-    case "files": return `<span class="hint">${p.imagesOnly?"📷 ":""}${v.length} ${p.imagesOnly?"photo":"file"}${v.length===1?"":"s"}</span>`;
-    case "relation": return v.map(t=>`<span class="pill mono" data-asset="${P(t)}" title="${P(asset(t)?.name||"")}" style="background:var(--steel-2);color:var(--ink);cursor:pointer">${P(t)}</span>`).join("");
+    case "files": return `<span class="hint">${p.imagesOnly?"📷 ":""}${asList(v).length} ${p.imagesOnly?"photo":"file"}${asList(v).length===1?"":"s"}</span>`;
+    case "relation": return asList(v).map(String).map(t=>`<span class="pill mono" data-asset="${P(t)}" title="${P(asset(t)?.name||"")}" style="background:var(--steel-2);color:var(--ink);cursor:pointer">${P(t)}</span>`).join("");
   }
   return P(describe(p,v));
 }
@@ -1030,12 +1049,12 @@ function startEdit(p,w,anchor){
   const reject=(el,msg)=>{ const n=el.querySelector(".err")||el.appendChild(Object.assign(document.createElement("div"),{className:"err",style:"padding:4px 8px"})); n.textContent=msg; setTimeout(()=>n.textContent="",3000); };
   switch(p.type){
     case "text": { const el=openPop(anchor,`<textarea placeholder="Empty">${P(v||"")}</textarea><div class="hint" style="padding:4px 8px">Enter to save · Shift+Enter for a new line · Esc to cancel</div>`,{width:300});
-      const ta=el.querySelector("textarea"); let esc=false; ta.onkeydown=e=>{ if(e.key==="Escape") esc=true; if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); setValue(w.id,p.id,ta.value.trim()); closePop(); } }; el.onclose=()=>{ if(!esc&&ta.value.trim()!==(v||"")) setValue(w.id,p.id,ta.value.trim()); }; return; }
+      const ta=el.querySelector("textarea"); let esc=false, done=false; ta.onkeydown=e=>{ if(e.key==="Escape") esc=true; if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); done=true; setValue(w.id,p.id,ta.value.trim()); closePop(); } }; el.onclose=()=>{ if(!esc&&!done&&ta.value.trim()!==(v||"")) setValue(w.id,p.id,ta.value.trim()); }; return; }
     case "number": { const el=openPop(anchor,`<input type="text" inputmode="decimal" value="${P(v??"")}" placeholder="Empty"><div class="hint" style="padding:4px 8px">Enter to save${p.format?.unit?" · "+P(p.format.unit):""}</div>`,{select:true});
       const inp=el.querySelector("input"); inp.onkeydown=e=>{ if(e.key==="Enter"){ const t=inp.value.trim().replace(/,/g,""); if(t===""){ setValue(w.id,p.id,null); closePop(); return; } const n=Number(t); if(!isFinite(n)){ reject(el,"Numbers only"); return; } setValue(w.id,p.id,n); closePop(); } }; return; }
     case "url": case "email": case "phone": { const el=openPop(anchor,`<input type="text" value="${P(v||"")}" placeholder="${p.type==="url"?"https://…":p.type==="email"?"name@company.com":"+1 …"}"><div class="hint" style="padding:4px 8px">Enter to save</div>`,{select:true});
       const inp=el.querySelector("input"); inp.onkeydown=e=>{ if(e.key!=="Enter") return; let t=inp.value.trim(); if(t===""){ setValue(w.id,p.id,null); closePop(); return; }
-        if(p.type==="url"){ if(!/^[a-z]+:\/\//i.test(t)) t="https://"+t; try{ new URL(t); }catch{ reject(el,"Not a valid URL"); return; } }
+        if(p.type==="url"){ if(!/^[a-z]+:\/\//i.test(t)) t="https://"+t; try{ new URL(t); }catch{ reject(el,"Not a valid URL"); return; } if(!safeHref(t)){ reject(el,"Only web links (http, https) can be stored"); return; } }
         if(p.type==="email"&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)){ reject(el,"Not a valid email address"); return; }
         setValue(w.id,p.id,t); closePop(); }; return; }
     case "checkbox": setValue(w.id,p.id,!v); return;
@@ -1062,9 +1081,9 @@ function optionPicker(p,w,anchor,onPick){
       ${q.trim()&&!exact?`<div class="mi" data-create="1">Create ${pill(q.trim(),"default")}</div>`:""}`;
     const inp=el.querySelector("input"); inp.focus(); inp.setSelectionRange(q.length,q.length);
     inp.oninput=()=>{ q=inp.value; draw(); };
-    inp.onkeydown=e=>{ if(e.key==="Enter"){ const c=el.querySelector("[data-create]"); if(c) c.click(); else el.querySelector(".mi[data-id]")?.click(); } if(e.key==="Backspace"&&!q&&multi&&cur.length){ pick(cur.at(-1)); } };
+    inp.onkeydown=e=>{ if(e.key==="Enter"){ if(!q.trim()){ if(!multi) closePop(); return; } const first=el.querySelector(".mi[data-id]"); const c=el.querySelector("[data-create]"); if(first) first.click(); else if(c) c.click(); } /* Enter with nothing typed picks nothing */ if(e.key==="Backspace"&&!q&&multi&&cur.length){ pick(cur.at(-1)); } };
     el.querySelectorAll(".x[data-rm]").forEach(x=>x.onclick=e=>{ e.stopPropagation(); pick(x.dataset.rm); });
-    el.querySelectorAll(".mi[data-id]").forEach(m=>m.onclick=e=>{ if(e.target.dataset.edit){ e.stopPropagation(); optionEditor(p,e.target.dataset.edit,m,()=>{ setTimeout(()=>{ document.body.append(el); POP=el; draw(); },0); }); return; } pick(m.dataset.id); });
+    el.querySelectorAll(".mi[data-id]").forEach(m=>m.onclick=e=>{ if(e.target.dataset.edit){ e.stopPropagation(); optionEditor(p,e.target.dataset.edit,m,()=>{ setTimeout(()=>{ if(POP) return; document.body.append(el); POP=el; draw(); },0); }); return; } pick(m.dataset.id); });
     el.querySelector("[data-create]")?.addEventListener("click",async()=>{ p=prop(p.id)||p; const o={id:uid(),name:q.trim(),color:COLORS[(p.options?.length||0)%9+1]}; (p.options??=[]).push(o); q=""; if(multi) draw(); await saveSchema(); pick(o.id); });
     // drag reorder of options (V15)
     let dragId=null; el.querySelectorAll(".mi[data-id]").forEach(m=>{ const g=m.querySelector(".grab"); g.ondragstart=e=>{ dragId=m.dataset.id; e.dataTransfer.effectAllowed="move"; }; m.ondragover=e=>e.preventDefault(); m.ondrop=e=>{ e.preventDefault(); if(!dragId||dragId===m.dataset.id) return; const a=p.options; const from=a.findIndex(o=>o.id===dragId), to=a.findIndex(o=>o.id===m.dataset.id); a.splice(to,0,a.splice(from,1)[0]); saveSchema().then(draw); }; });
@@ -1077,7 +1096,7 @@ function optionEditor(p,oid,anchor,after){
   const used=live().filter(w=>{ const v=w.values?.[p.id]; return Array.isArray(v)?v.includes(oid):v===oid; }).length;
   const el=openPop(anchor,`<div class="fr"><input class="ren" type="text" value="${P(o.name)}" style="flex:1"></div><div class="sec">Colour</div><div class="swatches">${COLORS.map(c=>`<span class="sw ${c===o.color?"on":""}" data-c="${c}" style="background:${col(c).bg};border-color:${c===o.color?col(c).map:"transparent"}" title="${c}"></span>`).join("")}</div><div class="hr"></div><div class="mi danger" data-del>Delete option<span class="r">${used?used+" in use":""}</span></div>`,{width:240,select:true});
   const inp=el.querySelector("input"); inp.onkeydown=e=>{ if(e.key==="Enter"){ commit(); closePop(); } };
-  const commit=()=>{ const n=inp.value.trim(); if(n&&n!==o.name){ o.name=n; saveSchema(); } };
+  const commit=()=>{ const n=inp.value.trim(); if(n&&n!==o.name){ const was=o.name; o.name=n; saveSchema(); if(typeof renameOptionInRules==="function") renameOptionInRules(p.id,was,n); } };
   el.onclose=()=>{ commit(); after?.(); };
   el.querySelectorAll(".sw").forEach(s=>s.onclick=()=>{ o.color=s.dataset.c; saveSchema(); el.querySelectorAll(".sw").forEach(x=>{ x.classList.toggle("on",x===s); x.style.borderColor=x===s?col(o.color).map:"transparent"; }); });
   el.querySelector("[data-del]").onclick=async()=>{ if(used&&!confirm(`Delete “${o.name}”? It is set on ${used} job${used===1?"":"s"}; those values will be cleared.`)) return;
@@ -1094,7 +1113,7 @@ function datePicker(p,w,anchor){
     <div class="mi" id="d-end"><span>End date</span><span class="r">${v.end!=null?"on":"off"}</span></div>
     <div class="mi" id="d-time"><span>Include time</span><span class="r">${v.time?"on":"off"}</span></div>
     <div class="hr"></div><div class="mi" id="d-today">Today</div><div class="mi danger" id="d-clear">Clear</div>`,{width:260,noFocus:true});
-  const cur=()=>({ start:el.querySelector("#d-s").value||null, end:el.querySelector("#d-er").hidden?null:(el.querySelector("#d-e").value||null), time:el.querySelector("#d-tr").hidden?null:(el.querySelector("#d-t").value||null) });
+  const cur=()=>{ const c={ start:el.querySelector("#d-s").value||null, end:el.querySelector("#d-er").hidden?null:(el.querySelector("#d-e").value||null), time:el.querySelector("#d-tr").hidden?null:(el.querySelector("#d-t").value||null) }; if(c.end&&c.start&&c.end<c.start){ el.querySelector("#d-e").value=c.start; c.end=c.start; } return c; };
   const save=()=>{ const c=cur(); setValue(w.id,p.id,c.start?c:null); };
   el.querySelectorAll("input").forEach(i=>i.onchange=save);
   el.querySelector("#d-end").onclick=()=>{ const r=el.querySelector("#d-er"); r.hidden=!r.hidden; if(!r.hidden&&!r.querySelector("input").value) r.querySelector("input").value=el.querySelector("#d-s").value; el.querySelector("#d-end .r").textContent=r.hidden?"off":"on"; save(); };
@@ -1157,16 +1176,16 @@ function statusMenu(w,anchor){
    ===================================================================== */
 const USER_TYPES=["text","number","select","multi","status_na","date","person","checkbox","url","email","phone","files","relation"].filter(t=>t!=="status_na");
 function propertyMenu(p,anchor,view){
-  const sys=!!p.system;
+  const sys=!!p.system, fixed=sys||BASIC_IDS.includes(p.id);   // the Due date and People boxes depend on their type
   const el=openPop(anchor,`<div class="fr"><input class="ren" type="text" value="${P(p.name)}" ${sys?"disabled":""} style="flex:1"></div>
-    <div class="mi" data-type ${sys?"style='opacity:.5;pointer-events:none'":""}>${ico(p.type)}Type<span class="r">${TYPE_LABEL[p.type]} ›</span></div>
+    <div class="mi" data-type ${fixed?"style='opacity:.5;pointer-events:none'":""}>${ico(p.type)}Type<span class="r">${TYPE_LABEL[p.type]} ›</span></div>
     ${(p.type==="select"||p.type==="multi")?`<div class="mi" data-opts>Edit options<span class="r">${p.options?.length||0}</span></div>`:""}
     ${p.type==="number"?`<div class="mi" data-fmt>Number format<span class="r">${P(p.format?.unit||"")} ${p.format?.decimals??""}</span></div>`:""}
     ${p.type==="files"?`<div class="mi" data-img>Images only<span class="r">${p.imagesOnly?"on":"off"}</span></div>`:""}
     ${p.type==="person"?`<div class="mi" data-mult>Allow several people<span class="r">${p.multiple===false?"off":"on"}</span></div>`:""}
     <div class="hr"></div>
     ${view?`<div class="mi" data-hide>Hide in ${view==="board"?"Board cards":"Table"}</div>`:""}
-    ${!sys?`<div class="mi" data-dup>Duplicate property</div><div class="mi danger" data-del>Delete property</div>`:`<div class="hint" style="padding:4px 8px">Written by the system; cannot be edited or deleted.</div>`}`,{width:260,select:!sys});
+    ${!fixed?`<div class="mi" data-dup>Duplicate property</div><div class="mi danger" data-del>Delete property</div>`:`<div class="hint" style="padding:4px 8px">${sys?"Written by the system; cannot be edited or deleted.":"Used by the Due and People boxes, links and rules; it can be renamed but not deleted or given another type."}</div>`}`,{width:260,select:!sys});
   const inp=el.querySelector("input"); const commit=()=>{ const n=inp.value.trim(); if(n&&n!==p.name){ p.name=n; saveSchema(); } };
   inp.onkeydown=e=>{ if(e.key==="Enter"){ commit(); closePop(); } }; el.onclose=commit;
   el.querySelector("[data-type]").onclick=()=>typeChanger(p,anchor);
@@ -1187,9 +1206,9 @@ function typeChanger(p,anchor){
 }
 async function changeType(p,to){
   const from=p.type; if(from===to){ closePop(); return; }
-  const affected=live().filter(w=>!isEmpty(w.values?.[p.id]));
+  const affected=S.wos.filter(w=>!isEmpty(w.values?.[p.id])), shown=affected.filter(w=>!w.trashed&&!w.draft).length;   // trashed jobs too: a restored job must not carry an old-shaped value
   const conv=convertible(from,to);
-  if(affected.length && !confirm(`Change “${p.name}” from ${TYPE_LABEL[from]} to ${TYPE_LABEL[to]}? ${affected.length} job${affected.length===1?" has":"s have"} a value; ${conv?"values will be converted where possible.":"those values will be cleared."}`)) return;
+  if(shown && !confirm(`Change “${p.name}” from ${TYPE_LABEL[from]} to ${TYPE_LABEL[to]}? ${shown} job${shown===1?" has":"s have"} a value; ${conv?"values will be converted where possible.":"those values will be cleared."}`)) return;
   // work out every new value first, then save the schema, then the jobs — each write can hand back a fresh copy of the schema
   const q={ ...p, options:structuredClone(p.options||[]) };
   const nvs=affected.map(w=>[w,conv?convertValue(q,from,to,w.values[p.id]):null]);
@@ -1202,6 +1221,7 @@ function convertValue(p,from,to,v){
   const opt=name=>{ let o=p.options.find(o=>o.name.toLowerCase()===name.toLowerCase()); if(!o){ o={id:uid(),name,color:COLORS[p.options.length%9+1]}; p.options.push(o); } return o.id; };
   const nameOf=id=>p.options?.find(o=>o.id===id)?.name;
   if(to==="text"){ if(from==="select") return nameOf(v)||null; if(from==="multi") return v.map(nameOf).filter(Boolean).join(", ")||null; return String(v); }
+  if(from==="text"&&to==="url"){ const t=String(v).trim(); const u=/^[a-z]+:\/\//i.test(t)?t:"https://"+t; return /^(https?:\/\/)[^\s]+$/i.test(u)?u:null; }
   if(from==="text"){ if(to==="select") return opt(v.trim()); if(to==="multi") return v.split(",").map(s=>s.trim()).filter(Boolean).map(opt); if(to==="number"){ const n=Number(v.replace(/,/g,"")); return isFinite(n)?n:null; } return v; }
   if(from==="select"&&to==="multi") return [v];
   if(from==="multi"&&to==="select") return v[0]||null;
@@ -1218,7 +1238,7 @@ function optionsEditor(p,anchor){
   const el=openPop(anchor,"",{width:280});
   const draw=()=>{ p=prop(p.id)||p; el.innerHTML=`<div class="sec">Options · drag to reorder</div>${(p.options||[]).map(o=>`<div class="mi" data-id="${o.id}" draggable="true"><span class="grab">⋮⋮</span>${pill(o.name,o.color)}<span class="r" data-edit="${o.id}">···</span></div>`).join("")}<div class="hr"></div><div class="fr"><input type="text" id="o-new" placeholder="New option, Enter to add"></div>`;
     el.querySelector("#o-new").onkeydown=async e=>{ if(e.key==="Enter"&&e.target.value.trim()){ p=prop(p.id)||p; (p.options??=[]).push({id:uid(),name:e.target.value.trim(),color:COLORS[p.options.length%9+1]}); draw(); el.querySelector("#o-new").focus(); await saveSchema(); } };
-    el.querySelectorAll("[data-edit]").forEach(x=>x.onclick=e=>{ e.stopPropagation(); const anc=x.closest(".mi"); const keep=el; optionEditor(p,x.dataset.edit,anc,()=>{}); POP.onclose=()=>{ const o=p.options.find(z=>z.id===x.dataset.edit); const inp=POP?.querySelector("input.ren"); if(o&&inp&&inp.value.trim()&&inp.value.trim()!==o.name){ o.name=inp.value.trim(); saveSchema(); } setTimeout(()=>{ document.body.append(keep); POP=keep; draw(); },0); }; });
+    el.querySelectorAll("[data-edit]").forEach(x=>x.onclick=e=>{ e.stopPropagation(); const anc=x.closest(".mi"); const keep=el; optionEditor(p,x.dataset.edit,anc,()=>{ setTimeout(()=>{ if(POP) return; document.body.append(keep); POP=keep; draw(); },0); }); });   // the editor commits the rename itself (its onclose); we only bring this list back
     let dragId=null; el.querySelectorAll(".mi[data-id]").forEach(m=>{ m.ondragstart=e=>{ dragId=m.dataset.id; }; m.ondragover=e=>e.preventDefault(); m.ondrop=e=>{ e.preventDefault(); if(!dragId||dragId===m.dataset.id) return; const a=p.options; a.splice(a.findIndex(o=>o.id===m.dataset.id),0,a.splice(a.findIndex(o=>o.id===dragId),1)[0]); saveSchema().then(draw); }; });
   };
   draw();
@@ -1241,7 +1261,7 @@ function statusOptionEditor(oid,anchor,after){
   el.querySelector("[data-def]").onclick=()=>{ st.options.filter(x=>x.group===o.group).forEach(x=>x.default=false); o.default=true; saveSchema(); closePop(); };
   el.querySelector("[data-del]").onclick=async()=>{ const siblings=st.options.filter(x=>x.group===o.group); if(siblings.length===1){ toast(`Each group needs at least one option — “${o.name}” is the only ${GROUPS[o.group]} option.`,true); return; }
     const fallback=siblings.find(x=>x!==o); if(used&&!confirm(`Delete “${o.name}”? ${used} job${used===1?"":"s"} will move to “${fallback.name}”.`)) return;
-    for(const w of S.wos.filter(w=>w.statusId===oid)) await setStatus(w.id,fallback.id);
+    const moved=S.wos.filter(w=>w.statusId===oid); for(const w of moved){ w.statusId=fallback.id; const done=status(fallback.id)?.group==="complete"; const patch={ statusId:fallback.id, completedAt:done?(w.completedAt||now()):null, ...stamp() }; w.completedAt=patch.completedAt; await DB.update(WO_COL+"/"+w.id,patch); log(w.id,`moved to ${fallback.name} because the status “${o.name}” was deleted`); }
     st.options=st.options.filter(x=>x!==o); if(o.default) fallback.default=true; await saveSchema(); closePop(); };
 }
 
@@ -1262,10 +1282,15 @@ function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leave
   if(typeof syncJobLabels==="function") syncJobLabels(); }
 function highlightCard(id){ $$(".kcard.hl").forEach(c=>c.classList.remove("hl")); if(id){ const c=document.querySelector(`.kcard[data-id="${id}"]`); if(c){ c.classList.add("hl"); c.scrollIntoView({block:"nearest"}); } } }
 let lastRendered=null, editLoc=null;   // editLoc: the record whose job area is expanded for editing
+let PTR_DOWN=false, RR_PENDING=false;
+window.addEventListener("pointerdown",()=>{ PTR_DOWN=true; },{ capture:true }); ["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,()=>{ PTR_DOWN=false; },{ capture:true })); window.addEventListener("blur",()=>{ PTR_DOWN=false; });
 function renderRecord(){
   const w=W(S.open); if(!w){ closePeek(); return; }
   // a snapshot (another user's edit, our own noteCount write…) must not wipe a field the user is typing in
   const ae=document.activeElement; if(lastRendered===w.id&&ae&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&$("#pbody")?.contains(ae)){ if(!ae._rerender){ ae._rerender=true; ae.addEventListener("blur",()=>setTimeout(()=>{ if(S.open===w.id) renderRecord(); },0),{once:true}); } return; }
+  // mid-click (pointer down, not yet up): blurring a field saved it, the echo arrives now, and a re-render here would
+  // replace the button under the pointer before the click lands. Wait for the pointer to come up, then redraw.
+  if(PTR_DOWN&&lastRendered===w.id){ if(!RR_PENDING){ RR_PENDING=true; const go=()=>{ ["pointerup","pointercancel"].forEach(ev=>window.removeEventListener(ev,go,{ capture:true })); RR_PENDING=false; setTimeout(()=>{ if(S.open===w.id) renderRecord(); },0); }; ["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,go,{ capture:true })); } return; }
   lastRendered=w.id;
   if(S.creating===w.id){ renderCreate(w); return; }
   if(S.note){ renderNoteView(w); return; }
@@ -1384,11 +1409,11 @@ function cardHTML(w){
   const vis=props().filter(p=>(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id));
   const bits=vis.map(p=>{ const v=w.values?.[p.id]; return isEmpty(v)&&!p.system?"":renderValue(p,v,w,true); }).filter(Boolean);
   const nph=w.photoCount??(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
-  return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${w.id}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${w.id}</span>${bits.join("")}</div></div>`;
+  return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${P(w.id)}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${P(w.id)}</span>${bits.join("")}</div></div>`;
 }
 function renderBoard(rows){
   const cols=statuses().map(o=>({ o, ws:rows.filter(w=>w.statusId===o.id) }));
-  $("#views").innerHTML=`<div class="kanban">${cols.map(({o,ws})=>`<div class="kcol" data-s="${o.id}"><h3 style="border-bottom-color:${col(o.color).map}">${pill(o.name,o.color,"st dot")}<span class="c">${ws.length}</span></h3><div class="kcards">${ws.map(cardHTML).join("")||`<div class="kempty">No jobs</div>`}</div><button class="kadd" data-new="${o.id}">＋ New</button></div>`).join("")}<div style="flex:0 0 200px"><button class="kadd" id="k-edit-status" style="color:var(--ink-3)">＋ Edit statuses</button></div></div>`;
+  $("#views").innerHTML=`<div class="kanban">${cols.map(({o,ws})=>`<div class="kcol" data-s="${P(o.id)}"><h3 style="border-bottom-color:${col(o.color).map}">${pill(o.name,o.color,"st dot")}<span class="c">${ws.length}</span></h3><div class="kcards">${ws.map(cardHTML).join("")||`<div class="kempty">No jobs</div>`}</div><button class="kadd" data-new="${P(o.id)}">＋ New</button></div>`).join("")}<div style="flex:0 0 200px"><button class="kadd" id="k-edit-status" style="color:var(--ink-3)">＋ Edit statuses</button></div></div>`;
   $$("#views .kcard").forEach(c=>{ c.onclick=()=>openWO(c.dataset.id); c.ondragstart=e=>{ e.dataTransfer.setData("text/plain",c.dataset.id); c.classList.add("drag"); }; c.ondragend=()=>c.classList.remove("drag"); });
   $$("#views .kcol").forEach(k=>{ k.ondragover=e=>{ e.preventDefault(); k.classList.add("over"); }; k.ondragleave=()=>k.classList.remove("over"); k.ondrop=e=>{ e.preventDefault(); k.classList.remove("over"); const id=e.dataTransfer.getData("text/plain"); if(id) setStatus(id,k.dataset.s); }; });
   $$("#views [data-new]").forEach(b=>b.onclick=()=>startCreate({ statusId:b.dataset.new }));
@@ -1396,14 +1421,15 @@ function renderBoard(rows){
 }
 function sortRows(rows){
   const s=S.sort; if(!s) return rows; const p=prop(s.pid);
-  const key=w=>{ if(s.pid==="title") return (w.title||"").toLowerCase(); if(s.pid==="status") return statuses().findIndex(o=>o.id===w.statusId); if(!p) return ""; const v=w.values?.[p.id]; if(p.type==="created_time") return w.created; if(p.type==="date") return v?.start||"￿"; if(p.type==="number") return v==null?Infinity:+v; return describe(p,v).toLowerCase()||"￿"; };
-  return rows.slice().sort((a,b)=>{ const x=key(a), y=key(b); return (x<y?-1:x>y?1:0)*(s.dir==="desc"?-1:1); });
+  const EMPTY=Symbol("empty");   // empties go last in both directions
+  const key=w=>{ if(s.pid==="title") return (w.title||"").toLowerCase(); if(s.pid==="status") return statuses().findIndex(o=>o.id===w.statusId); if(!p) return ""; const v=w.values?.[p.id]; if(p.type==="created_time") return w.created; if(p.type==="created_by") return (w.createdBy?.name||"").toLowerCase(); if(p.type==="date") return v?.start||EMPTY; if(p.type==="number"){ const n=v==null||v===""?NaN:+v; return isFinite(n)?n:EMPTY; } return describe(p,v).toLowerCase()||EMPTY; };
+  return rows.slice().sort((a,b)=>{ const x=key(a), y=key(b); if(x===EMPTY||y===EMPTY) return x===y?0:x===EMPTY?1:-1; return (x<y?-1:x>y?1:0)*(s.dir==="desc"?-1:1); });
 }
 function renderTable(rows){
   const cols=props().filter(p=>!S.hidden.table.has(p.id)); rows=sortRows(rows);
   const arrow=pid=>S.sort?.pid===pid?(S.sort.dir==="asc"?" ↑":" ↓"):"";
-  $("#views").innerHTML=`<table class="tbl"><thead><tr><th data-h="title" style="min-width:260px">Title${arrow("title")}</th><th data-h="status">Status${arrow("status")}</th>${cols.map(p=>`<th data-h="${p.id}" style="min-width:140px">${ico(p.type)} ${P(p.name)}${arrow(p.id)}</th>`).join("")}<th data-addcol style="cursor:pointer;min-width:40px" title="Add a property">＋</th></tr></thead>
-    <tbody>${rows.map(w=>`<tr data-id="${w.id}"><td class="tt"><div class="cell" data-open><span class="id">${w.id}</span>${P(w.title||"Untitled")}</div></td><td><div class="cell" data-st>${statusPill(w)}</div></td>${cols.map(p=>`<td><div class="cell" data-pid="${p.id}">${renderValue(p,w.values?.[p.id],w,true)}</div></td>`).join("")}<td></td></tr>`).join("")||`<tr><td colspan="${cols.length+3}"><div class="kempty">No jobs</div></td></tr>`}</tbody></table>`;
+  $("#views").innerHTML=`<table class="tbl"><thead><tr><th data-h="title" style="min-width:260px">Title${arrow("title")}</th><th data-h="status">Status${arrow("status")}</th>${cols.map(p=>`<th data-h="${P(p.id)}" style="min-width:140px">${ico(p.type)} ${P(p.name)}${arrow(p.id)}</th>`).join("")}<th data-addcol style="cursor:pointer;min-width:40px" title="Add a property">＋</th></tr></thead>
+    <tbody>${rows.map(w=>`<tr data-id="${P(w.id)}"><td class="tt"><div class="cell" data-open><span class="id">${P(w.id)}</span>${P(w.title||"Untitled")}</div></td><td><div class="cell" data-st>${statusPill(w)}</div></td>${cols.map(p=>`<td><div class="cell" data-pid="${P(p.id)}">${renderValue(p,w.values?.[p.id],w,true)}</div></td>`).join("")}<td></td></tr>`).join("")||`<tr><td colspan="${cols.length+3}"><div class="kempty">No jobs</div></td></tr>`}</tbody></table>`;
   $$("#views th[data-h]").forEach(th=>th.onclick=e=>headerMenu(th.dataset.h,th));
   $("#views [data-addcol]").onclick=e=>propertyCreator(e.currentTarget);
   $$("#views [data-open]").forEach(c=>c.onclick=()=>openWO(c.closest("tr").dataset.id));
@@ -1414,19 +1440,19 @@ function headerMenu(pid,anchor){
   const p=prop(pid);
   const el=openPop(anchor,`<div class="mi" data-a="asc">Sort ascending</div><div class="mi" data-a="desc">Sort descending</div>${S.sort?.pid===pid?`<div class="mi" data-a="nosort">Clear sort</div>`:""}${p?`<div class="hr"></div><div class="mi" data-a="hide">Hide in Table</div><div class="mi" data-a="settings">Property settings…</div>`:""}`,{width:200,noFocus:true});
   el.onclick=e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return;
-    if(a==="asc"||a==="desc") S.sort={pid,dir:a}; if(a==="nosort") S.sort=null; if(a==="hide") S.hidden.table.add(pid);
+    if(a==="asc"||a==="desc") S.sort={pid,dir:a}; if(a==="nosort") S.sort=null; if(a==="hide"){ S.hidden.table.add(pid); if(S.sort?.pid===pid) S.sort=null; }
     if(a==="settings"){ propertyMenu(p,anchor,"table"); return; } saveView(); closePop(); renderViews(); };
 }
 function renderTrash(){
   const rows=trashed().sort((a,b)=>(b.trashedAt||"").localeCompare(a.trashedAt||""));
-  $("#views").innerHTML=`<div class="trash" style="max-width:760px"><p class="hint">Deleted jobs stay here for 30 days, then are removed permanently.</p>${rows.map(w=>{ const left=Math.max(0,30-Math.floor((Date.now()-new Date(w.trashedAt||w.edited))/86400000)); return `<div class="it" data-id="${w.id}"><span class="tag">${w.id}</span><span class="n">${P(w.title||"Untitled")}</span><span class="c">${left} d left</span><button class="btn sm" data-r>Restore</button><button class="btn sm danger" data-p>Delete now</button></div>`; }).join("")||`<div class="kempty">Trash is empty</div>`}</div>`;
+  $("#views").innerHTML=`<div class="trash" style="max-width:760px"><p class="hint">Deleted jobs stay here for 30 days, then are removed permanently.</p>${rows.map(w=>{ const left=Math.max(0,30-Math.floor((Date.now()-new Date(w.trashedAt||w.edited))/86400000)); return `<div class="it" data-id="${P(w.id)}"><span class="tag">${P(w.id)}</span><span class="n">${P(w.title||"Untitled")}</span><span class="c">${left} d left</span><button class="btn sm" data-r>Restore</button><button class="btn sm danger" data-p>Delete now</button></div>`; }).join("")||`<div class="kempty">Trash is empty</div>`}</div>`;
   $$("#views .it").forEach(it=>{ it.querySelector("[data-r]").onclick=e=>{ e.stopPropagation(); restoreWO(it.dataset.id); }; it.querySelector("[data-p]").onclick=e=>{ e.stopPropagation(); if(confirm(`Permanently delete ${it.dataset.id}?`)) purgeWO(it.dataset.id); }; it.onclick=()=>openWO(it.dataset.id); });
 }
 function propsToggle(anchor){
   const view=S.view==="table"?"table":"board";
   const el=openPop(anchor,"",{width:260,noFocus:true});
   const draw=()=>{ el.innerHTML=`<div class="sec">${view==="table"?"Table columns":"Shown on cards"}</div>${props().map(p=>{ const on=view==="table"?!S.hidden.table.has(p.id):(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id); return `<div class="mi" data-p="${p.id}">${ico(p.type)}${P(p.name)}<span class="r">${on?"Shown":"Hidden"}</span></div>`; }).join("")}<div class="hr"></div><div class="mi" data-new>＋ New property</div>`;
-    el.querySelectorAll("[data-p]").forEach(m=>m.onclick=()=>{ const id=m.dataset.p; if(view==="table"){ S.hidden.table.has(id)?S.hidden.table.delete(id):S.hidden.table.add(id); saveView(); } else { S.hidden.board.delete(id); const cp=S.schema.cardProps||[]; S.schema.cardProps=cp.includes(id)?cp.filter(x=>x!==id):[...cp,id]; saveSchema(); } draw(); renderViews(); });
+    el.querySelectorAll("[data-p]").forEach(m=>m.onclick=()=>{ const id=m.dataset.p; if(view==="table"){ if(S.hidden.table.has(id)) S.hidden.table.delete(id); else { S.hidden.table.add(id); if(S.sort?.pid===id) S.sort=null; } saveView(); } else { S.hidden.board.delete(id); const cp=S.schema.cardProps||[]; S.schema.cardProps=cp.includes(id)?cp.filter(x=>x!==id):[...cp,id]; saveSchema(); } draw(); renderViews(); });
     el.querySelector("[data-new]").onclick=()=>propertyCreator(anchor,()=>{}); };
   draw();
 }
@@ -1436,7 +1462,7 @@ function renderTree(){
   const q=S.q.trim().toLowerCase();
   if(S.sub==="wo"){
     const rows=filtered(false);
-    $("#tree").innerHTML=["todo","progress","complete"].map(g=>{ const ws=rows.filter(w=>status(w.statusId)?.group===g); if(!ws.length) return ""; return `<div class="eyebrow" style="padding:8px 8px 2px">${GROUPS[g]} · ${ws.length}</div>${ws.map(w=>`<div class="it ${S.open===w.id?"sel":""}" data-wo="${w.id}"><span class="tag">${w.id.slice(-3)}</span><span class="n" title="${P(w.title)}">${P(w.title||"Untitled")}</span><i style="width:8px;height:8px;border-radius:50%;background:${col(status(w.statusId)?.color).map};flex:none"></i></div>`).join("")}`; }).join("")||`<div class="kempty">No jobs yet.<br><button class="link" id="tree-new">Create the first one</button></div>`;
+    $("#tree").innerHTML=["todo","progress","complete"].map(g=>{ const ws=rows.filter(w=>status(w.statusId)?.group===g); if(!ws.length) return ""; return `<div class="eyebrow" style="padding:8px 8px 2px">${GROUPS[g]} · ${ws.length}</div>${ws.map(w=>`<div class="it ${S.open===w.id?"sel":""}" data-wo="${P(w.id)}"><span class="tag">${P(w.id.slice(-3))}</span><span class="n" title="${P(w.title)}">${P(w.title||"Untitled")}</span><i style="width:8px;height:8px;border-radius:50%;background:${col(status(w.statusId)?.color).map};flex:none"></i></div>`).join("")}`; }).join("")||`<div class="kempty">No jobs yet.<br><button class="link" id="tree-new">Create the first one</button></div>`;
     $("#tree-new")?.addEventListener("click",()=>startCreate());
   } else {
     const as=S.assets.filter(a=>!q||(a.tag+" "+a.name).toLowerCase().includes(q));
@@ -1493,7 +1519,7 @@ function wireUI(){
   $("#keyInput").onkeydown=e=>{ if(e.key==="Enter") $("#keySave").click(); };
   setTab(S.tab);
 }
-function jobFilterMenu(anchor){ const el=openPop(anchor,`<div class="mi" data-j="">All jobs</div><div class="hr"></div>${live().filter(w=>jobThreads(w.id).length).map(w=>`<div class="mi" data-j="${w.id}"><span class="mono" style="margin-right:6px">${w.id}</span>${P(w.title||"Untitled")}<span class="r">${jobThreads(w.id).length}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No job has threads yet.</div>`}`,{width:300,noFocus:true}); el.onclick=e=>{ const j=e.target.closest("[data-j]"); if(!j) return; closePop(); if(j.dataset.j){ IB.f="job"; IB.job=j.dataset.j; } else { IB.f="all"; IB.job=null; } renderInbox(); }; }
+function jobFilterMenu(anchor){ const el=openPop(anchor,`<div class="mi" data-j="">All jobs</div><div class="hr"></div>${live().filter(w=>jobThreads(w.id).length).map(w=>`<div class="mi" data-j="${P(w.id)}"><span class="mono" style="margin-right:6px">${P(w.id)}</span>${P(w.title||"Untitled")}<span class="r">${jobThreads(w.id).length}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No job has threads yet.</div>`}`,{width:300,noFocus:true}); el.onclick=e=>{ const j=e.target.closest("[data-j]"); if(!j) return; closePop(); if(j.dataset.j){ IB.f="job"; IB.job=j.dataset.j; } else { IB.f="all"; IB.job=null; } renderInbox(); }; }
 function userMenu(anchor){
   const el=openPop(anchor,`<div class="fr" style="flex-direction:column;align-items:flex-start;gap:0"><b>${P(S.user.name)}</b><span class="hint">${P(S.user.email)}${S.admin?" · Admin":""}</span></div><div class="hr"></div>
     ${S.admin?`<div class="mi" data-a="admin">Who can enter…</div>`:""}<div class="mi" data-a="members">Members<span class="r">${S.members.length}</span></div>${S.admin?`<div class="mi" data-a="key">Change the shared Google Maps key</div>`:""}${S.admin&&!MOCK?`<div class="mi" data-a="mail">Email sending<span class="r">${MAILCFG?.enabled?"On":"Off"}</span></div>`:""}<div class="mi" data-a="theme">Toggle dark mode</div><div class="hr"></div><div class="mi" data-a="out">Sign out</div>`,{width:240,noFocus:true});
@@ -1519,8 +1545,8 @@ function membersPanel(anchor){ openPop(anchor,`<div class="sec">Members who have
 /* Full backup straight from the browser (the Spark plan has no managed export): every record in both collections with all
    subcollections, plus config, schema, site and members. Photos are included as their stored data URLs, so the file can be large. */
 async function backupJSON(progress=()=>{}){
-  const dump=async col=>{ const rows=await DB.list(col); const out=[]; for(const r of rows){ const d={ ...r }; for(const sub of ["activity","photos","photofull","comments","blocks"]){ try{ const x=await DB.list(col+"/"+r.id+"/"+sub); if(x.length) d["_"+sub]=x; }catch{} } out.push(d); progress(col.split("/").pop(),out.length,rows.length); } return out; };
-  const out={ format:"skygauge-dispatch-backup", version:2, exported:now(), exportedBy:S.user.email, config:{ allowlist:await DB.get("config/allowlist"), maps:await DB.get("config/maps") }, schema:await DB.get("workspace/schema"), site:await DB.get("workspace/site"), counters:await DB.get("workspace/counters"), members:await DB.list("workspace/main/members"), assets:await DB.list(AS_COL), jobs:await dump(WO_COL), workorders:await dump(OLD_WO_COL) };
+  const dump=async col=>{ const rows=await DB.list(col); const out=[]; for(const r of rows){ const d={ ...r }; for(const sub of ["activity","notes","photos","photofull","comments","blocks"]){ try{ const x=await DB.list(col+"/"+r.id+"/"+sub); if(x.length) d["_"+sub]=x; }catch{} } out.push(d); progress(col.split("/").pop(),out.length,rows.length); } return out; };
+  const out={ format:"skygauge-dispatch-backup", version:2, exported:now(), exportedBy:S.user.email, config:{ allowlist:await DB.get("config/allowlist"), maps:await DB.get("config/maps") }, schema:await DB.get("workspace/schema"), site:await DB.get("workspace/site"), counters:await DB.get("workspace/counters"), members:await DB.list("workspace/main/members"), assets:await DB.list(AS_COL), jobs:await dump(WO_COL), workorders:await dump(OLD_WO_COL).catch(()=>[]), threads:await (async()=>{ const ts=await DB.list(MAIL_COL).catch(()=>[]); for(const t of ts){ try{ t._messages=await DB.list(MAIL_COL+"/"+t.id+"/messages"); }catch{} } return ts; })(), automations:await (async()=>{ const as=await DB.list(AU_COL).catch(()=>[]); for(const a of as){ try{ a._runs=await DB.list(AU_COL+"/"+a.id+"/runs"); }catch{} } return as; })() };
   const blob=new Blob([JSON.stringify(out)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`dispatch-backup-${now().replace(/[:.]/g,"-").slice(0,19)}.json`; document.body.append(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   return { jobs:out.jobs.length, workorders:out.workorders.length, bytes:blob.size };
 }
@@ -1623,7 +1649,7 @@ function projectLL(q){ if(!map||!map.center) return null; const el=map; const W=
   const enu=p=>[ (p.lng-C.lng)*111320*Math.cos(lat0), (p.lat-C.lat)*111320, (p.altitude??p.alt??0)-(C.altitude||0) ];
   const P=[ -Math.sin(h)*Math.sin(t)*r, -Math.cos(h)*Math.sin(t)*r, Math.cos(t)*r ];                 // camera position (ENU, metres from the look-at point)
   const f=[ -P[0]/r, -P[1]/r, -P[2]/r ];                                                              // forward: camera → look-at
-  const up0=[0,0,1]; let rt=[ f[1]*up0[2]-f[2]*up0[1], f[2]*up0[0]-f[0]*up0[2], f[0]*up0[1]-f[1]*up0[0] ]; const rl=Math.hypot(...rt)||1; rt=rt.map(x=>x/rl);
+  const up0=[0,0,1]; let rt=[ f[1]*up0[2]-f[2]*up0[1], f[2]*up0[0]-f[0]*up0[2], f[0]*up0[1]-f[1]*up0[0] ]; const rl=Math.hypot(...rt); rt=rl<1e-6?[ Math.cos(h), -Math.sin(h), 0 ]:rt.map(x=>x/rl);   // straight down: f ∥ up
   const u=[ rt[1]*f[2]-rt[2]*f[1], rt[2]*f[0]-rt[0]*f[2], rt[0]*f[1]-rt[1]*f[0] ];
   const Q=enu(q); const v=[ Q[0]-P[0], Q[1]-P[1], Q[2]-P[2] ]; const z=v[0]*f[0]+v[1]*f[1]+v[2]*f[2]; if(z<=1) return null;
   const x=v[0]*rt[0]+v[1]*rt[1]+v[2]*rt[2], y=v[0]*u[0]+v[1]*u[1]+v[2]*u[2]; const focal=(H/2)/Math.tan(fov/2);
@@ -1631,7 +1657,7 @@ function projectLL(q){ if(!map||!map.center) return null; const el=map; const W=
 function unprojectToPlane(sx,sy,zPlane){ if(!map||!map.center) return null; const W=map.clientWidth, H=map.clientHeight; if(!W||!H) return null;
   const C=map.center, lat0=C.lat*Math.PI/180; const h=(map.heading||0)*Math.PI/180, t=(map.tilt||0)*Math.PI/180, r=map.range||300, fov=((map.fov||35)*Math.PI/180);
   const P=[ -Math.sin(h)*Math.sin(t)*r, -Math.cos(h)*Math.sin(t)*r, Math.cos(t)*r ]; const f=[ -P[0]/r, -P[1]/r, -P[2]/r ];
-  let rt=[ f[1], -f[0], 0 ]; const rl=Math.hypot(...rt)||1; rt=rt.map(x=>x/rl); const u=[ rt[1]*f[2]-rt[2]*f[1], rt[2]*f[0]-rt[0]*f[2], rt[0]*f[1]-rt[1]*f[0] ];
+  let rt=[ f[1], -f[0], 0 ]; const rl=Math.hypot(...rt); rt=rl<1e-6?[ Math.cos(h), -Math.sin(h), 0 ]:rt.map(x=>x/rl); const u=[ rt[1]*f[2]-rt[2]*f[1], rt[2]*f[0]-rt[0]*f[2], rt[0]*f[1]-rt[1]*f[0] ];
   const focal=(H/2)/Math.tan(fov/2); const dx=(sx-W/2)/focal, dy=(H/2-sy)/focal; const dir=[ f[0]+rt[0]*dx+u[0]*dy, f[1]+rt[1]*dx+u[1]*dy, f[2]+rt[2]*dx+u[2]*dy ];
   const z0=zPlane-(C.altitude||0); if(Math.abs(dir[2])<1e-6) return null; const s=(z0-P[2])/dir[2]; if(s<=0) return null; const e=P[0]+dir[0]*s, n=P[1]+dir[1]*s;
   return { lat:C.lat+n/111320, lng:C.lng+e/(111320*Math.cos(lat0)), ground:zPlane }; }
@@ -1724,7 +1750,7 @@ function renderLegend(){ if(!S.schema) return;
   if(!S.legendInit){ S.legendInit=true; if(!PARAMS.has("mock")||PARAMS.has("legend")){ S.legendOff=legendDefaultOff(); if(map) live().forEach(applyLegendTo); } }
   $("#legend").innerHTML=`<span class="lg-h">Show</span>`+statuses().map(o=>{ const on=!S.legendOff.has(o.id); return `<button type="button" role="switch" aria-checked="${on}" data-s="${o.id}" class="lgt${on?" on":""}" style="--c:${col(o.color).map}" title="${on?"Hide":"Show"} ${P(o.name)} jobs on the model"><span class="sw"><span class="kn"></span></span>${P(o.name)}<span class="mono">${live().filter(w=>w.statusId===o.id).length}</span></button>`; }).join(""); }
 $("#legend").addEventListener("click",e=>{ const s=e.target.closest("[data-s]"); if(!s) return; S.legendOff.has(s.dataset.s)?S.legendOff.delete(s.dataset.s):S.legendOff.add(s.dataset.s); renderLegend(); live().forEach(applyLegendTo); });
-let flyTok=0; function onFlyEnd(fn){ const tok=++flyTok; const h=()=>{ map.removeEventListener("gmp-animationend",h); if(tok===flyTok) fn(); }; map.addEventListener("gmp-animationend",h); }
+let flyTok=0, flyH=null; function onFlyEnd(fn){ const tok=++flyTok; if(flyH) map.removeEventListener("gmp-animationend",flyH); const h=()=>{ map.removeEventListener("gmp-animationend",h); if(flyH===h) flyH=null; if(tok===flyTok) fn(); }; flyH=h; map.addEventListener("gmp-animationend",h); }
 function fly(cam,ms=1800){ if(!map) return; flying=true; map.flyCameraTo({ endCamera:cam, durationMillis:ms }); clearTimeout(flyT); flyT=setTimeout(()=>{ flying=false; },ms+150); onFlyEnd(()=>{ flying=false; }); }
 const GROUND_FALLBACK=DEMO?DEMO_SITE.ground:80; // m above sea level at the site when a pin has no recorded ground elevation
 function flyWO(w){ const P=pts(w); if(!P.length||!map) return;
@@ -1733,7 +1759,7 @@ function flyWO(w){ const P=pts(w); if(!P.length||!map) return;
   const r=P.length===1?110:Math.max(100,ext*1.8);
   const cam={ center:{lat:a.lat,lng:a.lng,altitude:alt}, range:r, tilt:62, heading:map.heading??-30 };
   flying=true; LOCK=S.woView?{ ...cam.center }:null; orbitSync(); map.flyCameraTo({ endCamera:cam, durationMillis:1600 });
-  clearTimeout(flyT); const done=()=>{ flying=false; if(S.woView&&S.open===w.id){ const c=map.center; const off=c?Math.hypot((c.lat-cam.center.lat)*111320,(c.lng-cam.center.lng)*111320*Math.cos(cam.center.lat*Math.PI/180)):1e9; if(off>25||Math.abs((map.range||0)-cam.range)>cam.range*0.5){ map.center=cam.center; map.range=cam.range; map.tilt=cam.tilt; map.heading=cam.heading; } } orbitSync(); }; const tok0=flyTok+1; flyT=setTimeout(()=>{ if(tok0===flyTok) done(); },1750); onFlyEnd(done);
+  clearTimeout(flyT); let ran=false; const done=()=>{ if(ran) return; ran=true; clearTimeout(flyT); flying=false; if(S.woView&&S.open===w.id){ const c=map.center; const off=c?Math.hypot((c.lat-cam.center.lat)*111320,(c.lng-cam.center.lng)*111320*Math.cos(cam.center.lat*Math.PI/180)):1e9; if(off>25||Math.abs((map.range||0)-cam.range)>cam.range*0.5){ map.center=cam.center; map.range=cam.range; map.tilt=cam.tilt; map.heading=cam.heading; } } orbitSync(); }; const tok0=flyTok+1; flyT=setTimeout(()=>{ if(tok0===flyTok) done(); },1750); onFlyEnd(done);
 }
 /* pivot hint: the badge flips to "Pivot mode" while Shift is held (Shift-drag rotates and tilts the 3D view) */
 document.addEventListener("keydown",e=>{ if(e.key==="Shift") document.body.classList.add("pivot"); });
@@ -1769,7 +1795,7 @@ function shapeKindOf(points,closed){ const n=points.length; return n===0?"none":
 function shapeOf(d){ return { kind:shapeKindOf(d.pts,d.closed), points:d.pts.map(cp), closed:!!(d.closed&&d.pts.length>=3) }; }
 function select3D(opts){
   if(!map){ toast("The map is not loaded.",true); return false; }
-  clearDraw(); $("#orbit").hidden=true; clearPointHandles();
+  if(V.draw&&V.draw.onCancel) selCancel(); else clearDraw(); $("#orbit").hidden=true; clearPointHandles();
   const P=(opts.initial?.points||[]).map(cp);
   V.draw={ kind:"sel", label:opts.label||"Shape", pts:P, closed:!!opts.initial?.closed&&P.length>=3, live:!!opts.live, needClosed:!!opts.needClosed, site:!!opts.site, noDone:!!opts.noDone, noteId:opts.noteId||null, primary:opts.primary||null, sel:null, moving:false,
            onChange:opts.onChange, onDone:opts.onDone, onCancel:opts.onCancel, initial:{ points:P.map(cp), closed:!!opts.initial?.closed&&P.length>=3 } };
@@ -1915,12 +1941,12 @@ function assetEditor(a,anchor,opts={}){
 let LOCK=null, flying=false, flyT=null;
 function enterWOView(id){ const w=W(id); if(!w) return; const wasHidden=S.tab!=="map"; S.woView=true; document.body.classList.add("wo-view"); setTab("map"); openWO(id); woMode(); orbitSync(); syncPhotoOverlays(); syncPinOverlays(); syncJobLabels();
   // fly only after the map has its final size: an animation started on a hidden or resizing map is dropped by the engine
-  if(map){ requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>flyWO(w), (isMobile()||wasHidden)?320:60))); } }
+  if(map){ const id=w.id; requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{ if(S.woView&&S.open===id) flyWO(w); }, (isMobile()||wasHidden)?320:60))); } }   // not if the user already left
 function exitWOView(){ S.woView=false; LOCK=null; S.note=null; document.body.classList.remove("note-view"); leaveJobScene(); syncJobLabels(); document.body.classList.remove("wo-view"); closePeek(); resetMode(); orbitSync(); }   // camera stays where it is; the Site button reframes on demand
 function woMode(){ const w=W(S.open); if(!w) return;
   if(S.note&&typeof N==="function"&&N(S.note)){ const n=N(S.note); const par=n.parent?N(n.parent):null; const sibs=(typeof childrenOf==="function"?childrenOf(n.parent||null):[]).length;
-    setMode("wo note","Note",`<b>${P(noteTitle(n))}</b> · ${par?`inside ${P(noteTitle(par))}`:`in ${w.id}`} <button class="btn sm" id="mode-back">‹ Back</button>`,false); $("#mode-back").onclick=()=>closeNote(true); return; }
-  setMode("wo","Job",isMobile()?`<b>${w.id}</b> · double-tap the map to re-centre`:`<b>${w.id}</b> · standard Google controls · double-click the map to re-centre`,false); }
+    setMode("wo note","Note",`<b>${P(noteTitle(n))}</b> · ${par?`inside ${P(noteTitle(par))}`:`in ${P(w.id)}`} <button class="btn sm" id="mode-back">‹ Back</button>`,false); $("#mode-back").onclick=()=>closeNote(true); return; }
+  setMode("wo","Job",isMobile()?`<b>${P(w.id)}</b> · double-tap the map to re-centre`:`<b>${P(w.id)}</b> · standard Google controls · double-click the map to re-centre`,false); }
 function orbitSync(){ $("#orbit").hidden=true; }   // stock Google 3D gestures everywhere; no custom control layer
 function installLock(){ return;
   const el=$("#orbit"); const ptrs=new Map(); let last=null, pinch0=null, range0=0;
@@ -1940,19 +1966,23 @@ let CREATING_NOW=false;
 async function startCreate(init={}){
   if(S.creating){ if(isMobile()) setSheet("half"); return; }   // already creating: just bring the panel back
   if(CREATING_NOW) return; CREATING_NOW=true;   // a second click while the draft is still being written does nothing
-  let id; try{ id=await createWO({ ...init, draft:true }); }catch(e){ CREATING_NOW=false; toast("Couldn't start a job — "+(navigator.onLine===false?"you are offline.":(e.message||e)),true); return; } CREATING_NOW=false; S.creating=id; document.body.classList.add("creating"); if(map) document.body.classList.add("creating-map");   // with a map the pill carries Create job / Cancel and the panel stays hidden; without one the panel is the fallback
+  const openBefore=S.open, tabBefore=S.tab;
+  let id; try{ id=await createWO({ ...init, draft:true }); }catch(e){ CREATING_NOW=false; toast("Couldn't start a job — "+(navigator.onLine===false?"you are offline.":(e.message||e)),true); return; } CREATING_NOW=false;
+  if(S.open!==openBefore||S.tab!==tabBefore||S.creating){ purgeWO(id).catch(()=>{}); return; }   // the user moved on while the draft was being written
+  S.creating=id; document.body.classList.add("creating"); if(map) document.body.classList.add("creating-map");   // with a map the pill carries Create job / Cancel and the panel stays hidden; without one the panel is the fallback
   enterWOView(id); if(map) addPoints(id); else toast("The map is not loaded — points can be added once it is.",true);
 }
 async function finishCreate(){
   const id=S.creating; const w=W(id); if(!w) return; if(!pts(w).length){ toast("Mark the job area on the model first.",true); return; }
+  try{ await DB.update(WO_COL+"/"+id,{ draft:false, ...stamp() }); }catch(e){ toast("The job could not be saved — "+(e?.message||e)+". Your points are still here; try again.",true); return; }   // the draft stays open until the job is really saved
   clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); w.draft=false; w._focusTitle=true;
   if(S.legendOff.has(w.statusId)){ S.legendOff.delete(w.statusId); renderLegend(); live().forEach(applyLegendTo); }   // a new job in a hidden status: switch that status on so it does not vanish
-  await DB.update(WO_COL+"/"+id,{ draft:false, ...stamp() }); const n=pts(w).length; log(id,`created the job · ${shapeLabel(locShape(w))}`);
+  const n=pts(w).length; log(id,`created the job · ${shapeLabel(locShape(w))}`);
   refreshWOOverlay(w,true); syncPointHandles(); renderAll(); woMode(); if(map) flyWO(w); setTimeout(()=>$("#ptitle")?.focus(),50);
   if(typeof autoEvent==="function") autoEvent("created",w);
 }
-async function cancelCreate(){
-  const id=S.creating; clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); exitWOView(); if(id) await purgeWO(id);
+async function cancelCreate(ask){
+  const id=S.creating; if(ask&&id&&pts(W(id)||{}).length&&!confirm("Throw away this new job and the points you placed?")) return false; clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); exitWOView(); if(id) await purgeWO(id);
 }
 
 /* =====================================================================
@@ -1967,7 +1997,10 @@ const fullCache=new Map();
 
 /* Firestore rejects nested arrays, so mark points travel as a flat [x0,y0,x1,y1,…] list and live in memory as [[x,y],…]. */
 function packMarks(marks){ return (marks||[]).map(m=>({ ...m, pts:(m.pts||[]).flat() })); }
-function unpackMarks(p){ (p.marks||[]).forEach(m=>{ if(m.pts?.length&&typeof m.pts[0]==="number"){ const q=[]; for(let i=0;i+1<m.pts.length;i+=2) q.push([m.pts[i],m.pts[i+1]]); m.pts=q; } }); return p; }
+const safeThumb = u => /^data:image\/(?:jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(String(u||""))?u:"";   // a photo document is written by any member; its fields go into markup
+const safeColor = c => MARK_COLORS.includes(c)?c:MARK_COLORS[0];
+const markN = m => Number.isFinite(+m.n)&&+m.n>0?String(+m.n):"";
+function unpackMarks(p){ p.thumb=safeThumb(p.thumb); if(!Array.isArray(p.marks)) p.marks=[]; p.marks=p.marks.filter(m=>m&&typeof m==="object"); p.marks.forEach(m=>{ m.color=safeColor(m.color); m.id=String(m.id||"").replace(/[^\w-]/g,""); if(m.n!=null) m.n=Number.isFinite(+m.n)?+m.n:null; if(!Array.isArray(m.pts)) m.pts=[]; if(Array.isArray(m.pts[0])) m.pts=m.pts.filter(q=>Array.isArray(q)&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])).map(q=>[+q[0],+q[1]]); else m.pts=m.pts.map(Number).filter(Number.isFinite); if(m.pts?.length&&typeof m.pts[0]==="number"){ const q=[]; for(let i=0;i+1<m.pts.length;i+=2) q.push([m.pts[i],m.pts[i+1]]); m.pts=q; } }); p.marks=p.marks.filter(m=>(m.type==="point"||m.type==="stroke")&&m.pts.length); return p; }   // a mark with no points (or an unknown kind) would break every render of the job
 function watchPhotos(id){
   if(phWO===id) return; phUnsub?.(); PH=[]; phWO=id; clearPhotoOverlays();
   phUnsub=DB.watchCol(WO_COL+"/"+id+"/photos",rows=>{ rows.forEach(unpackMarks); PH=rows.sort((a,b)=>b.t.localeCompare(a.t)); if(S.open===id){ renderGallery(); syncPhotoOverlays(); migrateNotes(id); } });
@@ -2038,8 +2071,8 @@ async function openCamera(woId){
   catch(e){ toast("Camera not available: "+(e.message||e),true); closeCamera(); return; }
   el.querySelector("#cam-x").onclick=closeCamera;
   el.querySelector("#cam-shoot").onclick=async()=>{
-    const v=el.querySelector("video"); const c=document.createElement("canvas"); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext("2d").drawImage(v,0,0);
-    const pose=currentPose(); const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.95));
+    const v=el.querySelector("video"); const c=document.createElement("canvas"); if(!v.videoWidth){ toast("The camera is not ready yet — try again in a moment.",true); return; } c.width=v.videoWidth; c.height=v.videoHeight; c.getContext("2d").drawImage(v,0,0);
+    const pose=currentPose(); const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.95)); if(!blob){ toast("The photo could not be captured — try again.",true); return; }
     closeCamera();
     await addPhoto(woId, blob, pose?{ raw:pose, corrected:null, source:"sensor" }:{ raw:null, corrected:null, source:"none" });
   };
@@ -2049,7 +2082,7 @@ function closeCamera(){ camStream?.getTracks().forEach(t=>t.stop()); camStream=n
 
 /* ---------- add / delete ---------- */
 async function addPhoto(woId, fileOrBlob, pose){
-  const w=W(woId); if(!w) return;
+  const w=W(woId); if(!w) return; const parent=pendingPhotoParent||null; pendingPhotoParent=null;   // taken now: a second ＋ Photo must not re-parent this one
   if(!/^image\//.test(fileOrBlob.type||"image/jpeg")){ toast("Photos accepts images only.",true); return; }
   if(fileOrBlob.size>25*1024*1024){ toast("Photos larger than 25 MB are not accepted.",true); return; }
   toast("Processing photo…");
@@ -2057,10 +2090,10 @@ async function addPhoto(woId, fileOrBlob, pose){
   if(!pose){ const ex=await exifPose(fileOrBlob); pose=ex?{ raw:ex, corrected:null, source:"exif" }:{ raw:null, corrected:null, source:"none" }; }
   const pid=uid();
   const meta={ t:now(), by:userRef(), w:img.w, h:img.h, bytes:img.bytes, thumb:img.thumb, caption:"", pose, name:fileOrBlob.name||"photo.jpg" };
+  const sib=S.open===woId&&typeof childrenOf==="function"?childrenOf(parent):[]; const ord=sib.some(x=>x.order!=null)?Math.max(...sib.map(x=>x.order??0))+1:null;
+  try{ await DB.set(WO_COL+"/"+woId+"/notes/ph_"+pid,{ ...(ord!=null?{ order:ord }:{}), kind:"photo", parent, title:"", text:"", photoId:pid, files:[], t:meta.t, by:S.user.name }); }catch(e){ console.error(e); }   // the note first: a photo without one would be migrated to the top level
   try{ await DB.set(WO_COL+"/"+woId+"/photofull/"+pid,{ data:img.data }); await DB.set(WO_COL+"/"+woId+"/photos/"+pid,meta); }
-  catch(e){ toast("Upload failed: "+(e.message||e),true); return; }
-  const parent=pendingPhotoParent||null; pendingPhotoParent=null; const sib=S.open===woId&&typeof childrenOf==="function"?childrenOf(parent):[]; const ord=sib.some(x=>x.order!=null)?Math.max(...sib.map(x=>x.order??0))+1:null;
-  try{ await DB.set(WO_COL+"/"+woId+"/notes/ph_"+pid,{ ...(ord!=null?{ order:ord }:{}), kind:"photo", parent, title:"", text:"", photoId:pid, files:[], t:meta.t, by:S.user.name }); }catch(e){ console.error(e); }
+  catch(e){ toast("Upload failed: "+(e.message||e),true); DB.del(WO_COL+"/"+woId+"/notes/ph_"+pid).catch(()=>{}); return; }
   log(woId,`added a photo${pose.source==="sensor"?" with position and heading":pose.source==="exif"?" with EXIF position":""}${parent?" inside a note":""}`);
   const n=(W(woId)?.values?.photos||[]); if(prop("photos")) setValue(woId,"photos",[...n,{ id:pid, name:meta.name, bytes:meta.bytes }]); bumpPhotoCount(woId,+1);
   toast("Photo added"+(pose.source==="none"?" — position unknown":""));
@@ -2073,6 +2106,14 @@ async function deletePhoto(woId,pid){
   const w=W(woId); if(w&&prop("photos")) setValue(woId,"photos",(w.values?.photos||[]).filter(f=>f.id!==pid)); bumpPhotoCount(woId,-1); log(woId,"deleted a photo"); closeViewer(); renderRecord();
 }
 function bumpPhotoCount(woId,d){ const w=W(woId); if(!w) return; const n=Math.max(0,(w.photoCount??(w.values?.photos||[]).length)+d); w.photoCount=n; DB.update(WO_COL+"/"+woId,{ photoCount:n }).catch(()=>{}); }
+/* the full-size photo with its drawings burned in (for email); null when the full photo is not available */
+async function photoWithMarks(woId,p){ const full=await getFull(woId,p.id); if(!full) return null;
+  const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=full; }).catch(()=>null); if(!img) return null;
+  const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight; const g=c.getContext("2d"); g.drawImage(img,0,0); const W=c.width, H=c.height;
+  for(const m of (p.marks||[])){ const pts=(m.pts||[]).map(([x,y])=>[x*W,y*H]); if(!pts.length) continue; g.lineCap="round"; g.lineJoin="round";
+    if(m.type==="point"){ const [x,y]=pts[0]; const r=Math.max(10,W*0.045/2); g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fillStyle=m.color; g.fill(); g.lineWidth=2; g.strokeStyle="#0B0F1F"; g.stroke(); const n=markN(m); if(n){ g.fillStyle="#0B0F1F"; g.font=`700 ${Math.round(r*1.1)}px sans-serif`; g.textAlign="center"; g.textBaseline="middle"; g.fillText(n,x,y); } }
+    else { g.beginPath(); pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); g.lineWidth=Math.max(4,W/400); g.strokeStyle=m.color; g.stroke(); } }
+  return c.toDataURL("image/jpeg",0.82); }
 async function getFull(woId,pid){ if(fullCache.has(pid)) return fullCache.get(pid); const d=await DB.get(WO_COL+"/"+woId+"/photofull/"+pid); const u=d?.data||null; if(u) fullCache.set(pid,u); return u; }
 
 /* ---------- photos live in the Notes section now (Photos filter; ＋ Photo adds one) ---------- */
@@ -2191,16 +2232,25 @@ let NT=[], ntUnsub=null, ntJob=null, ntReady=false;   // notes of the open job
 let selPin=null, hoverPin=null; const PINOV={};       // model-note overlays: nid → parts[]
 const noteCol = id => WO_COL+"/"+id+"/notes";
 function watchNotes(id){ if(ntJob===id) return; ntUnsub?.(); NT=[]; ntJob=id; NFILT="all"; ntReady=false; clearPinOverlays();
-  ntUnsub=DB.watchCol(noteCol(id),rows=>{ NT=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); ntReady=true; if(S.open===id){ renderNotes(); if(S.note) renderRecord(); migrateNotes(id); } }); }
+  ntUnsub=DB.watchCol(noteCol(id),rows=>{ const prev=NT; NT=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); ntReady=true; if(S.open===id){ renderNotes(); if(S.note){ if(textOnlyChange(prev,NT)) syncNoteFields(); else renderRecord(); } migrateNotes(id); } }); }
+/* Only the open note's title/text changed (our own save echoing back, or someone else typing): update the fields in place.
+   A full re-render here would replace the button a click is landing on — the gesture that blurred the title. */
+function textOnlyChange(prev,rows){ if(!S.note||prev.length!==rows.length) return false; const strip=n=>{ const { edited, editedBy, title, text, ...r }=n; return JSON.stringify(r); };
+  return rows.every(r=>{ const p=prev.find(x=>x.id===r.id); if(!p) return false; return r.id===S.note?strip(p)===strip(r):JSON.stringify(p)===JSON.stringify(r); }); }
+function syncNoteFields(){ const n=N(S.note); if(!n) return; const t=noteTitle(n); $("#pbody .crumbs b")&&($("#pbody .crumbs b").textContent=t); const ti=$("#nv-title"), tx=$("#nv-text");
+  if(ti&&document.activeElement!==ti){ ti.placeholder=t; ti.value=n.title||""; } if(tx&&document.activeElement!==tx&&tx.value.trim()!==(n.text||"")) tx.value=n.text||""; }
 function stopNotes(){ ntUnsub?.(); ntUnsub=null; NT=[]; ntJob=null; ntReady=false; clearPinOverlays(); }
 const N = nid => NT.find(n=>n.id===nid);
 const byOrder=(a,b)=>(a.order??1e9)-(b.order??1e9)||(a.t||"").localeCompare(b.t||"");
 const childrenOf = nid => NT.filter(n=>(n.parent||null)===(nid||null)).sort(byOrder);
-function heightOf(nid){ const k=childrenOf(nid); return 1+(k.length?Math.max(...k.map(c=>heightOf(c.id))):0); }
-function treeOrder(){ const out=[]; const walk=p=>childrenOf(p).forEach(c=>{ out.push(c); walk(c.id); }); walk(null); return out; }
-function depthOf(nid){ let d=0, n=N(nid); while(n){ d++; n=n.parent?N(n.parent):null; if(d>20) break; } return d; }
-function ancestors(nid){ const out=[]; let n=N(nid); while(n?.parent){ n=N(n.parent); if(!n||out.length>20) break; out.unshift(n); } return out; }
-function descendants(nid){ const out=[]; const walk=p=>childrenOf(p).forEach(c=>{ out.push(c); walk(c.id); }); walk(nid); return out; }
+/* Two clients editing at once can leave a note whose parent is gone, or a loop (A inside B inside A). Nothing here may
+   recurse forever, and such notes are shown at the top level rather than disappearing. */
+function heightOf(nid,seen=new Set()){ if(seen.has(nid)) return 0; seen.add(nid); const k=childrenOf(nid); return 1+(k.length?Math.max(...k.map(c=>heightOf(c.id,seen))):0); }
+function treeOrder(){ const out=[], seen=new Set(); const walk=p=>childrenOf(p).forEach(c=>{ if(seen.has(c.id)) return; seen.add(c.id); out.push(c); walk(c.id); }); walk(null);
+  NT.filter(n=>!seen.has(n.id)).sort(byOrder).forEach(n=>{ if(seen.has(n.id)) return; seen.add(n.id); out.push(n); walk(n.id); }); return out; }   // orphans and loop members: top level
+function depthOf(nid){ let d=0, n=N(nid); const seen=new Set(); while(n&&!seen.has(n.id)){ seen.add(n.id); d++; n=n.parent?N(n.parent):null; } return d; }
+function ancestors(nid){ const out=[]; let n=N(nid); const seen=new Set([nid]); while(n?.parent&&!seen.has(n.parent)){ seen.add(n.parent); n=N(n.parent); if(!n) break; out.unshift(n); } return out; }
+function descendants(nid){ const out=[], seen=new Set([nid]); const walk=p=>childrenOf(p).forEach(c=>{ if(seen.has(c.id)) return; seen.add(c.id); out.push(c); walk(c.id); }); walk(nid); return out; }
 function notePts(k){ return k.points||[]; }
 function noteClosed(k){ return !!k.closed&&notePts(k).length>=3; }
 function noteShape(k){ const n=notePts(k).length; return n<=1?"pin":noteClosed(k)?"area":"line"; }
@@ -2229,7 +2279,10 @@ async function createNote(id,kind,parent,data={}){
   log(id, `added a ${kind==="model"?NOTE_LABEL[noteShape(n)].toLowerCase()+" note on the model":kind==="photo"?"photo note":kind==="file"?"file note":"note"}${parent?" inside “"+noteTitle(N(parent)||{}).slice(0,40)+"”":""}`);
   return nid;
 }
-async function updateNote(id,nid,patch,anchor,logText){ const n=N(nid); if(!n) return; Object.assign(n,patch); if(S.note===nid) renderRecord(); else renderNotes(); await flashSaved(anchor,()=>DB.update(noteCol(id)+"/"+nid,{ ...patch, edited:now(), editedBy:S.user.name })); if(logText) log(id,logText); }
+async function updateNote(id,nid,patch,anchor,logText){ const n=N(nid); if(!n) return; Object.assign(n,patch);
+  const inPlace=S.note===nid&&Object.keys(patch).every(k=>k==="title"||k==="text");
+  if(inPlace){ const t=noteTitle(n); $("#pbody .crumbs b")&&($("#pbody .crumbs b").textContent=t); const ti=$("#nv-title"); if(ti) ti.placeholder=t; $("#pk-id")&&($("#pk-id").textContent=W(id)?.id||""); }   // no re-render: the click that blurred the field must still land
+  else if(S.note===nid) renderRecord(); else renderNotes(); await flashSaved(anchor,()=>DB.update(noteCol(id)+"/"+nid,{ ...patch, edited:now(), editedBy:S.user.name })); if(logText) log(id,logText); }
 function bumpNoteCount(id){ const w=W(id); if(!w) return; const n=noteCount(); if((w.noteCount||0)!==n){ w.noteCount=n; DB.update(WO_COL+"/"+id,{ noteCount:n }).catch(()=>{}); } }
 async function deleteNote(id,nid){ const n=N(nid); if(!n) return; const kids=descendants(nid); const what=`${noteTitle(n)}${kids.length?` and ${kids.length} note${kids.length===1?"":"s"} inside it`:""}`; if(!confirm(`Delete “${what}”?`)) return;
   if(S.note===nid||kids.some(k=>k.id===S.note)) S.note=n.parent||null;
@@ -2238,7 +2291,7 @@ async function deleteNote(id,nid){ const n=N(nid); if(!n) return; const kids=des
   if(!S.note) document.body.classList.remove("note-view");
   NT=NT.filter(x=>x.id!==nid&&!kids.some(k=>k.id===x.id)); log(id,`deleted note “${noteTitle(n).slice(0,60)}”${kids.length?` with ${kids.length} inside`:""}`); renderRecord(); bumpNoteCount(id); }
 async function addFileToNote(id,nid,file,statusEl){
-  if(file.size>FILE_MAX){ toast(`${file.name} is over 50 MB.`,true); return; } const n=N(nid); if(!n) return;
+  if(file.size>FILE_MAX){ toast(`${P(file.name)} is over 50 MB.`,true); return; } const n=N(nid); if(!n) return;
   const fid=uid(); const path=`sites/${SITE_ID}/jobs/${id}/notes/${nid}/${fid}_${file.name.replace(/[^\w.\-]+/g,"_")}`;
   if(statusEl) statusEl.textContent=`Uploading ${file.name}… 0%`;
   let up; try{ up=await ST.upload(path,file,pct=>{ if(statusEl) statusEl.textContent=`Uploading ${file.name}… ${Math.round(pct*100)}%`; }); }catch(e){ toast(`Upload failed: ${e?.code==="storage/unauthorized"?"storage rules deny it — publish the Storage rules first":(e.message||e)}`,true); if(statusEl) statusEl.textContent=""; return; }
@@ -2296,9 +2349,9 @@ function noteCardHTML(n,opts={}){
   const flat=!!opts.flat;
   const row=`<div class="note ncard nr ${here?"here":""}" data-kind="${n.kind}" data-nid="${n.id}"${flat?"":` data-drag="1"`}>${flat?"":`<span class="grip" aria-hidden="true">${GRIP_SVG}</span>`}${g}<div class="t"><b>${P(noteTitle(n))}</b><span>${meta}</span></div><span class="k">${kind}</span>${flat?"":kids.length?`<button type="button" class="chev has" data-fold="${n.id}" title="${open?"Hide":"Show"} ${kids.length} note${kids.length===1?"":"s"} inside">${open?"▾":"▸"}<b>${kids.length}</b></button>`:`<span class="chev"></span>`}${flat?"":`<button type="button" class="nmv" data-move="${n.id}" aria-label="Move this note" title="Move">${DOTS_SVG}</button>`}</div>`;
   const depth=(opts.depth||1);
-  return row+(!flat&&kids.length&&open&&depth<NOTE_DEPTH?`<div class="kids">${kids.map(k=>noteCardHTML(k,{ depth:depth+1 })).join("")}</div>`:""); }
+  return row+(!flat&&kids.length&&open&&depth<NOTE_DEPTH+1?`<div class="kids">${kids.map(k=>noteCardHTML(k,{ depth:depth+1 })).join("")}</div>`:""); }   // depth cap: a parent loop in the data must not recurse
 function photoTileHTML(n){ const p=PH.find(x=>x.id===n.photoId); const par=n.parent?N(n.parent):null;
-  return `<button type="button" class="ptile" data-open-note="${n.id}" data-pid="${n.photoId||""}"><span class="pimg">${p?`<img src="${p.thumb}" alt="">`:""}${p&&!hasPos(p)?`<span class="nopos" title="Position unknown">?</span>`:""}${p?.marks?.length?`<span class="mkc">✎ ${p.marks.length}</span>`:""}</span><b>${P(noteTitle(n))}</b><span>${par?"in "+P(noteTitle(par).slice(0,40)):P(fmtDate(n.t))}</span></button>`; }
+  return `<button type="button" class="ptile" data-open-note="${P(n.id)}" data-pid="${P(n.photoId||"")}"><span class="pimg">${p?`<img src="${p.thumb}" alt="">`:""}${p&&!hasPos(p)?`<span class="nopos" title="Position unknown">?</span>`:""}${p?.marks?.length?`<span class="mkc">✎ ${p.marks.length}</span>`:""}</span><b>${P(noteTitle(n))}</b><span>${par?"in "+P(noteTitle(par).slice(0,40)):P(fmtDate(n.t))}</span></button>`; }
 /* the add row: same four buttons in the job panel and inside a note */
 function addButtonsHTML(parent){ return `<div class="nadd" data-parent="${parent||""}">
     <button type="button" class="btn nab" data-add="text">${KIND_ICON.text}<span>＋ Note</span></button>
@@ -2307,8 +2360,10 @@ function addButtonsHTML(parent){ return `<div class="nadd" data-parent="${parent
     <button type="button" class="btn nab" data-add="file">${KIND_ICON.file}<span>＋ File</span></button>
     <input type="file" id="nf-file" multiple hidden><input type="file" id="ph-file" accept="image/*" multiple hidden></div>`; }
 let NFILT="all";   // All · On model · Photos · Files — resets when another job opens
+/* top of the tree: notes with no parent, then any note the tree cannot reach (a missing parent, or a parent loop) so nothing is invisible */
+function topLevel(){ const reach=new Set(); const walk=p=>childrenOf(p).forEach(c=>{ if(reach.has(c.id)) return; reach.add(c.id); walk(c.id); }); walk(null); return [...childrenOf(null),...NT.filter(n=>!reach.has(n.id)).sort(byOrder)]; }
 function notesHTML(){
-  const top=childrenOf(null), all=treeOrder(); const models=all.filter(n=>n.kind==="model"), photos=all.filter(n=>n.kind==="photo");
+  const top=topLevel(), all=treeOrder(); const models=all.filter(n=>n.kind==="model"), photos=all.filter(n=>n.kind==="photo");
   const files=all.flatMap(n=>(n.files||[]).map(f=>({ f, n }))).sort((a,b)=>(b.f.t||"").localeCompare(a.f.t||""));
   const f=NFILT; const chip=(k,l,c)=>`<button type="button" class="chipbtn" data-nf="${k}" aria-selected="${f===k}">${l}<b>${c}</b></button>`; const hint=t=>`<div class="hint">${t}</div>`;
   const body=f==="model"?(models.length?`<div class="notes">${models.map(n=>noteCardHTML(n,{ flat:true, where:true })).join("")}</div>`:hint("Nothing on the model yet. ＋ On model marks a point, a line or an area."))
@@ -2379,9 +2434,12 @@ function noteDragStart(e,c,id){ if(e.button>0||e.target.closest("button,a,textar
     ev.preventDefault(); noteDragOver(d,ev.clientX,ev.clientY); };
   const up=ev=>{ if(ev.pointerId!==d.pid) return; const was=d.on, to=d.to; end(); if(was){ c.__noClick=true; setTimeout(()=>{ c.__noClick=false; },60); if(to) moveNote(id,d.nid,to); } };
   const tm=ev=>{ if(d.on) ev.preventDefault(); };
-  function end(){ clearTimeout(d.timer); document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up); document.removeEventListener("pointercancel",up); document.removeEventListener("touchmove",tm); endNoteDragUI(d); if(ND===d) ND=null; }
+  const abort=()=>end(), key=ev=>{ if(ev.key==="Escape") end(); };
+  function end(){ clearTimeout(d.timer); clearTimeout(d.idle); document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up); document.removeEventListener("pointercancel",up); document.removeEventListener("touchmove",tm); window.removeEventListener("blur",abort); document.removeEventListener("visibilitychange",abort); document.removeEventListener("keydown",key,true); try{ c.releasePointerCapture?.(d.pid); }catch{} endNoteDragUI(d); if(ND===d) ND=null; }
   if(touch) d.timer=setTimeout(()=>{ if(ND===d&&!d.on){ beginNoteDrag(d); navigator.vibrate?.(12); } },400);
-  document.addEventListener("pointermove",move,{ passive:false }); document.addEventListener("pointerup",up); document.addEventListener("pointercancel",up); document.addEventListener("touchmove",tm,{ passive:false }); }
+  d.idle=setTimeout(()=>{ if(ND===d&&!d.on) end(); },15000);   // a press that never moved and never ended
+  try{ c.setPointerCapture?.(e.pointerId); }catch{}
+  document.addEventListener("pointermove",move,{ passive:false }); document.addEventListener("pointerup",up); document.addEventListener("pointercancel",up); document.addEventListener("touchmove",tm,{ passive:false }); window.addEventListener("blur",abort); document.addEventListener("visibilitychange",abort); document.addEventListener("keydown",key,true); }
 function beginNoteDrag(d){ d.on=true; d.card.classList.add("dragging"); document.body.classList.add("ndragging"); const n=N(d.nid);
   const g=document.createElement("div"); g.className="nghost"; g.textContent=n?noteTitle(n):""; document.body.append(g); d.ghost=g; g.style.left=d.x0+12+"px"; g.style.top=d.y0+8+"px"; }
 function noteDragOver(d,x,y){ if(d.ghost){ d.ghost.style.left=x+12+"px"; d.ghost.style.top=y+8+"px"; }
@@ -2411,8 +2469,8 @@ function renderNoteView(w){
   if(S.woView) woMode();
   $$("#pbody [data-crumb]").forEach(a=>a.onclick=e=>{ e.preventDefault(); const id=a.dataset.crumb; if(!id){ S.note=null; document.body.classList.remove("note-view"); selPin=null; highlightPhoto(null); renderRecord(); syncPinOverlays(); } else openNote(id); });
   $("#nv-back").onclick=()=>closeNote(true); $("#nv-mail").onclick=()=>newThreadFrom(w.id,{ kind:"note", noteId:n.id });
-  const ti=$("#nv-title"); ti.onblur=()=>{ if(ti.value.trim()!==(n.title||"")) updateNote(w.id,n.id,{ title:ti.value.trim() },ti,`renamed a note to “${ti.value.trim().slice(0,60)}”`); }; ti.onkeydown=e=>{ if(e.key==="Enter") ti.blur(); };
-  const tx=$("#nv-text"); const grow=()=>{ tx.style.height="auto"; tx.style.height=Math.max(56,tx.scrollHeight)+"px"; }; grow(); tx.oninput=grow; tx.onblur=()=>{ if(tx.value.trim()!==(n.text||"")) updateNote(w.id,n.id,{ text:tx.value.trim() },tx,tx.value.trim()?`wrote in “${noteTitle(n).slice(0,40)}”: “${tx.value.trim().slice(0,80)}${tx.value.trim().length>80?"…":""}”`:`cleared the text of “${noteTitle(n).slice(0,40)}”`); };
+  const ti=$("#nv-title"); ti.onblur=()=>{ if(ti.value.trim()!==((N(n.id)||n).title||"")) updateNote(w.id,n.id,{ title:ti.value.trim() },ti,`renamed a note to “${ti.value.trim().slice(0,60)}”`); }; ti.onkeydown=e=>{ if(e.key==="Enter") ti.blur(); };
+  const tx=$("#nv-text"); const grow=()=>{ tx.style.height="auto"; tx.style.height=Math.max(56,tx.scrollHeight)+"px"; }; grow(); tx.oninput=grow; tx.onblur=()=>{ if(tx.value.trim()!==((N(n.id)||n).text||"")) updateNote(w.id,n.id,{ text:tx.value.trim() },tx,tx.value.trim()?`wrote in “${noteTitle(n).slice(0,40)}”: “${tx.value.trim().slice(0,80)}${tx.value.trim().length>80?"…":""}”`:`cleared the text of “${noteTitle(n).slice(0,40)}”`); };
   $("#nv-move")?.addEventListener("click",()=>drawNote(w.id,n.id));
   $("#nv-edit")?.addEventListener("click",()=>openViewer(n.photoId)); $("#nv-img")?.addEventListener("click",()=>openViewer(n.photoId));
   { const pw=$("#nv-img"), im=pw?.querySelector("img"); if(im){ const fit=()=>{ if(im.naturalHeight>im.naturalWidth) pw.style.maxWidth=Math.round(420*im.naturalWidth/im.naturalHeight)+"px"; }; if(im.complete) fit(); else im.onload=fit; } }
@@ -2426,12 +2484,12 @@ function renderNoteView(w){
 }
 function photoPosText(p){ const ps=p.pose||{}; if(ps.corrected) return "Placed by hand on the model"; if(!hasPos(p)) return "Unknown — use Move on model to place it"; if(ps.source==="sensor") return `Phone GPS${ps.raw?.acc?` ±${Math.round(ps.raw.acc)} m`:""}`; if(ps.source==="exif") return "From the photo's own GPS data"; return "Approximate"; }
 const fmtBytes = b => b>=1048576?(b/1048576).toFixed(1)+" MB":b>=1024?Math.round(b/1024)+" KB":b+" B";
-function fileRowHTML(f,n,withNote){ const img=/^image\//.test(f.type); return `<div class="frow"><span class="fico">${img?"🖼":/pdf/.test(f.type)?"📄":"📎"}</span><a class="fname" href="${P(f.url)}" target="_blank" rel="noopener">${P(f.name)}</a><span class="hint">${fmtBytes(f.size||0)} · ${P(f.by||"")} · ${P(fmtDate(f.t,true))}${withNote?` · <a href="#" data-gonote="${n.id}">${P(noteTitle(n).slice(0,40))}</a>`:""}</span>${withNote?"":`<button class="btn sm" data-rmfile="${f.id}" title="Remove">✕</button>`}</div>`; }
+function fileRowHTML(f,n,withNote){ const img=/^image\//.test(f.type); return `<div class="frow"><span class="fico">${img?"🖼":/pdf/.test(f.type)?"📄":"📎"}</span><a class="fname" href="${/^(https?:\/\/|data:)/i.test(f.url||"")?P(f.url):"#"}" target="_blank" rel="noopener">${P(f.name)}</a><span class="hint">${fmtBytes(f.size||0)} · ${P(f.by||"")} · ${P(fmtDate(f.t,true))}${withNote?` · <a href="#" data-gonote="${P(n.id)}">${P(noteTitle(n).slice(0,40))}</a>`:""}</span>${withNote?"":`<button class="btn sm" data-rmfile="${P(f.id)}" title="Remove">✕</button>`}</div>`; }
 /* the job-wide file list now lives in the Notes section (Files filter) */
 function renderFiles(){ renderNotes(); }
 
 /* ---------- model-note overlays ---------- */
-function markSVG(m){ if(m.type==="point"){ const [x,y]=m.pts[0]; return `<circle cx="${x}" cy="${y}" r="0.045" fill="${m.color}" stroke="#0B0F1F" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${x}" y="${y}" dy="0.016" text-anchor="middle" font-size="0.05" font-weight="700" fill="#0B0F1F">${m.n||""}</text>`; } return `<path d="M${m.pts.map(q=>q.join(",")).join(" L")}" fill="none" stroke="${m.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`; }
+function markSVG(m){ if(!m.pts?.[0]) return ""; if(m.type==="point"){ const [x,y]=m.pts[0]; return `<circle cx="${x}" cy="${y}" r="0.045" fill="${m.color}" stroke="#0B0F1F" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${x}" y="${y}" dy="0.016" text-anchor="middle" font-size="0.05" font-weight="700" fill="#0B0F1F">${m.n||""}</text>`; } return `<path d="M${m.pts.map(q=>q.join(",")).join(" L")}" fill="none" stroke="${m.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`; }
 function pinTileSVG(no){ return `<svg viewBox="0 0 26 36" class="pintile"><path d="M13 1C6.4 1 1 6.3 1 12.9c0 8.3 10.2 20.2 11.4 21.6a.8.8 0 0 0 1.2 0C14.8 33.1 25 21.2 25 12.9 25 6.3 19.6 1 13 1z" fill="${PIN_NOTE_COLOR}" stroke="#0B0F1F" stroke-width="1.6"/><text x="13" y="16.6" text-anchor="middle" font-size="${String(no).length>1?"9":"10.5"}" font-weight="700" fill="#0B0F1F">${no}</text></svg>`; }
 function noteAnchor(k){ const P=notePts(k); if(P.length===1) return P[0]; const c=centroid(P); const g=P.map(x=>x.ground).filter(x=>x!=null); return { ...c, ground:g.length?g.reduce((a,b)=>a+b,0)/g.length:undefined }; }
 function clearPinOverlays(){ const n=Object.keys(PINOV).length; Object.values(PINOV).forEach(a=>killAll(a)); for(const k in PINOV) delete PINOV[k]; if(n) mapRedraw(); }
@@ -2487,7 +2545,7 @@ function aboutLabel(t){ const a=t.about||{kind:"job"}; if(a.kind==="auto") retur
 function snippet(s,n=90){ return String(s||"").replace(/\s+/g," ").trim().slice(0,n); }
 
 /* ---------- subscriptions ---------- */
-function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note&&!S.creating) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
+function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&!T(IB.sel)) closeThread(); if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note&&!S.creating) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
   S.unsub.push(()=>{ thUnsub?.(); thUnsub=null; msgUnsub?.(); msgUnsub=null; });
   S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; if(S.tab==="inbox") renderInbox(); },e=>{ console.warn("config/mail",e); MAILCFG=null; }));
   if(S.admin) S.unsub.push(DB.watchCol("workspace/main/mail_undelivered",rows=>{ UNDEL=rows.sort((a,b)=>String(b.t).localeCompare(String(a.t))); if(S.tab==="inbox") renderInbox(); },()=>{ UNDEL=[]; })); }
@@ -2511,10 +2569,11 @@ async function createThread(jobId,opts={}){
 /* Open the Inbox on a thread; state-preserving — the job stays open behind it and Back returns to it. */
 function openThread(tid,composeOpts){ IB.sel=tid; IB.compose=composeOpts||null; document.body.classList.add("ib-open"); if(S.tab!=="inbox") setTab("inbox"); else renderInbox(); watchMessages(tid); markRead(tid); const t=T(tid); if(t){ try{ const u=new URL(location.href); u.searchParams.set("job",t.jobId); u.searchParams.set("thread",tid); history.replaceState(null,"",u); }catch{} } }
 function closeThread(){ IB.sel=null; IB.compose=null; document.body.classList.remove("ib-open"); msgUnsub?.(); msgUnsub=null; msgThread=null; MSG=[]; renderInbox(); try{ const u=new URL(location.href); u.searchParams.delete("thread"); history.replaceState(null,"",u); }catch{} }
-function markRead(tid){ const t=T(tid); if(!t||!isUnread(t)) return; t.readBy={ ...(t.readBy||{}), [S.user.uid]:now() }; DB.update(MAIL_COL+"/"+tid,{ ["readBy."+S.user.uid]:now() }).catch(()=>{}); renderMailBadge(); }
+const READING=new Set();
+function markRead(tid){ const t=T(tid); if(!t||!isUnread(t)||READING.has(tid)) return; const at=t.last?.t&&t.last.t>now()?t.last.t:now();   /* a message stamped by a clock ahead of ours would stay "unread" and loop */ t.readBy={ ...(t.readBy||{}), [S.user.uid]:at }; READING.add(tid); DB.update(MAIL_COL+"/"+tid,{ ["readBy."+S.user.uid]:at },QUIET).catch(()=>{}).finally(()=>READING.delete(tid)); renderMailBadge(); }
 /* Start a thread from a job, a note, or a status change and land in the compose box. */
 async function newThreadFrom(jobId,about,extra={}){ const w=W(jobId); if(!w) return; let subject=`${jobId} · ${w.title||"Untitled"}`; const att=[];
-  if(about?.kind==="note"){ const n=N(about.noteId); if(n){ about.label=noteTitle(n); subject=`${jobId} · ${noteTitle(n)}`; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); if(p) att.push({ id:uid(), name:`${noteTitle(n)}.jpg`, type:"image/jpeg", url:p.thumb, noteId:n.id, marks:(p.marks||[]).length }); } (n.files||[]).forEach(f=>att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id })); } }
+  if(about?.kind==="note"){ const n=N(about.noteId); if(n){ about.label=noteTitle(n); subject=`${jobId} · ${noteTitle(n)}`; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); if(p) att.push({ id:uid(), name:`${noteTitle(n)}.jpg`, type:"image/jpeg", url:(await photoWithMarks(jobId,p))||p.thumb, noteId:n.id, marks:(p.marks||[]).length }); } (n.files||[]).forEach(f=>att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id })); } }
   if(about?.kind==="status") subject=`${jobId} · ${w.title||"Untitled"} — now ${status(w.statusId)?.name||""}`;
   const people=(w.values?.people||[]).map(p=>({ email:(p.email||"").toLowerCase(), name:p.name||"" })).filter(p=>p.email&&p.email!==meEmail());
   const tid=await createThread(jobId,{ subject, about, participants:people });
@@ -2548,8 +2607,8 @@ async function receiveMail(msg){
   return { tid, extracted };
 }
 async function mergePeople(jobId,parts){ const w=W(jobId); const p=prop("people"); if(!w||!p||p.type!=="person") return; const cur=w.values?.people||[]; const add=parts.filter(x=>x.email&&x.email!==meEmail()&&!cur.some(c=>(c.email||"").toLowerCase()===x.email)).map(x=>({ email:x.email, name:x.name||"" })); if(!add.length) return; const next=[...cur,...add]; w.values={ ...(w.values||{}), people:next }; await DB.update(WO_COL+"/"+jobId,{ "values.people":next, ...stamp() }).catch(()=>{}); }
-window.__mail={ receive:receiveMail, extractPO, routeAddress };
-if(MOCK) window.__t={ createWO, createThread, W, T, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, openThread, sendMessage, extractPO, routeAddress, unreadCount, get TH(){ return TH; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; } };   // test harness only
+if(MOCK||PARAMS.has("mailtest")) window.__mail={ receive:receiveMail, extractPO, routeAddress };   // test hook: not in a signed-in build by default
+if(MOCK) window.__t={ createWO, createThread, W, T, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, openThread, sendMessage, extractPO, routeAddress, unreadCount, get TH(){ return TH; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
 
 /* ---------- outbound ---------- */
 async function sendMessage(tid,{to,cc,body,attachments}){
@@ -2558,7 +2617,11 @@ async function sendMessage(tid,{to,cc,body,attachments}){
   if(!toL.length){ toast("Add at least one recipient.",true); return; }
   if(!body.trim()&&!(attachments||[]).length){ toast("Write something first.",true); return; }
   const link=location.origin+location.pathname+"?job="+t.jobId+"&view=ro";
-  const m={ dir:"out", from:{ email:meEmail(), name:S.user.name, uid:S.user.uid }, to:toL, cc:[...ccL,{ email:t.addr }], t:now(), subject:t.subject, text:body.trim(), quote:"", attachments:(attachments||[]).map(a=>({ id:a.id||uid(), name:a.name, size:a.size||0, type:a.type||"", url:a.url||"", noteId:a.noteId||"" })), extracted:{po:[]}, status:MAILCFG?.enabled?"queued":"queued", link, by:userRef() };
+  // a marked photo arrives as a data URL (up to ~800 KB); inline it would push the message past Firestore's 1 MiB — store the file and keep its address
+  const atts=[]; for(const a of attachments||[]){ const id=a.id||uid(); let url=a.url||"", size=a.size||0;
+    if(/^data:/i.test(url)&&ST?.upload){ try{ const blob=await (await fetch(url)).blob(); size=blob.size; const up=await ST.upload(`sites/${SITE_ID}/jobs/${t.jobId}/mail/${id}_${String(a.name||"file").replace(/[^\w.\-]+/g,"_")}`,new File([blob],a.name||"file",{ type:blob.type||a.type||"application/octet-stream" })); url=up.url; }catch(e){ throw new Error(`could not store ${a.name||"the attachment"} (${e?.message||e})`); } }
+    atts.push({ id, name:a.name, size, type:a.type||"", url, noteId:a.noteId||"" }); }
+  const m={ dir:"out", from:{ email:meEmail(), name:S.user.name, uid:S.user.uid }, to:toL, cc:[...ccL,{ email:t.addr }], t:now(), subject:t.subject, text:body.trim(), quote:"", attachments:atts, extracted:{po:[]}, status:"queued", link, by:userRef() };
   await DB.add(MAIL_COL+"/"+tid+"/messages",m);
   const parts=[...(t.participants||[]),...toL,...ccL].filter((p,i,a)=>p.email&&a.findIndex(x=>x.email===p.email)===i);
   await DB.update(MAIL_COL+"/"+tid,{ last:{ t:m.t, from:m.from, snippet:snippet(m.text) }, count:(t.count||0)+1, participants:parts, ["readBy."+S.user.uid]:m.t });
@@ -2580,13 +2643,16 @@ function renderThreadList(){
   const when=t=>{ const s=t.last?.t||t.created; if(!s) return ""; const d=new Date(s); const today=new Date(); return d.toDateString()===today.toDateString()?d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):(Date.now()-d<6*86400000?d.toLocaleDateString(undefined,{weekday:"short"}):fmtDate(s)); };
   const ul=$("#ib-undel"); if(!ul&&S.admin&&UNDEL.length){ const b=document.createElement("button"); b.id="ib-undel"; b.className="btn sm"; b.onclick=e=>undeliveredMenu(e.currentTarget); $("#ib-filters")?.append(b); } const ub=$("#ib-undel"); if(ub){ ub.hidden=!(S.admin&&UNDEL.length); ub.textContent=`${UNDEL.length} not filed`; ub.title="Email sent to an address that is not an open job"; }
   if(MAILDENIED&&!TH.length){ $("#ib-rows").innerHTML=`<div class="ib-empty"><b>The database rules don’t allow email threads yet.</b><br>Paste <span class="mono">firestore.rules.snippet</span> from the mail-service folder into Firebase → Firestore → Rules and publish. Everything else works meanwhile.</div>`; return; }
-  $("#ib-rows").innerHTML=jobs.length?jobs.map(({id,ts})=>`<div class="ib-grp" data-job="${id}" title="Open the job"><span class="jid">${id}</span><span class="jt">${P(W(id)?.title||"Untitled")}</span></div>${ts.map(t=>`<div class="ib-row ${isUnread(t)?"unread":""} ${IB.sel===t.id?"sel":""}" data-tid="${t.id}"><span class="u"></span><div class="s"><b>${P(t.subject)}</b><span class="re">${P(aboutLabel(t))}${t.count?` · ${t.count} message${t.count===1?"":"s"}`:""}</span><span>${t.last?`${P(nameOf(t.last.from).split(" ")[0]||"")}: ${P(t.last.snippet||"")}`:`Started by ${P(t.createdBy?.name||"")} · nothing sent yet`}</span></div><span class="w">${P(when(t))}</span></div>`).join("")}`).join("")
+  $("#ib-rows").innerHTML=jobs.length?jobs.map(({id,ts})=>`<div class="ib-grp" data-job="${P(id)}" title="Open the job"><span class="jid">${P(id)}</span><span class="jt">${P(W(id)?.title||"Untitled")}</span></div>${ts.map(t=>`<div class="ib-row ${isUnread(t)?"unread":""} ${IB.sel===t.id?"sel":""}" data-tid="${P(t.id)}"><span class="u"></span><div class="s"><b>${P(t.subject)}</b><span class="re">${P(aboutLabel(t))}${t.count?` · ${t.count} message${t.count===1?"":"s"}`:""}</span><span>${t.last?`${P(nameOf(t.last.from).split(" ")[0]||"")}: ${P(t.last.snippet||"")}`:`Started by ${P(t.createdBy?.name||"")} · nothing sent yet`}</span></div><span class="w">${P(when(t))}</span></div>`).join("")}`).join("")
     :`<div class="ib-empty">${TH.length?"Nothing matches this filter.":`<b>No email threads yet.</b><br>Every job has an address — <span class="mono">j-26-008@${MAIL_DOMAIN}</span> — and every thread inside it has one too. CC it from Outlook, or forward a message to it, and the mail shows up here, inside the job.<br><br>Or open a job and press <b>＋ New thread</b>.`}</div>`;
   $$("#ib-rows .ib-row").forEach(r=>r.onclick=()=>openThread(r.dataset.tid));
   $$("#ib-rows .ib-grp").forEach(g=>g.onclick=()=>enterWOView(g.dataset.job));
 }
+let paneDirty=false, SENDING=false;
 function renderThreadPane(){
   const box=$("#ib-thread"); const t=IB.sel?T(IB.sel):null;
+  if(t&&box.contains(document.activeElement)&&document.activeElement.closest("#ib-compose")){ paneDirty=true; const ml=box.querySelector("#ib-msgs"); if(ml) ml.innerHTML=messagesHTML(t); return; }   // someone is typing: refresh only the messages
+  paneDirty=false;
   if(!t){ box.innerHTML=`<div class="ib-blank"><div><b>Pick a thread</b><br>or CC a job address from Outlook and it appears here.<br><span class="hint">${MAILCFG?.enabled?"Mail service connected.":"Mail service not connected yet — outgoing messages queue; nothing is received until it is."}</span></div></div>`; return; }
   const w=W(t.jobId); if(!w){ box.innerHTML=""; return; }
   const P0=pts(w); const areaTxt=P0.length?shapeLabel(locShape(w)):"no job area"; const lastNote=NT.length&&ntJob===w.id?NT[NT.length-1]:null;
@@ -2594,32 +2660,36 @@ function renderThreadPane(){
   const me=meEmail(); const others=parts.filter(p=>p.email!==me);
   const c=IB.compose||{}; const toDefault=c.to!=null?c.to:others.map(p=>p.email).join(", ");
   const newTo=parseAddrs(toDefault).filter(p=>!parts.some(x=>x.email===p.email));
-  box.innerHTML=`<div class="ib-jobcard"><span class="area"></span><span class="jid">${t.jobId}</span><span class="jt">${P(w.title||"Untitled")}</span>${statusPill(w)}<span class="last">${P(areaTxt)}${lastNote?` · last note · ${P(noteTitle(lastNote))}`:""}</span><span class="sp"></span><button class="btn sm" id="ib-back-list" title="All threads">‹ Threads</button><button class="btn sm teal" id="ib-back">Open job</button></div>
+  box.innerHTML=`<div class="ib-jobcard"><span class="area"></span><span class="jid">${P(t.jobId)}</span><span class="jt">${P(w.title||"Untitled")}</span>${statusPill(w)}<span class="last">${P(areaTxt)}${lastNote?` · last note · ${P(noteTitle(lastNote))}`:""}</span><span class="sp"></span><button class="btn sm" id="ib-back-list" title="All threads">‹ Threads</button><button class="btn sm teal" id="ib-back">Open job</button></div>
     <div class="ib-head"><h3>${P(t.subject)}</h3><span class="chip soft">${t.count||0} message${t.count===1?"":"s"}</span><button class="btn sm" id="ib-more">···</button></div>
-    <div class="ib-about">Thread ${t.n} · ${P(aboutLabel(t))}${t.about?.kind==="note"&&t.about.noteId?` <a href="#" data-gonote="${t.about.noteId}">open the note</a>`:""} · started by ${P(t.createdBy?.name||t.createdBy?.email||"")} · <span class="addr">${P(t.addr)} <button class="btn sm ghost" data-copy="${P(t.addr)}">Copy</button></span></div>
+    <div class="ib-about">Thread ${t.n} · ${P(aboutLabel(t))}${t.about?.kind==="note"&&t.about.noteId?` <a href="#" data-gonote="${P(t.about.noteId)}">open the note</a>`:""} · started by ${P(t.createdBy?.name||t.createdBy?.email||"")} · <span class="addr">${P(t.addr)} <button class="btn sm ghost" data-copy="${P(t.addr)}">Copy</button></span></div>
     <div class="ib-parts"><span class="lab">People</span>${parts.map(p=>`<span class="pchip"><span class="avatar sm">${P(initials(nameOf(p)))}</span>${P(nameOf(p))}<span class="st ${onPlatform(p.email)?"on":""}">· ${onPlatform(p.email)?"on platform":"email"}</span></span>`).join("")}</div>
-    <div class="ib-msgs">${MSG.length?MSG.map(m=>msgHTML(t,m)).join(""):`<div class="hint" style="padding:6px 0">Nothing in this thread yet. Anything sent to <span class="mono">${P(t.addr)}</span> lands here.</div>`}</div>
+    <div class="ib-msgs" id="ib-msgs">${messagesHTML(t)}</div>
     <div class="compose" id="ib-compose"><div class="from">Reply as <b>${P(S.user.name)} ‹${P(me)}›</b>${MAILCFG?.enabled?" · via your mailbox":" · queued until the mail service is connected"} · CC <span class="mono">${P(t.addr)}</span> is added automatically</div>
       <div class="row"><span class="lab">To</span><input id="c-to" placeholder="name@company.com, …" value="${P(toDefault)}"></div>
       <div class="row"><span class="lab">CC</span><input id="c-cc" placeholder="optional" value="${P(c.cc||"")}"></div>
       <textarea id="c-body" placeholder="Write a reply…">${P(c.body||"")}</textarea>
       <div class="catt" id="c-att">${(c.attachments||[]).map(a=>`<span class="file"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.marks?` <span class="sz">✎${a.marks}</span>`:""}<button class="btn sm ghost" data-rmatt="${a.id}" title="Remove">✕</button></span>`).join("")}</div>
       <div class="foot"><button class="btn sm" id="c-attnote">Attach a note or photo</button><span class="sp"></span><span class="hint" id="c-hint">${newTo.length?`${newTo.map(p=>P(p.email)).join(", ")} ${newTo.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."}</span><button class="btn teal" id="c-send">Send</button></div></div>`;
+  box.querySelectorAll("#ib-compose input,#ib-compose textarea").forEach(el=>el.addEventListener("blur",()=>{ if(paneDirty) setTimeout(()=>{ if(SENDING) return; if(!box.contains(document.activeElement)||!document.activeElement.closest("#ib-compose")) renderThreadPane(); },50); }));   // not while a send is in flight: the rebuild would re-enable Send
   $("#ib-back").onclick=()=>{ enterWOView(t.jobId); }; $("#ib-back-list").onclick=closeThread;
   $("#ib-more").onclick=e=>threadMenu(t,e.currentTarget);
-  $$("#ib-thread [data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Address copied"); }catch{ prompt("Copy this address",b.dataset.copy); } });
-  $$("#ib-thread [data-gonote]").forEach(a=>a.onclick=e=>{ e.preventDefault(); enterWOView(t.jobId); setTimeout(()=>openNote(a.dataset.gonote),300); });
-  $$("#ib-thread [data-po]").forEach(b=>b.onclick=()=>applyPO(t.id,b.dataset.mid,b.dataset.po));
-  $$("#ib-thread [data-ignorepo]").forEach(b=>b.onclick=async()=>{ const m=MSG.find(x=>x.id===b.dataset.mid); if(!m) return; const po=(m.extracted?.po||[]).map(x=>x.value===b.dataset.ignorepo?{ ...x, ignored:true }:x); await DB.update(MAIL_COL+"/"+t.id+"/messages/"+m.id,{ "extracted.po":po }); });
-  $$("#ib-thread .qtog").forEach(b=>b.onclick=()=>b.closest(".msg").classList.toggle("showq"));
+  // message controls are delegated: the message list is rebuilt under a typing user without a full render
+  box.onclick=async e=>{ const cp=e.target.closest("[data-copy]"); if(cp){ try{ await navigator.clipboard.writeText(cp.dataset.copy); toast("Address copied"); }catch{ prompt("Copy this address",cp.dataset.copy); } return; }
+    const g=e.target.closest("[data-gonote]"); if(g){ e.preventDefault(); enterWOView(t.jobId); setTimeout(()=>openNote(g.dataset.gonote),300); return; }
+    const po=e.target.closest("[data-po]"); if(po){ applyPO(t.id,po.dataset.mid,po.dataset.po); return; }
+    const ig=e.target.closest("[data-ignorepo]"); if(ig){ const m=MSG.find(x=>x.id===ig.dataset.mid); if(!m) return; const list=(m.extracted?.po||[]).map(x=>x.value===ig.dataset.ignorepo?{ ...x, ignored:true }:x); await DB.update(MAIL_COL+"/"+t.id+"/messages/"+m.id,{ "extracted.po":list }); return; }
+    const q=e.target.closest(".qtog"); if(q) q.closest(".msg").classList.toggle("showq"); };
   const keep=()=>{ IB.compose={ to:$("#c-to").value, cc:$("#c-cc").value, body:$("#c-body").value, attachments:c.attachments||[] }; };
   ["#c-to","#c-cc","#c-body"].forEach(s=>{ const el=$(s); el.oninput=()=>{ keep(); if(s==="#c-to"){ const nt=parseAddrs(el.value).filter(p=>!parts.some(x=>x.email===p.email)); $("#c-hint").textContent=nt.length?`${nt.map(p=>p.email).join(", ")} ${nt.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."; } }; });
   $$("#c-att [data-rmatt]").forEach(b=>b.onclick=()=>{ keep(); IB.compose.attachments=IB.compose.attachments.filter(a=>a.id!==b.dataset.rmatt); renderThreadPane(); });
   $("#c-attnote").onclick=e=>{ keep(); attachPicker(t,e.currentTarget); };
-  $("#c-send").onclick=async()=>{ keep(); const b=$("#c-send"); b.disabled=true; try{ await sendMessage(t.id,IB.compose); IB.compose=null; }catch(err){ toast("Could not send: "+(err.message||err),true); } b.disabled=false; renderThreadPane(); };
+  $("#c-send").onclick=async()=>{ if(SENDING) return; keep(); const draft=IB.compose; const b=$("#c-send"); b.disabled=true; SENDING=true; IB.compose=null;   // one send per click, whatever re-renders meanwhile
+    try{ await sendMessage(t.id,draft); }catch(err){ IB.compose=draft; toast("Could not send: "+(err.message||err),true); } finally{ SENDING=false; } renderThreadPane(); };
   if(c.focus!==false&&IB.compose&&!MSG.length) $("#c-body").focus();
   const msgs=$("#ib-thread .ib-msgs"); if(msgs&&MSG.length&&!IB.compose) box.scrollTop=box.scrollHeight;
 }
+function messagesHTML(t){ return MSG.length?MSG.map(m=>msgHTML(t,m)).join(""):`<div class="hint" style="padding:6px 0">Nothing in this thread yet. Anything sent to <span class="mono">${P(t.addr)}</span> lands here.</div>`; }
 function msgHTML(t,m){
   const mine=(m.from?.email||"").toLowerCase()===meEmail();
   const po=(m.extracted?.po||[]).filter(x=>!x.ignored);
@@ -2629,7 +2699,7 @@ function msgHTML(t,m){
     <div class="b">${P(m.text||"")}${m.link?`\n\n<span class="hint">↳ Link to job ${P(t.jobId)} (opens for Dispatch users)</span>`:""}${m.notSentTo?.length?`\n<span class="hint">Not sent to ${P(m.notSentTo.join(", "))}</span>`:""}${m.notAttached?.length?`\n<span class="hint">Not attached (too large or unavailable): ${P(m.notAttached.join(", "))}</span>`:""}${m.dropped?.length?`\n<span class="hint">Not kept: ${P(m.dropped.map(d=>d.name).join(", "))} — too large</span>`:""}</div>
     ${po.map(x=>`<div class="ext ${x.applied?"done":""}"><span class="k">${x.applied?"Set":"Found"}</span><span class="v">PO ${P(x.value)}</span><span class="why">${x.applied?"on the job":"in this message"}${x.src?` · “…${P(x.src)}…”`:""}</span><span class="sp"></span>${x.applied?"":`<button class="btn sm teal" data-po="${P(x.value)}" data-mid="${m.id}">Set as job PO #</button><button class="btn sm ghost" data-ignorepo="${P(x.value)}" data-mid="${m.id}">Ignore</button>`}</div>`).join("")}
     ${m.quote?`<button class="qtog">▸ quoted text</button><div class="q">${P(m.quote)}</div>`:""}
-    ${m.attachments?.length?`<div class="att">${m.attachments.map(a=>`<a class="file" href="${P(a.url||"#")}" target="_blank" rel="noopener"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.size?` <span class="sz">${fmtBytes(a.size)}</span>`:""}${m.dir==="in"?` <span class="to">→ in job Files</span>`:a.noteId?` <span class="to">from a note</span>`:""}</a>`).join("")}</div>`:""}</div>`;
+    ${m.attachments?.length?`<div class="att">${m.attachments.map(a=>`<a class="file" href="${/^(https?:\/\/|data:image\/|data:application\/pdf)/i.test(a.url||"")?P(a.url):"#"}" target="_blank" rel="noopener"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.size?` <span class="sz">${fmtBytes(a.size)}</span>`:""}${m.dir==="in"?` <span class="to">→ in job Files</span>`:a.noteId?` <span class="to">from a note</span>`:""}</a>`).join("")}</div>`:""}</div>`;
 }
 function threadMenu(t,anchor){ const el=openPop(anchor,`<div class="mi" data-a="job">Open job ${t.jobId}</div><div class="mi" data-a="copy">Copy thread address</div><div class="mi" data-a="copyjob">Copy job address</div><div class="hr"></div><div class="mi" data-a="rename">Rename thread…</div>${S.admin||MOCK?`<div class="mi" data-a="sim">Test: receive a reply here…</div>`:""}`,{width:240,noFocus:true});
   el.onclick=async e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return; closePop();
@@ -2637,11 +2707,14 @@ function threadMenu(t,anchor){ const el=openPop(anchor,`<div class="mi" data-a="
     if(a==="copy"||a==="copyjob"){ const v=a==="copy"?t.addr:jobAddr(t.jobId); try{ await navigator.clipboard.writeText(v); toast("Address copied"); }catch{ prompt("Copy this address",v); } }
     if(a==="rename"){ const s=prompt("Thread subject",t.subject); if(s&&s.trim()&&s.trim()!==t.subject) await DB.update(MAIL_COL+"/"+t.id,{ subject:s.trim() }); }
     if(a==="sim") simInbound(anchor,t); }; }
-function attachPicker(t,anchor){ const w=W(t.jobId); if(!w) return; if(ntJob!==w.id){ watchNotes(w.id); watchPhotos(w.id); }
-  const el=openPop(anchor,"",{width:320,noFocus:true});
-  const draw=()=>{ const items=NT.map(n=>{ const p=n.kind==="photo"?PH.find(x=>x.id===n.photoId):null; return { n, p, files:n.files||[] }; }).filter(x=>x.p||x.files.length);
-    el.innerHTML=`<div class="sec">Attach from this job</div>${items.length?items.map(({n,p,files})=>`<div class="mi" data-n="${n.id}">${KIND_ICON[n.kind]} ${P(noteTitle(n))}<span class="r">${p?`photo${p.marks?.length?` · ✎${p.marks.length}`:""}`:`${files.length} file${files.length===1?"":"s"}`}</span></div>`).join(""):`<div class="hint" style="padding:6px 8px">No photos or files on this job yet.</div>`}`;
-    el.querySelectorAll("[data-n]").forEach(mi=>mi.onclick=()=>{ const n=N(mi.dataset.n); const att=IB.compose?.attachments||[]; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); if(p&&!att.some(a=>a.noteId===n.id)) att.push({ id:uid(), name:`${noteTitle(n)}.jpg`, type:"image/jpeg", url:p.thumb, noteId:n.id, marks:(p.marks||[]).length }); } (n.files||[]).forEach(f=>{ if(!att.some(a=>a.id===f.id)) att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id }); }); IB.compose={ ...(IB.compose||{}), attachments:att, focus:false }; closePop(); renderThreadPane(); }); };
+async function attachPicker(t,anchor){ const w=W(t.jobId); if(!w) return;
+  const el=openPop(anchor,`<div class="hint" style="padding:6px 8px">Loading…</div>`,{width:320,noFocus:true});
+  // this job's notes and photos, read once here; the open job's own lists stay untouched (they may belong to another job)
+  let notes=NT, photos=PH; if(ntJob!==w.id){ try{ [notes,photos]=await Promise.all([DB.list(WO_COL+"/"+w.id+"/notes"),DB.list(WO_COL+"/"+w.id+"/photos")]); photos.forEach(unpackMarks); }catch(e){ notes=[]; photos=[]; } if(POP!==el) return; }
+  const NX=id=>notes.find(n=>n.id===id); const title=n=>n.title||(n.kind==="photo"?"Photo":n.kind==="file"?(n.files?.[0]?.name||"Files"):n.kind==="model"?"On model":"Note");
+  const draw=()=>{ const items=notes.map(n=>{ const p=n.kind==="photo"?photos.find(x=>x.id===n.photoId):null; return { n, p, files:n.files||[] }; }).filter(x=>x.p||x.files.length);
+    el.innerHTML=`<div class="sec">Attach from this job</div>${items.length?items.map(({n,p,files})=>`<div class="mi" data-n="${P(n.id)}">${KIND_ICON[n.kind]||""} ${P(title(n))}<span class="r">${p?`photo${p.marks?.length?` · ✎${p.marks.length}`:""}`:`${files.length} file${files.length===1?"":"s"}`}</span></div>`).join(""):`<div class="hint" style="padding:6px 8px">No photos or files on this job yet.</div>`}`;
+    el.querySelectorAll("[data-n]").forEach(mi=>mi.onclick=async()=>{ const n=NX(mi.dataset.n); if(!n) return; const att=IB.compose?.attachments||[]; if(n.kind==="photo"){ const p=photos.find(x=>x.id===n.photoId); if(p&&!att.some(a=>a.noteId===n.id)){ const url=await photoWithMarks(w.id,p)||p.thumb; att.push({ id:uid(), name:`${title(n)}.jpg`, type:"image/jpeg", url, noteId:n.id, marks:(p.marks||[]).length }); } } (n.files||[]).forEach(f=>{ if(!att.some(a=>a.id===f.id)) att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id }); }); IB.compose={ ...(IB.compose||{}), attachments:att, focus:false }; closePop(); renderThreadPane(); }); };
   draw(); }
 /* Admin/test only: write an inbound message exactly as the mail service would. Lets the flow be exercised before DNS and the function exist. */
 function simInbound(anchor,t){ const jobs=live(); const el=openPop(anchor,`<div class="sec">Simulate an inbound email</div>
@@ -2656,7 +2729,7 @@ function simInbound(anchor,t){ const jobs=live(); const el=openPop(anchor,`<div 
 function mailStripHTML(w){ return `<div class="strip" id="mailstrip"><span class="lab">Email</span><span class="val mono" style="font-size:12px">${P(jobAddr(w.id))}</span><button class="btn sm" data-copy="${P(jobAddr(w.id))}" title="Copy — CC this from Outlook and the mail lands in this job">Copy</button></div>`; }
 function mailSectionHTML(w){ const ts=jobThreads(w.id); const un=ts.filter(isUnread).length;
   return `<section class="ps" id="mail"><h3 style="cursor:default">Email <span class="mono" style="font-weight:400">${ts.length}${un?` · ${un} unread`:""}</span><button class="btn sm teal" id="m-new" style="margin-left:auto">＋ New thread</button></h3>
-    ${ts.length?ts.map(t=>`<div class="thr" data-tid="${t.id}"><span class="u ${isUnread(t)?"":"z"}"></span><div class="t"><b>${P(t.subject)}</b><span>${t.last?`${P(nameOf(t.last.from))} · `:""}${t.count||0} message${t.count===1?"":"s"}${t.last?` · ${P(rel(t.last.t))}`:""} · ${P(aboutLabel(t))}</span></div><span class="n">t${t.n}</span><span class="go">›</span></div>`).join(""):`<div class="hint">No threads. CC <span class="mono">${P(jobAddr(w.id))}</span> from Outlook, forward a message to it, or start one here.</div>`}</section>`; }
+    ${ts.length?ts.map(t=>`<div class="thr" data-tid="${P(t.id)}"><span class="u ${isUnread(t)?"":"z"}"></span><div class="t"><b>${P(t.subject)}</b><span>${t.last?`${P(nameOf(t.last.from))} · `:""}${t.count||0} message${t.count===1?"":"s"}${t.last?` · ${P(rel(t.last.t))}`:""} · ${P(aboutLabel(t))}</span></div><span class="n">t${t.n}</span><span class="go">›</span></div>`).join(""):`<div class="hint">No threads. CC <span class="mono">${P(jobAddr(w.id))}</span> from Outlook, forward a message to it, or start one here.</div>`}</section>`; }
 function wireMailSection(w){ $$("#pbody [data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Address copied — CC it from Outlook"); }catch{ prompt("Copy this address",b.dataset.copy); } });
   $("#m-new")?.addEventListener("click",()=>newThreadFrom(w.id,{kind:"job"}));
   $$("#pbody .thr").forEach(r=>r.onclick=()=>openThread(r.dataset.tid)); }
@@ -2740,7 +2813,7 @@ function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
   const prevName=status(prevSid)?.name||"", grp=status(sid)?.group;
   const relBefore=wasDone||!!w.enabling?.ready, relNow=nowDone||!!w.enabling?.ready; const msgs=[];
   if(!relBefore&&relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&!blockersOf(d).length){ log(d.id,`is ready to start — ${w.id} is complete`); msgs.push(`${d.id} is ready to start`); if(typeof autoEvent==="function") autoEvent("ready",d); } });
-  if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1) log(d.id,`is waiting again — ${w.id} was reopened`); });
+  if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1){ log(d.id,`is waiting again — ${w.id} was reopened`); if(typeof cancelEmail==="function") TH.filter(t=>t.jobId===d.id&&t.pending&&t.about?.kind==="auto"&&AUX(t.about.auto)?.rule?.trigger?.type==="ready").forEach(t=>cancelEmail(t.id,t.pending.mid)); } });
   if(nowDone&&!wasDone){
     waitsOnIds(w).map(W).forEach(e=>{ if(restoreDue(e)){ log(e.id,`restore due: ${enKind(e).restore} — every job it enabled is complete`); msgs.push(`${e.id}: ${enKind(e).restore} is due`); if(typeof autoEvent==="function") autoEvent("restore",e); } });
     if(w.enabling?.ready&&!w.enabling.restored&&enKind(w).restore){ w.enabling={ ...w.enabling, restored:true, restoredAt:now(), restoredBy:userRef() }; DB.update(WO_COL+"/"+w.id,{ enabling:w.enabling }).catch(console.error); }
@@ -2913,15 +2986,19 @@ const personLabel=p=>p?.name||p?.email||"";
 function startAuto(){
   auUnsub.forEach(f=>{ try{ f(); }catch{} });
   auUnsub=[
-    DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note&&!S.creating) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
+    DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note&&!S.creating) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
   ];
-  S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); });
+  S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); AU_LOADED=false; auRunsUnsub?.(); auRunsUnsub=null; });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
 }
 document.addEventListener("click",e=>{ const b=e.target.closest('#bar [data-tab="auto"]'); if(!b) return; e.preventDefault(); e.stopPropagation(); autoMenu(b); },true);
 function renderAutoBadge(){ const b=$("#tab-auto"); if(b) b.textContent=AU.filter(a=>a.on).length||""; }
 
 /* ---------- conditions ---------- */
+async function renameOptionInRules(pid,oldName,newName){ const same=(v)=>String(v||"").toLowerCase()===String(oldName).toLowerCase();
+  for(const a of AU){ let changed=false; const text=(a.text||[]).map(g=>g.tok&&g.tok.k==="opt"&&g.tok.pid===pid&&same(g.tok.value)?(changed=true,{ ...g, tok:{ ...g.tok, value:newName } }):g);
+    const rule=a.rule?{ ...a.rule, conds:(a.rule.conds||[]).map(c=>c.pid===pid&&same(c.value)?(changed=true,{ ...c, value:newName }):c), actions:(a.rule.actions||[]).map(x=>(x.type==="addopt"&&x.pid===pid||x.type==="permit"&&pid==="permits")&&same(x.value)?(changed=true,{ ...x, value:newName }):x) }:undefined;
+    if(changed){ Object.assign(a,{ text, ...(rule?{ rule }:{}) }); await DB.update(AU_COL+"/"+a.id,{ text, ...(rule?{ rule }:{}) }).catch(console.error); } } }
 const optByName=(pid,name)=>prop(pid)?.options?.find(o=>o.name.toLowerCase()===String(name).toLowerCase());
 const hasOpt=(w,pid,name)=>{ const o=optByName(pid,name); return !!o&&(w.values?.[pid]||[]).includes(o.id); };
 function condMatch(c,w){
@@ -2940,7 +3017,8 @@ const TRIG={
   restore:{ label:"Enabling work becomes restore due" },
   deadline:{ label:"days before the deadline" },
 };
-const statusWord=to=>GROUPS[to]||status(to)?.name||to;
+const statusLive=to=>!!GROUPS[to]||statuses().some(o=>o.id===to);
+const statusWord=to=>GROUPS[to]||(statusLive(to)?status(to)?.name:"a status that no longer exists");
 function trigText(t){ if(t.type==="status"||t.type==="before") return `${TRIG[t.type].label} ${statusWord(t.to)}`; if(t.type==="deadline") return `${t.days} ${TRIG.deadline.label}`; return TRIG[t.type]?.label||t.type; }
 function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusWord(t.to)}`; if(t.type==="before") return `Before it moves to ${statusWord(t.to)}`; if(t.type==="ready") return "When it becomes ready to start"; if(t.type==="restore") return "When its restore step is due"; if(t.type==="deadline") return `${t.days} days before the deadline`; return "When it changes"; }
 const WHAT={ results:"the results, photos and files", ready:"a ready-to-start notice", restore:"a restore request", reminder:"a deadline reminder", note:"a note" };
@@ -2975,12 +3053,15 @@ function rhythmLong(a){ const s=a.schedule||{};
   if(s.mode==="after"){ const m=s.months||12; return `${m>=24&&m%12===0?m/12+" years":m+" months"} after the last one is completed`; }
   if(s.unit==="week") return `Every ${s.every>1?s.every+" weeks":"week"}`;
   if(s.unit==="year") return `Every year on ${(s.dates||[]).map(x=>MON[x.m-1]+" "+x.d).join(" and ")}`;
-  const d=s.last?new Date(s.last).getDate():1; return `Every ${(s.every||1)>1?s.every+" months":"month"} on the ${ordinal(d)}`; }
+  const d=s.day||(s.last?new Date(s.last).getDate():1); return `Every ${(s.every||1)>1?s.every+" months":"month"} on the ${ordinal(d)}${d>28?" (or the last day)":""}`; }
 function nextOcc(a,after){ const s=a.schedule||{}; const base=new Date(after||s.last||a.created||now());
   if(s.unit==="week") return addDays(base,7*(s.every||1));
   if(s.unit==="year"){ const ds=(s.dates||[{m:1,d:1}]); for(let y=base.getFullYear();y<=base.getFullYear()+2;y++) for(const {m,d} of ds.slice().sort((p,q)=>p.m-q.m||p.d-q.d)){ const c=new Date(y,m-1,d,6,0,0); if(ymd(c)>ymd(base)) return c; /* by calendar day: the demo shifts stored times, and 06:00 here is not 06:00 UTC */ } return addMonths(base,12); }
+  const day=s.day||(s.unit==="month"&&s.last?new Date(s.last).getDate():0);   // older schedules carry no day: the day of their last occurrence
+  if(day){ const n=s.every||1; let x=new Date(base.getFullYear(),base.getMonth(),1,6,0,0); for(let i=0;i<3;i++){ x.setMonth(x.getMonth()+(i?1:0)); const c=new Date(x.getFullYear(),x.getMonth(),Math.min(day,new Date(x.getFullYear(),x.getMonth()+1,0).getDate()),6,0,0); if(ymd(c)>ymd(base)){ if(i===0||n===1) return c; } }   /* by calendar day, as the yearly path: `last` is another client's 06:00 */
+    const c0=addMonths(new Date(base.getFullYear(),base.getMonth(),1,6,0,0),n); return new Date(c0.getFullYear(),c0.getMonth(),Math.min(day,new Date(c0.getFullYear(),c0.getMonth()+1,0).getDate()),6,0,0); }
   return addMonths(base,s.every||1); }
-function lastDone(a){ const done=S.wos.filter(w=>w.series?.auto===a.id&&!w.draft&&isDone(w)).map(w=>w.completedAt).filter(Boolean).sort(); return done.length?done[done.length-1]:(a.schedule?.lastDone||null); }
+function lastDone(a){ const done=S.wos.filter(w=>w.series?.auto===a.id&&!w.draft&&isDone(w)).map(w=>w.completedAt).filter(Boolean).sort(); const fromJobs=done.length?done[done.length-1]:null, stored=a.schedule?.lastDone||null; return [fromJobs,stored].filter(Boolean).sort().pop()||null; }   // stored: a completed series job purged from the Trash still counts
 /* when the next job will be created (Date), or null when it waits on an open one */
 function nextFire(a){ const s=a.schedule||{};
   if(s.mode==="after"){ if(seriesJobs(a).some(isOpen)||seriesInTrash(a)) return null; const ld=lastDone(a); if(!ld) return null; return addDays(addMonths(ld,s.months||12),-(s.leadDays||0)); }
@@ -2990,9 +3071,10 @@ function nextLabel(a){ const s=a.schedule||{}; if(s.mode==="after"){ const open=
 /* ---------- running ---------- */
 async function waitW(id){ for(let i=0;i<40;i++){ const w=W(id); if(w) return w; await new Promise(r=>setTimeout(r,50)); } return null; }
 function auLog(w,a,text){ return DB.add(WO_COL+"/"+w.id+"/activity",{ t:now(), by:AUTO_BY(a), text }).catch(console.error); }
-async function recordRun(a,w,did,result="Done"){ await DB.add(AU_COL+"/"+a.id+"/runs",{ t:now(), job:w?.id||"", did, result }); await DB.update(AU_COL+"/"+a.id,{ lastRun:now(), runCount:(AUX(a.id)?.runCount||a.runCount||0)+1 }); }
+async function recordRun(a,w,did,result="Done"){ await DB.add(AU_COL+"/"+a.id+"/runs",{ t:now(), job:w?.id||"", did, result }); await DB.update(AU_COL+"/"+a.id,{ lastRun:now(), runCount:DB.inc?DB.inc(1):(AUX(a.id)?.runCount||a.runCount||0)+1 }); }
 function trigMatch(t,type,w,ctx){
   if(t.type==="change") return ["created","changed","area","status"].includes(type);
+  if((t.type==="status"||t.type==="before")&&!statusLive(t.to)) return false;
   if(t.type==="status") return type==="status"&&(status(ctx.sid)?.group===t.to||ctx.sid===t.to)&&(status(ctx.prevSid)?.group!==status(ctx.sid)?.group||t.to===ctx.sid);
   return t.type===type; }
 /* something happened to a job → run every matching rule */
@@ -3016,16 +3098,19 @@ async function doAction(a,x,w){
   if(x.type==="deadline"){ const d=ymd(addDays(new Date(),x.days||7)); w.values??={}; w.values.deadline={ start:d }; await DB.update(path,{ "values.deadline":{ start:d } }); auLog(w,a,`set the deadline to ${fmtDate(d)}`); return { text:`deadline ${fmtDate(d)}` }; }
   if(x.type==="email"){ const m=await queueEmail(a,w,x); if(!m) return null; auLog(w,a,`will email ${m.names} ${WHAT[x.what]||""} at ${new Date(m.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})} (${a.name})`); return { text:`emailed ${m.names}`, mail:{ ...m, what:x.what } }; }
   return null; }
-function emailBody(what,w,x,a){ const st=status(w.statusId)?.name||""; const nPh=w.photoCount??(w.values?.photos||[]).length, docs=(w.values?.documents||[]);
-  if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${docs.length} · Notes: ${w.noteCount||0}\n\nThe files are attached. Open the job for the marked-up model, notes and activity.`, attachments:docs.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
+function emailBody(what,w,x,a,files=[]){ const st=status(w.statusId)?.name||""; const nPh=w.photoCount??(w.values?.photos||[]).length;
+  if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${files.length} · Notes: ${w.noteCount||0}\n\n${files.length?"The files are attached. ":""}Open the job for the marked-up model, notes and activity.`, attachments:files.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
   if(what==="ready") return { subject:`${w.id} is ready to start`, text:`Everything ${w.id} · ${w.title||"Untitled"} was waiting on is done or in place:\n${waitsOnIds(w).map(id=>{ const b=W(id); return `• ${id} ${b?.title||""} — ${isDone(b)?"completed":enKind(b)?.ready||"ready"}`; }).join("\n")}\n\nIt is still marked ${st}. Plan the crew and permits.`, attachments:[] };
   if(what==="restore"){ const k=enKind(w); return { subject:`${k?.restore||"Restore"} due · ${w.id}`, text:`${w.title||"Untitled"} (${w.id}): every job it enabled is complete (${blocksOf(w).map(d=>d.id).join(", ")}).\n\nPlease book: ${k?.restore||"the restore step"}.`, attachments:[] }; }
   if(what==="reminder"){ const d=w.values?.deadline?.start; return { subject:`Due ${fmtDate(d)} · ${w.id} · ${w.title||"Untitled"}`, text:`${w.id} · ${w.title||"Untitled"} is due ${fmtDate(d)} (${daysUntil(d)<=0?"today or overdue":"in "+daysUntil(d)+" day"+(daysUntil(d)===1?"":"s")}) and is ${st}.`, attachments:[] }; }
   return { subject:`${w.id} · ${w.title||"Untitled"}`, text:x.text||`${w.title||"Untitled"} (${w.id}) is now ${st}.\n\nOpen the job for the details, notes and activity.`, attachments:[] }; }
+/* every file attached to a note of the job (the file notes, inbound mail attachments) */
+async function jobFiles(id){ try{ const ns=(ntJob===id&&NT.length)?NT:await DB.list(WO_COL+"/"+id+"/notes"); const out=[]; ns.forEach(n=>(n.files||[]).forEach(f=>{ if(f?.url&&!out.some(x=>x.id===f.id)) out.push(f); })); return out.slice(0,20); }catch{ return []; } }
 async function queueEmail(a,w,x){
   const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email).map(p=>({ email:p.email.toLowerCase(), name:p.name||"" }));
   if(!to.length) return null;
-  const b=emailBody(x.what,w,x,a); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
+  const files=x.what==="results"?await jobFiles(w.id):[];
+  const b=emailBody(x.what,w,x,a,files); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
   const floor=Math.max(0,...jobThreads(w.id).map(t=>t.n||0)); const n=DB.nextThreadNo?await DB.nextThreadNo(WO_COL+"/"+w.id,floor):floor+1; const from={ email:jobAddr(w.id), name:"Dispatch automation" };
   const t={ jobId:w.id, n, addr:threadAddr(w.id,n), subject:b.subject, about:{ kind:"auto", label:a.name, auto:a.id }, participants:to, created:now(), createdBy:AUTO_BY(a), last:{ t:now(), from, snippet:snippet(b.text) }, count:1, readBy:{} };
   const tid=await DB.add(MAIL_COL,t);
@@ -3039,7 +3124,7 @@ async function cancelEmail(tid,mid){ const t=T(tid); const msg=await DB.get(MAIL
 
 /* the rule that asks before a status change (hot work check): resolves true to go ahead */
 async function autoBeforeStatus(w,sid){
-  const asks=AU.filter(a=>a.on&&a.kind==="rule"&&a.rule?.trigger?.type==="before"&&(status(sid)?.group===a.rule.trigger.to||sid===a.rule.trigger.to)&&status(w.statusId)?.group!==status(sid)?.group&&condsMatch(a,w));
+  const asks=AU.filter(a=>a.on&&a.kind==="rule"&&a.rule?.trigger?.type==="before"&&(status(sid)?.group===a.rule.trigger.to||sid===a.rule.trigger.to)&&w.statusId!==sid&&(status(w.statusId)?.group!==status(sid)?.group||sid===a.rule.trigger.to)&&condsMatch(a,w));
   for(const a of asks){ const x=(a.rule.actions||[]).find(x=>x.type==="ask"); if(!x) continue;
     const ok=await askPrompt(w,a,x.q,sid);
     auLog(w,a,`asked “${x.q}” before ${status(sid)?.name}: ${ok?"Yes":"Not yet"}`); recordRun(a,w,`asked before ${status(sid)?.name}: ${ok?"Yes":"Not yet"}`,ok?"Done":"Stopped").catch(console.error);
@@ -3057,32 +3142,40 @@ async function fireSchedule(a,manual){ const s=a.schedule||{}; const tpl=s.templ
   const missed=[]; if(s.mode!=="after"){ for(let nx=nextOcc(a,occ);addDays(nx,-(s.leadDays||0))<=new Date()&&missed.length<500;nx=nextOcc(a,occ)){ missed.push(occ); occ=nx; } }   // several dates passed while nobody had Dispatch open: only the latest becomes a job
   const missTxt=missed.length?` · ${missed.length} earlier date${missed.length===1?"":"s"} missed and not created (${missed.length>3?"…, ":""}${missed.slice(-3).map(d=>fmtDate(ymd(d))).join(", ")})`:"";
   const open=seriesJobs(a).filter(isOpen);
+  const fireKey=s.mode==="after"?`after:${lastDone(a)||""}:${manual?now():""}`:occ.toISOString();   // two clients ticking in the same minute: only the one whose claim lands creates the job
+  const firedBefore=s.fired??null; if(DB.claim&&!(await DB.claim(AU_COL+"/"+a.id,"schedule.fired",fireKey).catch(()=>true))) return null;
+  const st={ created:false }; try{ return await fireClaimed(a,s,tpl,occ,manual,missed,missTxt,open,st); }
+  catch(e){ if(!st.created) await DB.update(AU_COL+"/"+a.id,{ "schedule.fired":firedBefore },QUIET).catch(()=>{}); throw e; } }   // the job was not created: give the claim back so the next tick retries (once it exists the claim must stand)
+async function fireClaimed(a,s,tpl,occ,manual,missed,missTxt,open,st){
   if(s.mode!=="after"&&open.length&&s.ifOpen==="skip"&&!manual){ await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString() }); open.forEach(o=>auLog(o,a,`skipped the ${fmtDate(ymd(occ))} occurrence because this one is still open${missTxt}`)); await recordRun(a,open[0],`skipped ${fmtDate(ymd(occ))}: ${open[0].id} still open${missTxt}`,"Skipped"); return null; }
   const n=Math.max(0,...seriesJobs(a).map(w=>w.series?.n||0),(s.history||[]).length)+1;
   const values=structuredClone(tpl.values||{});
   const due=s.mode==="after"?(manual?addDays(new Date(),(s.leadDays||30)):addMonths(lastDone(a),s.months||12)):addDays(occ,s.dueDays??7);
   values.deadline={ start:ymd(due) };
-  const id=await createWO({ title:tpl.title||a.name, values, location:structuredClone(tpl.location||{points:[],height:0,closed:false}), series:{ auto:a.id, n }, quiet:true });
+  const id=await createWO({ title:tpl.title||a.name, values, location:structuredClone(tpl.location||{points:[],height:0,closed:false}), series:{ auto:a.id, n }, quiet:true }); st.created=true;
   const w=await waitW(id);
   if(w){ auLog(w,a,`created this job from “${a.name}” (${ordinal(n)} in the series)${missTxt}`); open.forEach(o=>auLog(o,a,`a newer one, ${id}, was created while this one is still open`)); }
-  if(s.mode!=="after") await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString() });
+  if(s.mode!=="after") await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString(), ...(s.unit==="month"&&!s.day&&s.last?{ "schedule.day":new Date(s.last).getDate() }:{}) });   // older monthly schedules: pin the day before `last` moves into a shorter month
   if(s.enabling&&typeof addEnabling==="function"&&w) await addEnabling(id,s.enabling);
   await recordRun(a,w||{id},`created ${id}, due ${fmtDate(ymd(due))}${missTxt}`);
   if(w) autoEvent("created",w);
   return id; }
-async function autoTick(){ if(AU_BUSY||!S.schema) return; AU_BUSY=true;
+async function autoTick(){ if(AU_BUSY||!S.schema||!S.jobsLoaded||!AU_LOADED) return; AU_BUSY=true;   // never before the jobs are in: an "after completion" schedule would see no series and fire again
   try{
-    if(!MAILCFG?.enabled) for(const t of TH) if(t.pending?.at&&t.pending.at<=now()) await releaseEmail(t);   // connected: the mail service releases them, so a message can never be sent twice
+    for(const t of TH) if(t.pending?.at&&t.pending.at<=now()){ try{ if(!MAILCFG?.enabled) await releaseEmail(t); }catch(e){ console.error("release",e); } }
     for(const a of AU){ if(!a.on) continue;
-      if(a.kind==="schedule"){ if(!a.schedule?.template?.from) continue; const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
-      else if(a.rule?.trigger?.type==="deadline"){ for(const w of live().filter(isOpen)){ const d=w.values?.deadline?.start; if(!d) continue; const left=daysUntil(d); const key=a.id+"_"+d.replace(/-/g,"");
-        if(left<=a.rule.trigger.days&&!(w.autoDone||{})[key]&&condsMatch(a,w)){ await DB.update(WO_COL+"/"+w.id,{ ["autoDone."+key]:true }); w.autoDone={ ...(w.autoDone||{}), [key]:true }; await runRule(a,w,{}); } } } }
+      try{
+        if(a.kind==="schedule"){ if(!a.schedule?.template?.from) continue; const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
+        else if(a.rule?.trigger?.type==="deadline"){ for(const w of live().filter(isOpen)){ const d=w.values?.deadline?.start; if(!d) continue; const left=daysUntil(d); const key=a.id+"_"+d.replace(/-/g,"");
+          if(left<=a.rule.trigger.days&&!(w.autoDone||{})[key]&&condsMatch(a,w)){ await DB.update(WO_COL+"/"+w.id,{ ["autoDone."+key]:true }); w.autoDone={ ...(w.autoDone||{}), [key]:true }; await runRule(a,w,{}); } } }
+      }catch(e){ console.error("automation",a.id,e); recordRun(a,null,`did not run: ${e?.message||e}`,"Failed").catch(()=>{}); }   // one broken automation must not stop the others
+    }
   } finally { AU_BUSY=false; } }
 
 /* ---------- which automations touch a job (panel, cards) ---------- */
 function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
   return AU.filter(a=>a.on&&a.kind==="rule"&&a.rule&&condsMatch(a,w)&&(()=>{ const t=a.rule.trigger;
-    if(t.type==="status"||t.type==="before") return status(w.statusId)?.group!==t.to&&w.statusId!==t.to;
+    if(t.type==="status"||t.type==="before") return statusLive(t.to)&&status(w.statusId)?.group!==t.to&&w.statusId!==t.to;
     if(t.type==="ready") return waitsOnIds(w).length>0&&isOpen(w);
     if(t.type==="restore") return !!w.enabling&&!w.enabling.restored&&!!enKind(w)?.restore&&isOpen(w);
     if(t.type==="deadline") return !!w.values?.deadline?.start&&isOpen(w);
@@ -3107,6 +3200,7 @@ function autoMenu(anchor){ const n=k=>AU.filter(a=>a.kind===k).length, on=k=>AU.
 
 /* ---------- the Automations tab ---------- */
 function renderAuto(){ const root=$("#auto-root"); if(!root) return;
+  if(AUD.id&&AUD.dirty&&document.activeElement?.id==="au-write"){ AUD.stale=true; return; }   // someone is typing a sentence: redraw after they leave the box
   if(AU_DENIED){ root.innerHTML=`<div class="au-empty">Automations are not available: this workspace's database rules don't allow them yet.</div>`; return; }
   const f=AUV.f==="schedule"?"schedule":"rule"; AUV.f=f; const ed=auCanEdit();
   const sch=AU.filter(a=>a.kind==="schedule"), rul=AU.filter(a=>a.kind==="rule"), mine=f==="schedule"?sch:rul;
@@ -3152,7 +3246,7 @@ function compileRule(segs){
   toks.forEach((t,i)=>{ const v=lastVerb(before(i));
     if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); if(/include|loop|cc/.test(v.w)) actions.push({ type:"cc", person:{ name:t.name||"", email:t.email } }); }
       else actions.push({ type:"email", to:"person", person:{ name:t.name||"", email:t.email }, what, hold }); }
-    else if(t.k==="opt"){ const lead=before(i).slice(-40); const clause=before(i).split(/[,.;]/).pop(); const which=/\b(when|whenever|if|once|that|which|where|whose)\b.*\b(gets?|getting|requires?|requiring|needs?|needing|has|have|having|includes?|got)\b(?:(?!\b(?:add|adds|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b).)*$/.test(clause); if(!which&&v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
+    else if(t.k==="opt"){ const lead=before(i).slice(-40); const clause=before(i).slice(-200).split(/[,.;]/).pop(); const which=/\b(when|whenever|if|once|that|which|where|whose)\b.*\b(gets?|getting|requires?|requiring|needs?|needing|has|have|having|includes?|got)\b(?:(?!\b(?:add|adds|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b).)*$/.test(clause); if(!which&&v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
     else if(t.k==="job") note.push(`${t.id} is ignored here: rules apply to every job that matches.`); });
   if(/\b(the people on it|people on the job|people on it|the crew|everyone on (?:it|the job)|tagged people|the people tagged|assignees|whoever is (?:on|tagged))\b/.test(s)) actions.unshift({ type:"email", to:"people", what, hold });
   const q=s.match(/\bask(?:s|ing)?\b\s*(?:them\s*|the user\s*|people\s*)?(?:"([^"]+)"|“([^”]+)”|(?:if|whether)\s+([^.⟦]+))/); if(q){ const raw=(q[1]||q[2]||q[3]||"").trim(); const src=segText(segs); const exact=src.match(/[“"]([^”"]+)[”"]/); let qt=exact?exact[1]:raw; qt=qt.charAt(0).toUpperCase()+qt.slice(1); if(!/\?$/.test(qt)) qt+="?"; actions.push({ type:"ask", q:qt }); }
@@ -3186,8 +3280,8 @@ function compileSchedule(segs,prev={}){
     if(unit==="year"&&!dates.length){ const d=new Date(); dates.push({ m:d.getMonth()+1, d:d.getDate() }); note.push(`No date given; using ${MON[dates[0].m-1]} ${dates[0].d}.`); }
     sch.unit=unit; sch.every=every; if(unit==="year") sch.dates=dates; else delete sch.dates;
     sch.dueDays=(m=s.match(/\bdue\s*(?:in\s*)?(\d+)\s*days?/))||(m=s.match(/(\d+)\s*days?\s*(?:later|after (?:it'?s|it is) created|to (?:do|finish|complete) it)/))?+m[1]:(prev?.dueDays??7);
-    const dm=s.match(/\bon the (\d{1,2})(?:st|nd|rd|th)\b/); if(dm&&unit==="month"){ const day=+dm[1]; const d=new Date(); let x=new Date(d.getFullYear(),d.getMonth(),Math.min(day,28),6); if(x>d) x=addMonths(x,-1); sch.last=x.toISOString(); }
-    if(!sch.last) sch.last=now(); }
+    const dm=s.match(/\bon the (\d{1,2})(?:st|nd|rd|th)\b/); if(dm&&unit==="month"){ const day=Math.min(31,Math.max(1,+dm[1])); sch.day=day; const d=new Date(); let x=new Date(d.getFullYear(),d.getMonth(),Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()),6); if(x>d) x=addMonths(x,-1); sch.last=x.toISOString(); if(day>28) note.push(`In shorter months it runs on the last day.`); } else if(unit==="month") delete sch.day;
+    if(!sch.last) sch.last=now(); if(unit==="month"&&!sch.day) sch.day=new Date(sch.last).getDate(); }   // "every month" keeps the day of the month it started on (Jan 31 → Feb 28 → Mar 31, not the 28th forever)
   if(job){ const w=W(job.id); if(w){ const values=structuredClone(w.values||{}); delete values.deadline; delete values.photos; delete values.documents; sch.template={ from:w.id, title:w.title||"", values, location:structuredClone(w.location||{}) }; } else if(prev?.template?.from!==job.id) err.push(`${job.id} isn't a job on this site.`); }
   return { schedule:sch, err, note }; }
 /* plain-words reading of a compiled automation */
@@ -3229,11 +3323,11 @@ function auDetailHTML(a){ if(!a) return `<div class="au-empty">Nothing here yet.
     <div><div class="au-lab">DISPATCH READS THIS AS</div><div id="au-readback">${readbackHTML(a,c)}</div>
       ${ed?`<div class="au-savebar" id="au-savebar" ${AUD.id===a.id&&AUD.dirty?"":"hidden"}><span class="hint">Not saved yet</span><button class="btn" id="au-revert">Undo changes</button><button class="btn primary" id="au-save" ${c.err.length?"disabled":""}>Save</button></div>`:""}</div>
     ${series}
-    ${a.kind==="rule"?`<div><div class="au-lab">OPEN JOBS THIS WILL ACT ON</div><div class="au-c">${acting.map(w=>`<button class="au-jobchip" data-au-job="${w.id}"><span class="mono">${w.id}</span>${P(w.title||"Untitled")}</button>`).join("")||`<span class="hint">None right now.</span>`}</div></div>`:""}
+    ${a.kind==="rule"?`<div><div class="au-lab">OPEN JOBS THIS WILL ACT ON</div><div class="au-c">${acting.map(w=>`<button class="au-jobchip" data-au-job="${P(w.id)}"><span class="mono">${P(w.id)}</span>${P(w.title||"Untitled")}</button>`).join("")||`<span class="hint">None right now.</span>`}</div></div>`:""}
     <div><div class="au-lab">RECENT RUNS</div><div id="au-runs" class="au-runs"><div class="hint">Loading…</div></div></div>
     <div class="au-foot"><span class="hint" style="flex:1">${a.createdBy?.name?`Created by ${P(a.createdBy.name)}`:""}</span>${ed&&a.on&&(a.kind==="schedule"&&a.schedule?.template?.from||a.rule?.trigger?.type==="deadline")?`<button class="btn" id="au-run">${a.kind==="schedule"?"Create the next one now":"Check now"}</button>`:""}${a.kind==="rule"&&a.rule?`<button class="btn" id="au-try">Try it on a job…</button>`:""}${ed?`<button class="btn" id="au-dup">Duplicate</button><button class="btn danger" id="au-del">Delete</button>`:""}</div>`; }
 const AUD={ id:null, segs:null, dirty:false };   // the sentence being edited (kept across re-renders)
-let auRunsUnsub=null;
+let auRunsUnsub=null; let AU_LOADED=false;
 function wireAuto(root){ const a=AUX(AUV.sel);
   root.querySelectorAll("[data-au-pick]").forEach(b=>b.onclick=()=>{ if(AUD.dirty&&AUD.id!==b.dataset.auPick){ AUD.id=null; AUD.segs=null; AUD.dirty=false; } AUV.sel=b.dataset.auPick; renderAuto(); });
   root.querySelectorAll("[data-au-toggle]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); const x=AUX(b.dataset.auToggle); if(!x||!auCanEdit()) return; if(!x.on&&!(x.kind==="rule"?x.rule?.actions?.length:x.schedule?.template?.from)){ toast("Write it and save it first.",true); return; } x.on=!x.on; renderAuto(); renderAutoBadge(); DB.update(AU_COL+"/"+x.id,{ on:x.on, edited:now(), editedBy:userRef() }); });
@@ -3275,6 +3369,7 @@ function wireWriter(a,box){
     if(e.key==="Enter"){ e.preventDefault(); if(e.metaKey||e.ctrlKey) saveWriting(a); } });
   box.addEventListener("paste",e=>{ e.preventDefault(); const t=(e.clipboardData||window.clipboardData).getData("text/plain"); document.execCommand("insertText",false,t.replace(/\s+/g," ")); });
   box.addEventListener("blur",()=>setTimeout(()=>{ if(!POP?.classList.contains("au-slash")) slash=null; },150));
+  box.addEventListener("blur",()=>{ if(AUD.stale){ AUD.stale=false; setTimeout(renderAuto,50); } });
   if(AUD.id===a.id&&AUD.focus){ AUD.focus=false; box.focus(); const r=document.createRange(); r.selectNodeContents(box); r.collapse(false); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
 }
 async function saveWriting(a){ const segs=AUD.id===a.id&&AUD.segs?AUD.segs:(a.text||[]); const c=compileFor(a,segs); if(c.err.length){ toast(P(c.err[0]),true); return; }
@@ -3288,7 +3383,7 @@ async function newAuto(kind){ const doc={ kind, name:kind==="schedule"?"New sche
   if(kind==="rule") doc.rule={ trigger:{ type:"change" }, conds:[], actions:[] }; else doc.schedule={ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", history:[] };
   const id=await DB.add(AU_COL,doc); AUV.sel=id; AUV.f=kind; AUD.id=id; AUD.segs=null; AUD.dirty=false; AUD.focus=true; renderAuto(); }
 function jobPicker(anchor,title,onPick){ const el=openPop(anchor,`<div class="sec">${P(title)}</div><input class="pin" placeholder="Find a job"><div class="au-pl"></div>`,{width:320});
-  const draw=()=>{ const q=el.querySelector(".pin").value.toLowerCase(); el.querySelector(".au-pl").innerHTML=live().filter(w=>!w.draft&&(!q||textOf(w).includes(q))).map(w=>`<div class="mi" data-pk="${w.id}"><span class="mono">${w.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(w.title||"Untitled")}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No jobs match</div>`; el.querySelectorAll("[data-pk]").forEach(m=>m.onclick=()=>{ closePop(); onPick(W(m.dataset.pk)); }); };
+  const draw=()=>{ const q=el.querySelector(".pin").value.toLowerCase(); el.querySelector(".au-pl").innerHTML=live().filter(w=>!w.draft&&(!q||textOf(w).includes(q))).map(w=>`<div class="mi" data-pk="${P(w.id)}"><span class="mono">${P(w.id)}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(w.title||"Untitled")}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No jobs match</div>`; el.querySelectorAll("[data-pk]").forEach(m=>m.onclick=()=>{ closePop(); onPick(W(m.dataset.pk)); }); };
   el.querySelector(".pin").oninput=draw; draw(); }
 function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ if(!w) return; const r=a.rule; const miss=(r.conds||[]).filter(c=>!condMatch(c,w));
   const ok=!miss.length; const acts=(r.actions||[]).map(actPhrase).join(", ")||"nothing (no actions yet)";
@@ -3298,7 +3393,7 @@ function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ 
 document.addEventListener("click",e=>{ const o=e.target.closest("[data-au-open]"); if(o){ e.preventDefault(); openAuto(o.dataset.auOpen); return; }
   const c=e.target.closest("[data-au-cancel]"); if(c){ e.preventDefault(); cancelEmail(c.dataset.auCancel,c.dataset.mid); } });
 
-if(MOCK) window.__auto={ get AU(){ return AU; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), cancelEmail, compileRule, compileSchedule, segText, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
+if(MOCK) window.__auto={ get AU(){ return AU; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), cancelEmail, compileRule, compileSchedule, segText, nextOcc, renameOptionInRules, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
 #view-auto{overflow:auto;background:var(--ground)}
@@ -3474,7 +3569,7 @@ async function demoSeed(DB){
       history:[{ when:"2 years ago", state:"done", label:"completed" },{ when:"last year", state:"done", label:"completed" }] }, runs:[[6,"J-26-004","created J-26-004, 30 days before due"]] },
     { id:"s3", kind:"schedule", text:[T("Repeat "),JO(2),T(" 5 years after the last one is completed, created 90 days ahead.")], name:"Tank T-1 external inspection + shell UT", on:true, schedule:{ mode:"after", months:60, leadDays:90, ifOpen:"create", lastDone:new Date(Date.now()-1780*86400000).toISOString(), template:tplOf(2),
       history:[{ when:"10 years ago", state:"done", label:"completed" },{ when:"5 years ago", state:"done", label:"completed" }] }, runs:[[14,"J-26-002","created J-26-002, 90 days before due"]] },
-    { id:"s4", kind:"schedule", text:[T("Repeat "),JO(9),T(" every year on Apr 15 and Oct 15, created 20 days ahead, due 14 days later.")], name:"Roof inspection + drain clearing", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:4,d:15},{m:10,d:15}], dueDays:14, leadDays:20, ifOpen:"create", last:(()=>{ const d=new Date(); const y=d.getMonth()+1>10||(d.getMonth()+1===10&&d.getDate()>15)?d.getFullYear():d.getFullYear(); return new Date(y,9,15,6).toISOString(); })(), template:tplOf(9),
+    { id:"s4", kind:"schedule", text:[T("Repeat "),JO(9),T(" every year on Apr 15 and Oct 15, created 20 days ahead, due 14 days later.")], name:"Roof inspection + drain clearing", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:4,d:15},{m:10,d:15}], dueDays:14, leadDays:20, ifOpen:"create", last:new Date(new Date().getFullYear(),9,15,6).toISOString() /* the Oct 15 occurrence: J-26-009 is its job */, template:tplOf(9),
       history:[{ when:"spring", state:"done", label:"completed on time" }] }, runs:[[5,"J-26-009","created J-26-009, 20 days ahead"]] },
     { id:"s5", kind:"schedule", text:[T("Repeat "),JO(11),T(" every year on Jun 1, due 30 days later.")], name:"Fire hydrant annual flow + lubrication", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:6,d:1}], dueDays:30, leadDays:0, ifOpen:"create", last:new Date(new Date().getFullYear()-(new Date().getMonth()<5?1:0),5,1,6).toISOString(), template:tplOf(11),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[[30,"J-26-011","created J-26-011"]] },
@@ -3520,9 +3615,10 @@ function shiftDates(x,ms,days){
   if(!ms&&!days) return x; if(days==null) days=Math.round(ms/86400000);
   const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/, day=/^\d{4}-\d{2}-\d{2}$/;
   const f=v=>{ if(typeof v==="string"){ if(iso.test(v)) return new Date(Date.parse(v)+ms).toISOString(); if(day.test(v)){ const d=new Date(v+"T12:00:00Z"); return new Date(d.getTime()+days*86400000).toISOString().slice(0,10); } return v; }
-    if(Array.isArray(v)) return v.map(f); if(v&&typeof v==="object"){ const o={}; for(const k in v) o[k]=f(v[k]); return o; } return v; };
+    if(Array.isArray(v)) return v.map(f); if(v&&typeof v==="object"){ const o={}; for(const k in v){ const m=k.match(/^(.+)_(\d{4})(\d{2})(\d{2})$/); const kk=m?m[1]+"_"+f(`${m[2]}-${m[3]}-${m[4]}`).replace(/-/g,""):k; o[kk]=f(v[k]); } return o; } return v; };   // autoDone["r6_20261003"] moves with its date
   return f(x);
 }
+if(MOCK&&window.__t) window.__t.shiftDates=shiftDates;   // test harness only
 function shiftedBase(base){ const ms=Math.max(0,Date.now()-Date.parse(base.savedAt||new Date().toISOString()));
   const days=base.baseDay?Math.round((Date.parse(localDay(new Date())+"T12:00:00Z")-Date.parse(base.baseDay+"T12:00:00Z"))/86400000):null;   // can be -1: a visitor west of where the base was made may still be on the day before
   const store={}; for(const [k,v] of Object.entries(base.store)) store[k.replace(/^workspace\/automations\//,"workspace/main/automations/")]=v;   // older base files kept automations at the old path
