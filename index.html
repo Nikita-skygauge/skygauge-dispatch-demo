@@ -396,16 +396,76 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 .nmeta{font-size:11.5px;color:var(--ink-3);margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:6px}.nmeta i{width:10px;height:10px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;flex:none}
 @media (max-width:860px){ .note{grid-template-columns:104px 1fr;gap:10px} .ntext{font-size:16px} }
 
-/* creation flow */
-body.creating #mode,body.creating #draw-acts{display:none!important}
-/* creation: the map is the whole workspace — no record panel until the job exists */
-body.creating-map.wo-view #view-map{grid-template-columns:1fr} body.creating-map #peek,body.creating-map #peek-slot{display:none!important}
-@media (max-width:860px){ body.creating-map.wo-view #canvas-wrap{bottom:calc(64px + var(--sab))!important} }
-body.creating #pk-save,body.creating #pk-fly,body.creating #pk-more,body.creating #pk-close,body.creating #pk-exit,body.creating.wo-view[data-tab="map"] #pk-exit{display:none!important}
-body.creating #pbody{display:flex;flex-direction:column}.create{display:flex;flex-direction:column;flex:1;min-height:0}
-.create-foot{margin-top:auto;display:flex;justify-content:flex-end;gap:10px;padding-top:16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--panel)}
-.create-foot .btn{min-height:44px;padding:0 18px;font-size:14px;font-weight:600}
-@media (max-width:860px){ body.creating{--sheet-half:44dvh} .create-foot{position:fixed;left:0;right:0;bottom:0;margin:0;padding:10px 14px calc(10px + var(--sab));border-top:1px solid var(--line);z-index:30} .create-foot .btn{flex:1} body.creating #pbody{padding-bottom:calc(90px + var(--sab))} }
+/* new-job dialog (6 Oct 2026): Who → What → Where → Why in one dialog; full screen on phones. Uses the app's tokens. */
+#job-wizard{width:min(1100px,calc(100vw - 64px));height:min(820px,calc(100dvh - 64px));max-width:none;max-height:none;padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel);color:var(--ink);box-shadow:0 30px 100px rgba(20,27,51,.28)}
+#job-wizard[open]{display:flex;flex-direction:column}#job-wizard::backdrop{background:rgba(20,27,51,.45);backdrop-filter:blur(4px)}
+#job-wizard :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+#job-wizard textarea{resize:vertical;min-height:84px;line-height:1.5}#job-wizard h2:focus{outline:none}#job-wizard button{font:inherit}
+.jw-cap{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.jw-head{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);flex:none}.jw-head h1{font-size:18px;font-weight:600;margin:2px 0 0}
+#jw-saved{margin-left:auto;font-size:12px;color:var(--ink-3)}#jw-saved button{border:0;background:none;color:var(--accent);font-weight:600;padding:0 0 0 6px;font-size:inherit;text-decoration:underline;cursor:pointer}
+.jw-x{border:0;background:none;font-size:24px;line-height:1;color:var(--ink-3);cursor:pointer;width:36px;height:36px;border-radius:8px;flex:none}.jw-x:hover{background:var(--panel-2)}
+.jw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel-2);flex:none}
+.jw-steps button{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:4px 0;color:var(--ink-3);cursor:pointer}
+.jw-steps b{display:block;font-size:14px;font-weight:600}.jw-steps small{display:block;font-size:12px}
+.jw-n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:600}
+.jw-steps [aria-current=step]{color:var(--ink)}.jw-steps [aria-current=step] .jw-n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.jw-steps .done .jw-n{background:var(--steel-2);border-color:var(--steel-2);color:var(--accent)}
+.jw-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;flex:1;min-height:0}#jw-main{padding:28px 36px;overflow-y:auto;min-height:0}
+.jw-hero{margin-bottom:20px}.jw-hero h2{font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.4px;margin:8px 0 6px}.jw-hero p{margin:0;color:var(--ink-3);font-size:14px}
+.jw-label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin:18px 0 7px}.jw-label small,.jw-fs legend small{font-weight:400;color:var(--ink-3);font-size:12px;margin-left:6px}
+.jw-grid{display:grid;grid-template-columns:1fr 180px;gap:14px}.jw-fs{border:0;padding:0;margin:18px 0 0;min-width:0}.jw-fs legend{font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px;padding:0}
+.jw-chips{display:flex;flex-wrap:wrap;gap:7px}.jw-chip{position:relative;cursor:pointer}.jw-chip input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.jw-chip span{display:block;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:13px;color:var(--ink-2);background:var(--panel)}
+.jw-chip input:checked+span{background:var(--steel-2);border-color:var(--accent);color:var(--accent);font-weight:600}.jw-chip input:focus-visible+span{box-shadow:0 0 0 3px rgba(75,30,171,.35)}
+.jw-more{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}.jw-more summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2)}.jw-more summary span{font-weight:400;color:var(--ink-3);margin-left:6px;font-size:12px}
+.jw-checkrow{display:flex;gap:8px;align-items:center;margin:16px 0 0;font-size:13px}
+#jw-q{margin-bottom:6px}.jw-person{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:7px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.jw-person:hover{background:var(--panel-2)}.jw-person.sel{border-color:var(--accent);background:var(--panel-2)}
+.jw-pmain{all:unset;display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer}.jw-pmain::after{content:"";position:absolute;inset:0;border-radius:10px}.jw-person:has(.jw-pmain:focus-visible){box-shadow:0 0 0 3px rgba(75,30,171,.35)}
+.avatar.jw-av{width:38px;height:38px;font-size:13px;background:var(--steel-2);color:var(--accent)}
+.jw-pname{min-width:0}.jw-pname b{display:block;font-size:14px;font-weight:600}.jw-pname b small{font-size:11px;font-weight:500;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:5px;color:var(--ink-3)}
+.jw-pname span{display:block;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jw-tick{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-3);font-size:14px}.jw-person.sel .jw-tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.jw-leadpill{position:relative;z-index:1;flex:none;cursor:pointer}.jw-leadpill input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.jw-leadpill span{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;font-size:12px;border:1px solid var(--line);color:var(--ink-2);background:var(--panel)}
+.jw-leadpill .on,.jw-leadpill input:checked~.off{display:none}.jw-leadpill input:checked~.on{display:inline-flex;background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}.jw-leadpill input:focus-visible~span{box-shadow:0 0 0 3px rgba(75,30,171,.35)}
+.jw-none{padding:16px;text-align:center;color:var(--ink-3);font-size:13px}
+.jw-team{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2)}.jw-team b{display:block;font-size:13px;font-weight:600}.jw-team small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px}
+.jw-stack{display:flex;padding-left:6px;flex:none}.jw-stack .jw-av{width:28px;height:28px;font-size:11px;margin-left:-6px;border:2px solid var(--panel-2)}
+.jw-whero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}.jw-skip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);white-space:nowrap;cursor:pointer}
+.jw-tools{display:flex;gap:6px;align-items:center;margin-bottom:10px}.jw-sp{flex:1}.jw-modes{display:flex;gap:4px}
+.jw-tools button{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;font-size:13px;padding:7px 12px;min-height:36px;cursor:pointer}.jw-tools button:hover:not(:disabled){background:var(--panel-2)}.jw-tools button:disabled{opacity:.45;cursor:default}
+.jw-modes [aria-pressed=true]{background:var(--steel-2);border-color:var(--accent);color:var(--accent);font-weight:600}
+#jw-map-mount{position:relative;height:clamp(260px,44vh,460px);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--canvas)}
+#jw-map-mount #canvas-wrap{position:absolute!important;inset:0!important;width:100%;height:100%}#jw-map-mount :is(#mode,#hud,#orbit,#legend,#sel-hint,#act-box,#draw-preview){display:none!important}
+#jw-status{font-size:13px;color:var(--ink-3);margin:8px 0 0}#job-wizard.jw-mapstep .jw-body{grid-template-columns:minmax(0,1fr)}#job-wizard.jw-mapstep #jw-summary{display:none}
+.jw-ex{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px}.jw-ex>span{font-size:12px;color:var(--ink-3);margin-right:2px}
+.jw-ex button{border:1px dashed var(--line);background:var(--panel-2);color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12px;min-height:30px;cursor:pointer}.jw-ex button:hover{border-style:solid;border-color:var(--accent);color:var(--accent)}
+#jw-summary{padding:26px 22px;background:var(--panel-2);border-left:1px solid var(--line);overflow-y:auto;min-height:0}#jw-summary h3{font-size:18px;line-height:1.35;font-weight:600;margin:8px 0 4px;overflow-wrap:anywhere}.jw-intro{font-size:13px;color:var(--ink-3);margin:0 0 14px}
+.jw-row{padding:12px 0;border-top:1px solid var(--line)}.jw-row>div{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-3);margin-bottom:4px}.jw-row button{border:0;background:none;color:var(--accent);font-size:12px;font-weight:500;padding:0;cursor:pointer}
+.jw-row strong{display:block;font-size:13px;font-weight:600;overflow-wrap:anywhere}.jw-row small{font-size:12px;color:var(--ink-3);margin-top:3px;line-height:1.5;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.jw-note{font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px;margin:6px 0 0}
+.jw-foot{display:flex;align-items:center;gap:10px;padding:12px 24px;border-top:1px solid var(--line);background:var(--panel);flex:none}.jw-foot>div{margin-right:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#jw-count{font-size:12px;color:var(--ink-3)}.jw-foot>div>button{border:0;background:none;padding:4px 0;font-size:13px;color:var(--accent);cursor:pointer}.jw-foot>div>#jw-discard{color:var(--crit)}
+#jw-error{color:var(--crit);font-size:13px;margin:0;max-width:340px}#jw-error:empty{display:none}.jw-foot .btn{min-height:42px;padding:0 18px;font-size:14px}
+.btn.has-draft::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--hot);margin-right:7px;vertical-align:1px}#reg-new-mini.has-draft{position:relative}#reg-new-mini.has-draft::before{position:absolute;top:3px;right:3px;margin:0}
+@media (max-width:860px){ #job-wizard{width:100vw;height:100dvh;border:0;border-radius:0}
+  .jw-head{padding:10px 14px}.jw-head h1{font-size:16px}#jw-saved{font-size:11px;max-width:120px;text-align:right}
+  .jw-steps{padding:10px 14px;gap:6px}.jw-steps small{display:none}.jw-steps b{font-size:13px}.jw-steps button{gap:6px}.jw-n{width:26px;height:26px;font-size:12px}
+  .jw-body{display:block;overflow-y:auto}#jw-main{padding:20px 16px;overflow:visible}#jw-summary{display:none}
+  #job-wizard:has([data-jw-panel="3"]:not([hidden])) #jw-summary{display:block;border:1px solid var(--line);border-radius:12px;margin:0 16px 20px;padding:18px}
+  .jw-hero h2{font-size:23px}.jw-grid{grid-template-columns:1fr 150px;gap:10px}#job-wizard :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
+  .jw-whero{display:block}.jw-whero .jw-skip{margin-top:10px}
+  .jw-tools{display:grid;grid-template-columns:repeat(4,1fr)}.jw-modes{grid-column:span 2}.jw-modes button{flex:1}.jw-sp{display:none}#jw-fit,#jw-site{grid-column:span 2}.jw-tools button{min-height:40px;padding:6px 8px}
+  #jw-map-mount{height:max(240px,calc(100dvh - 500px))}#job-wizard.jw-mapstep #jw-main{padding:16px}
+  .jw-foot{padding:10px 14px calc(10px + var(--sab,0px));flex-wrap:wrap;gap:8px}.jw-foot>div{flex-direction:column;align-items:flex-start;gap:2px}#jw-count,.jw-to{display:none}
+  #jw-error{order:-1;width:100%;max-width:none}.jw-foot .btn{min-height:44px;padding:0 16px} }
+/* Job brief on the panel; Lead in the People list */
+.brief .bf{display:block;margin:0 0 6px}.brief .bfl{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:2px}
+.brief .bft{width:100%;font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px;margin-left:-7px;resize:none;overflow:hidden;min-height:30px;display:block}
+.brief .bft:hover{background:var(--panel-2)}.brief .bft:focus{background:var(--panel);border-color:var(--line)}.brief .bft::placeholder{color:var(--ink-3);opacity:.8}
+.pop .plead{border:1px solid var(--line);background:var(--panel);color:var(--ink-3);border-radius:999px;font-size:11.5px;padding:2px 9px;cursor:pointer;flex:none}.pop .plead.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+@media (max-width:860px){ .brief .bft{font-size:16px} }
 
 /* popovers */
 .pop{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:240px;max-width:min(360px,96vw);max-height:min(440px,70vh);overflow:auto;padding:6px;font-size:13px}
@@ -703,8 +763,8 @@ function onDbError(e,p){ console.error("db",p,e); if(String(e.code||e).includes(
    ===================================================================== */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const P=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const S = { creating:null, note:null, user:null, admin:false, allow:DEFAULT_ALLOWLIST, schema:null, site:null, wos:[], assets:[], members:[], open:null, tab:"map", view:"board", sub:"wo", q:"", legendOff:new Set(), hidden:{board:new Set(),table:new Set()}, sort:null, unsub:[] };
-const LSK = { key:"sgdemo_gmaps_key", email:"sgdemo_email_for_link", view:"sgdemo_view" };   // demo: own keys, never the production app's cached key/view (same github.io origin)
+const S = { note:null, user:null, admin:false, allow:DEFAULT_ALLOWLIST, schema:null, site:null, wos:[], assets:[], members:[], open:null, tab:"map", view:"board", sub:"wo", q:"", legendOff:new Set(), hidden:{board:new Set(),table:new Set()}, sort:null, unsub:[] };
+const LSK = { key:"sgdemo_gmaps_key", email:"sgdemo_email_for_link", view:"sgdemo_view", draft:"sgdemo_new_job" };   // demo: own keys, never the production app's cached key/view (same github.io origin)
 const domainOf = e => String(e||"").toLowerCase().split("@")[1]||"";
 
 function gateHTML(kind, extra=""){
@@ -818,7 +878,7 @@ function startApp(){
     const was=S.open?W(S.open):null;
     S.wos=rows.sort((a,b)=>(a.seq||0)-(b.seq||0)); S.jobsLoaded=true;
     // the job we are inside was trashed or deleted elsewhere → leave it cleanly (every layer, every mode). A job opened from the Trash stays open.
-    if(S.open){ const cur=W(S.open); if((!cur&&was)||(cur?.trashed&&was&&!was.trashed)){ const id=S.open; if(S.creating===id) cancelCreate(); else if(S.woView) exitWOView(); else closePeek(); if(!cur||cur.trashed) toast(`${id} was ${cur?"moved to Trash":"deleted"} by another user.`); } }
+    if(S.open){ const cur=W(S.open); if((!cur&&was)||(cur?.trashed&&was&&!was.trashed)){ const id=S.open; if(S.woView) exitWOView(); else closePeek(); if(!cur||cur.trashed) toast(`${id} was ${cur?"moved to Trash":"deleted"} by another user.`); } }
     purgeTrash(); syncOverlays(); renderAll();
   }));
   S.unsub.push(DB.watchCol(AS_COL, rows=>{
@@ -854,7 +914,7 @@ const TODAY = ()=>{ const d=new Date(); d.setHours(0,0,0,0); return d; };
 const daysUntil = s => Math.round((new Date(s+"T00:00:00")-TODAY())/86400000);
 const fmtDate = (s,withTime) => { if(!s) return ""; const d=new Date(s.length>10?s:s+"T"+(typeof withTime==="string"&&/^\d\d:\d\d/.test(withTime)?withTime.slice(0,5)+":00":"00:00:00")); const o={month:"short",day:"numeric"}; if(d.getFullYear()!==new Date().getFullYear()) o.year="numeric"; let t=d.toLocaleDateString(undefined,o); if(withTime||s.length>10&&!/T00:00(:00)?/.test(s)) t+=" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); return t; };
 const rel = s => { const m=(Date.now()-new Date(s))/60000; if(m<1) return "just now"; if(m<60) return Math.round(m)+" min ago"; if(m<1440) return Math.round(m/60)+" h ago"; return Math.round(m/1440)+" d ago"; };
-const live = () => S.wos.filter(w=>!w.trashed && !(w.draft && S.creating!==w.id));
+const live = () => S.wos.filter(w=>!w.trashed && !w.draft);   // drafts: left over from the old location-first flow
 const trashed = () => S.wos.filter(w=>w.trashed);
 const W = id => S.wos.find(w=>w.id===id);
 const asset = tag => S.assets.find(a=>a.tag===tag);
@@ -867,6 +927,7 @@ async function createWO(init={}){
   const id=`J-${yy}-${String(seq).padStart(3,"0")}`;
   const st=init.statusId||defaultStatus("todo")?.id;
   const w={ seq, title:init.title||"", statusId:st, values:init.values||{}, location:init.location||{points:[],height:0,closed:false}, created:now(), createdBy:userRef(), edited:now(), editedBy:userRef(), trashed:false, draft:!!init.draft, completedAt:status(st)?.group==="complete"?now():null };
+  for(const k of ["equipment","reason","outcome"]) if(init[k]) w[k]=init[k];   // the Job brief (new-job dialog)
   if(init.links) w.links=init.links; if(init.enabling) w.enabling=init.enabling; if(init.holdReason) w.holdReason=init.holdReason; if(init.series) w.series=init.series;
   await DB.set(WO_COL+"/"+id,w);
   if(!init.draft&&!init.quiet) log(id,"created the job");
@@ -962,11 +1023,11 @@ function flashSaved(el,run){   // run: a function that starts the write — the 
 }
 async function trashWO(id){ const w=W(id); if(!w) return; w.trashed=true; w.trashedAt=now(); refreshWOOverlay(w); if(S.open===id){ if(S.woView) exitWOView(); else closePeek(); } renderAll(); await DB.update(WO_COL+"/"+id,{ trashed:true, trashedAt:now(), ...stamp() }); log(id,"moved to Trash"); toast(`${id} moved to Trash · <button class="link" id="undo-t">Undo</button>`); $("#undo-t")?.addEventListener("click",()=>restoreWO(id)); }
 async function restoreWO(id){ const w=W(id); if(!w){ toast(`${id} was deleted permanently — it can't be restored.`,true); return; } w.trashed=false; w.trashedAt=null; refreshWOOverlay(w); renderAll(); await DB.update(WO_COL+"/"+id,{ trashed:false, trashedAt:null, ...stamp() }); log(id,"restored from Trash"); }
-async function purgeWO(id){ if(S.open===id){ if(S.creating===id) cancelCreate(); else if(S.woView) exitWOView(); else closePeek(); } const o=OV.wo[id]; if(o){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } const w0=W(id), series=w0?.series?.auto; await DB.del(WO_COL+"/"+id);
+async function purgeWO(id){ if(S.open===id){ if(S.woView) exitWOView(); else closePeek(); } const o=OV.wo[id]; if(o){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } const w0=W(id), series=w0?.series?.auto; await DB.del(WO_COL+"/"+id);
   if(series){ const patch={ "schedule.fired":null }; if(isDone(w0)&&w0.completedAt){ const cur=AUX?.(series)?.schedule?.lastDone||""; if(w0.completedAt>cur) patch["schedule.lastDone"]=w0.completedAt; }   // its completion still counts for "N months after the last one"
     DB.update("workspace/main/automations/"+series,patch,QUIET).catch(()=>{}); } }   // an "after completion" series keys its next fire on this job existing: let it fire again
-function purgeTrash(){ const cut=Date.now()-30*86400000; trashed().filter(w=>w.trashedAt&&new Date(w.trashedAt)<cut).forEach(w=>purgeWO(w.id)); const dcut=Date.now()-86400000; S.wos.filter(w=>w.draft&&S.creating!==w.id&&w.createdBy?.uid===S.user.uid&&new Date(w.created)<dcut).forEach(w=>purgeWO(w.id)); }
-async function duplicateWO(id){ const w=W(id); if(!w) return; const nid=await createWO({ title:(w.title||"Untitled")+" (copy)", statusId:w.statusId, values:structuredClone(w.values||{}), location:structuredClone(w.location) }); openWO(nid); }
+function purgeTrash(){ const cut=Date.now()-30*86400000; trashed().filter(w=>w.trashedAt&&new Date(w.trashedAt)<cut).forEach(w=>purgeWO(w.id)); const dcut=Date.now()-86400000; S.wos.filter(w=>w.draft&&w.createdBy?.uid===S.user.uid&&new Date(w.created)<dcut).forEach(w=>purgeWO(w.id)); }
+async function duplicateWO(id){ const w=W(id); if(!w) return; const nid=await createWO({ title:(w.title||"Untitled")+" (copy)", statusId:w.statusId, values:structuredClone(w.values||{}), location:structuredClone(w.location), equipment:w.equipment, reason:w.reason, outcome:w.outcome }); openWO(nid); }
 async function saveSchema(){ S.schema.version=(S.schema.version||1); await DB.set("workspace/schema",S.schema); renderAll(); }
 
 /* a value of the wrong shape (a type changed elsewhere, old data) must never throw: lists are coerced, objects read loosely */
@@ -986,7 +1047,7 @@ function describe(p,v){
 }
 function isEmpty(v){ return v==null||v===""||(Array.isArray(v)&&!v.length)||(typeof v==="object"&&!Array.isArray(v)&&!v.start&&!v.length); }
 function textOf(w){ // for search
-  const parts=[w.id,w.title,status(w.statusId)?.name];
+  const parts=[w.id,w.title,status(w.statusId)?.name,w.equipment,w.reason,w.outcome];
   for(const p of props()){ const v=w.values?.[p.id]; if(!isEmpty(v)) parts.push(describe(p,v)); }
   return parts.join(" ").toLowerCase();
 }
@@ -1009,7 +1070,7 @@ function openPop(anchor, html, opts={}){
   return el;
 }
 document.addEventListener("pointerdown",e=>{ if(POP&&!POP.contains(e.target)) closePop(); },true);
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(document.activeElement?.id==="q"){ document.activeElement.blur(); return; } if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(S.creating){ cancelCreate(true); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ document.activeElement?.blur?.(); closeNote(true); return; } if(S.open&&!S.woView) closePeek(); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(JW) return;   /* the new-job dialog handles its own Escape */ if(document.activeElement?.id==="q"){ document.activeElement.blur(); return; } if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ document.activeElement?.blur?.(); closeNote(true); return; } if(S.open&&!S.woView) closePeek(); } });
 
 /* =====================================================================
    VALUE RENDERERS (record page, table cell, board card)
@@ -1121,12 +1182,15 @@ function datePicker(p,w,anchor){
   el.querySelector("#d-today").onclick=()=>{ const t=new Date(); el.querySelector("#d-s").value=new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10); save(); closePop(); };
   el.querySelector("#d-clear").onclick=()=>{ setValue(w.id,p.id,null); closePop(); };
 }
-/* People on a job: everyone listed (name, email, "added by a rule", ✕), a search box on top. Removing someone records it
-   in w.untagged so a rule that tags them does not put them straight back; tagging them again clears that. */
+/* Everyone you can tag: members, then anyone already tagged on a job (one entry per email, else uid). */
+function knownPeople(pid="people"){ const m=new Map(); const add=x=>{ const k=(x.email||x.uid||"").toLowerCase(); if(k&&!m.has(k)) m.set(k,x); };
+  S.members.forEach(mm=>add({ uid:mm.id, name:mm.name, email:mm.email })); live().forEach(j=>(j.values?.[pid]||[]).forEach(x=>add({ uid:x.uid, name:x.name, email:x.email }))); return [...m.values()]; }
+/* People on a job: everyone listed (name, email, "added by a rule", Lead, ✕), a search box on top. Removing someone records it
+   in w.untagged so a rule that tags them does not put them straight back; tagging them again clears that. The lead is a
+   flag on one entry ({ …, lead:true }); Make lead moves it, pressing Lead again clears it. */
 function personPicker(p,w,anchor){
   const el=openPop(anchor,"",{width:330}); let q="";
-  const known=()=>{ const m=new Map(); const add=x=>{ const k=(x.email||x.uid||"").toLowerCase(); if(k&&!m.has(k)) m.set(k,x); };
-    S.members.forEach(mm=>add({ uid:mm.id, name:mm.name, email:mm.email })); live().forEach(j=>(j.values?.[p.id]||[]).forEach(x=>add({ uid:x.uid, name:x.name, email:x.email }))); return [...m.values()]; };
+  const known=()=>knownPeople(p.id);
   const key=x=>(x.email||x.uid||"").toLowerCase();
   const draw=()=>{
     const cur=(W(w.id)||w).values?.[p.id]||[]; const has=x=>cur.some(c=>key(c)===key(x)||(x.uid&&c.uid===x.uid));
@@ -1137,10 +1201,11 @@ function personPicker(p,w,anchor){
       ${sugg.map((x,i)=>`<div class="mi" data-sug="${i}"><span class="avatar sm">${P(initials(x.name||x.email))}</span>${P(x.name||x.email)}<span class="r">${P(x.email||"")}</span></div>`).join("")}
       ${isEmail?`<div class="mi" data-email="${P(ql)}"><span class="em">✉</span> Tag ${P(ql)}</div>`:""}
       ${ql&&!sugg.length&&!isEmail?`<div class="hint" style="padding:4px 10px">No match. Type a full email address to tag someone new.</div>`:""}
-      <div class="plist">${cur.map((x,i)=>`<div class="prow"><span class="avatar">${P(initials(nameOf(x)))}</span><div class="pt"><b>${P(nameOf(x))}${x.auto?` <span class="pauto" title="${P(x.autoName||"")}">added by a rule</span>`:""}</b>${x.email&&nameOf(x)!==x.email?`<span>${P(x.email)}</span>`:""}</div><button type="button" class="x" data-rm="${i}" aria-label="Remove ${P(nameOf(x))}">✕</button></div>`).join("")||`<div class="hint" style="padding:6px 10px">Nobody tagged yet.</div>`}</div>`;
+      <div class="plist">${cur.map((x,i)=>`<div class="prow"><span class="avatar">${P(initials(nameOf(x)))}</span><div class="pt"><b>${P(nameOf(x))}${x.auto?` <span class="pauto" title="${P(x.autoName||"")}">added by a rule</span>`:""}</b>${x.email&&nameOf(x)!==x.email?`<span>${P(x.email)}</span>`:""}</div>${p.id==="people"?`<button type="button" class="plead${x.lead?" on":""}" data-lead="${i}" aria-pressed="${!!x.lead}">${x.lead?"Lead":"Make lead"}</button>`:""}<button type="button" class="x" data-rm="${i}" aria-label="Remove ${P(nameOf(x))}">✕</button></div>`).join("")||`<div class="hint" style="padding:6px 10px">Nobody tagged yet.</div>`}</div>`;
     const inp=el.querySelector("input"); inp.focus(); inp.setSelectionRange(q.length,q.length); inp.oninput=()=>{ q=inp.value; draw(); };
     inp.onkeydown=e=>{ if(e.key==="Enter"){ (el.querySelector("[data-sug]")||el.querySelector("[data-email]"))?.click(); } };
     const set=(nv,gone,back)=>{ setValue(w.id,p.id,nv); if(p.id==="people"){ const J=W(w.id)||w; let un=(J.untagged||[]).slice(); if(gone&&!un.includes(gone)) un.push(gone); if(back) un=un.filter(e=>e!==back); if(JSON.stringify(un)!==JSON.stringify(J.untagged||[])){ J.untagged=un; DB.update(WO_COL+"/"+w.id,{ untagged:un }).catch(console.error); } } q=""; draw(); };
+    el.querySelectorAll("[data-lead]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.lead, on=!cur[i].lead; set(cur.map((x,j)=>{ const { lead, ...rest }=x; return j===i&&on?{ ...rest, lead:true }:rest; }),null,null); });
     el.querySelectorAll("[data-rm]").forEach(x=>x.onclick=()=>{ const gone=cur[+x.dataset.rm]; set(cur.filter((_,i)=>i!==+x.dataset.rm),key(gone),null); });
     const add=x=>{ if(has(x)) return; const nv=p.multiple===false?[]:cur.slice(); const mem=S.members.find(mm=>(x.uid&&mm.id===x.uid)||(x.email&&(mm.email||"").toLowerCase()===x.email.toLowerCase())); const rec=mem?{ uid:mem.id, name:mem.name, email:mem.email }:{ email:(x.email||"").toLowerCase(), ...(x.name?{ name:x.name }:{}) }; nv.push(rec); set(nv,null,key(rec)); };
     el.querySelectorAll("[data-sug]").forEach(m=>m.onclick=()=>add(sugg[+m.dataset.sug]));
@@ -1271,7 +1336,6 @@ function statusOptionEditor(oid,anchor,after){
 let actUnsub=null, ACT=[], showEmpty=false, showAct=false, selPt=null, showDetails=false;
 function openWO(id,fly){
   const w=W(id); if(!w) return;
-  if(S.creating&&S.creating!==id){ cancelCreate(); }   // opening another record abandons the unfinished draft
   if(S.open!==id){ showEmpty=false; showAct=false; actUnsub?.(); ACT=[]; actUnsub=DB.watchCol(WO_COL+"/"+id+"/activity",rows=>{ ACT=rows.sort((a,b)=>b.t.localeCompare(a.t)); if(S.open===id) renderActivity(); }); }
   if(S.open!==id&&S.open&&typeof leaveJobScene==="function") leaveJobScene();
   const fresh=S.open!==id; if(fresh){ selPt=null; editLoc=null; S.note=null; document.body.classList.remove("note-view"); if(isMobile()) setSheet("half"); } S.open=id; document.body.classList.add("peek-open"); watchPhotos(id); watchNotes(id); $("#peek").classList.add("on"); $("#reg").classList.remove("open"); renderRecord(); if(fresh) $("#pbody").scrollTop=0; highlightCard(id); syncPointHandles(); if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo);
@@ -1292,7 +1356,6 @@ function renderRecord(){
   // replace the button under the pointer before the click lands. Wait for the pointer to come up, then redraw.
   if(PTR_DOWN&&lastRendered===w.id){ if(!RR_PENDING){ RR_PENDING=true; const go=()=>{ ["pointerup","pointercancel"].forEach(ev=>window.removeEventListener(ev,go,{ capture:true })); RR_PENDING=false; setTimeout(()=>{ if(S.open===w.id) renderRecord(); },0); }; ["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,go,{ capture:true })); } return; }
   lastRendered=w.id;
-  if(S.creating===w.id){ renderCreate(w); return; }
   if(S.note){ renderNoteView(w); return; }
   $("#pk-id").textContent=w.id+(w.trashed?" · in Trash":"");
   const filled=props().filter(p=>p.system||!isEmpty(w.values?.[p.id])), empty=props().filter(p=>!p.system&&isEmpty(w.values?.[p.id]));
@@ -1304,7 +1367,8 @@ function renderRecord(){
     <div class="trow"><textarea class="ptitle" id="ptitle" rows="1" placeholder="Untitled">${P(w.title||"")}</textarea><div class="pv" data-status>${statusPill(w)}</div></div>
     ${basicsHTML(w)}
     ${propsHTML(w)}
-    ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span style="color:var(--crit)">required — mark it on the model</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
+    ${briefHTML(w)}
+    ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span class="hint">Not placed yet</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
     :`<section class="ps"><h3 style="cursor:default">Job area <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${areaTxt}</span></h3><div class="locbox editing">
       ${P0.length?`<div class="ptlist">${P0.map((p,i)=>`<div class="ptrow ${V.draw?.sel===i?"sel":""}" data-i="${i}"><span class="ptn">${i+1}</span><span class="mono">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><button class="btn sm" data-mv="${i}" title="Click the model to move this point">Move</button><button class="btn sm" data-rm="${i}" title="Remove this point">✕</button></div>`).join("")}</div>`:`<div class="hint">${isMobile()?"Tap":"Click"} the model: one point, more for a line, then point ① to close an area.</div>`}
       <div class="acts">${locKindW(w)==="area"?`<label class="hint" style="display:flex;align-items:center;gap:4px">Height <input class="in mono" id="l-h" type="number" min="0" value="${locHeight(w)}" style="width:64px;padding:2px 6px"> m <span class="hint">(0 = flat)</span></label>`:""}
@@ -1323,6 +1387,9 @@ function renderRecord(){
   $$("#pbody .pv[data-edit]").forEach(el=>el.onclick=e=>{ if(e.target.closest("a")) return; startEdit(prop(el.dataset.edit),w,el); });   // the whole cell opens its editor (assets are edited in the site register)
   $$("#pbody .pn[title]").forEach(el=>el.onclick=()=>propertyMenu(prop(el.closest(".prop").dataset.pid),el));
     $("#add-prop")?.addEventListener("click",e=>propertyCreator(e.currentTarget,p=>{ showEmpty=true; renderRecord(); const el=document.querySelector(`#pbody .pv[data-edit="${p.id}"]`); if(el&&p.type!=="checkbox") startEdit(p,w,el); }));
+  $$("#pbody [data-brief]").forEach(t=>{ const k=t.dataset.brief, fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
+    t.onkeydown=e=>{ if(e.key==="Escape"){ t.value=w[k]||""; fit(); t.blur(); e.stopPropagation(); } };
+    t.onblur=()=>{ const v=t.value.trim(), J=W(w.id)||w; if(v===(J[k]||"")) return; J[k]=v; flashSaved(t,()=>DB.update(WO_COL+"/"+w.id,{ [k]:v, ...stamp() })).catch(()=>{}); log(w.id,`${v?"updated":"cleared"} ${BRIEF.find(b=>b[0]===k)[1].toLowerCase()}`); }; });
   $("#act-h").onclick=()=>{ showAct=!showAct; renderRecord(); };
   $("#l-add")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
   $("#l-edit")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
@@ -1343,11 +1410,14 @@ function dueInfo(w){ const v=w.values?.deadline; if(isEmpty(v)) return null; con
   if(isDone(w)) return { cls:"ok", sub:w.completedAt?`Completed ${new Date(w.completedAt).toLocaleDateString(undefined,{ month:"short", day:"numeric" })}`:"Completed" };
   if(d<0) return { cls:"late", sub:`${-d} day${d===-1?"":"s"} overdue` }; if(d===0) return { cls:"soon", sub:"Today" }; if(d===1) return { cls:"soon", sub:"Tomorrow" };
   if(d<=2) return { cls:"soon", sub:`in ${d} days` }; return { cls:"", sub:`in ${d} days` }; }
-function peopleBoxHTML(list){ const n=list.length; const av=(x,i)=>`<span class="avatar bav${i>0?" ov":""}" title="${P(nameOf(x))}">${P(initials(nameOf(x)))}</span>`;
+/* Job brief (new-job dialog, 6 Oct 2026): equipment, why the job exists, what done looks like. Fields on the job, edited in place. */
+const BRIEF=[["equipment","Equipment needed","Add equipment or tools"],["reason","Why this job exists","Give the team the context"],["outcome","What done looks like","The report, decision, or finished work you expect"]];
+function briefHTML(w){ return `<section class="ps brief" id="brief"><h3 style="cursor:default">Job brief</h3>${BRIEF.map(([k,l,ph])=>`<label class="bf"><span class="bfl">${l}</span><textarea class="bft" data-brief="${k}" rows="1" placeholder="${ph}">${P(w[k]||"")}</textarea></label>`).join("")}</section>`; }
+function peopleBoxHTML(list){ const n=list.length, lead=list.find(x=>x.lead), leadLine=lead&&n>1?`<span class="bs">${P(nameOf(lead))} leads</span>`:""; const av=(x,i)=>`<span class="avatar bav${i>0?" ov":""}" title="${P(nameOf(x))}">${P(initials(nameOf(x)))}</span>`;
   if(!n) return `<span class="badd">＋ Tag someone</span>`;
-  if(n===1) return `<span class="bppl">${av(list[0],0)}<span class="bpn">${P(nameOf(list[0]))}</span></span>`;
-  if(n<=3) return `<span class="bppl"><span class="bstack">${list.map(av).join("")}</span><span class="bpn">${P(list.map(x=>nameOf(x).split(/[\s@]/)[0]).join(", "))}</span></span>`;
-  return `<span class="bppl"><span class="bstack">${list.slice(0,4).map(av).join("")}${n>4?`<span class="avatar bav ov more">+${n-4}</span>`:""}</span></span>`; }
+  if(n===1) return `<span class="bppl">${av(list[0],0)}<span class="bpn">${P(nameOf(list[0]))}</span></span>${lead?`<span class="bs">Lead</span>`:""}`;
+  if(n<=3) return `<span class="bppl"><span class="bstack">${list.map(av).join("")}</span><span class="bpn">${P(list.map(x=>nameOf(x).split(/[\s@]/)[0]).join(", "))}</span></span>${leadLine}`;
+  return `<span class="bppl"><span class="bstack">${list.slice(0,4).map(av).join("")}${n>4?`<span class="avatar bav ov more">+${n-4}</span>`:""}</span></span>${leadLine}`; }
 function basicsHTML(w){ const cells=[];
   const day=t=>{ if(!t) return ""; const d=new Date(t); const o={ month:"short", day:"numeric" }; if(d.getFullYear()!==new Date().getFullYear()) o.year="numeric"; return d.toLocaleDateString(undefined,o); };
   cells.push(`<div class="bx"><span class="bl">Created</span><span class="bv">${P(day(w.created))}</span><span class="bs">${P(w.createdBy?.name||"")}${w.createdBy?.name?" · ":""}${P(rel(w.created))}</span>${w.edited&&new Date(w.edited)-new Date(w.created)>60000?`<span class="bs">edited ${P(rel(w.edited))}${w.editedBy?.name?" by "+P(w.editedBy.name):""}</span>`:""}</div>`);
@@ -1374,18 +1444,7 @@ function recordMenu(anchor){
     if(a==="json"){ try{ await navigator.clipboard.writeText(JSON.stringify(w,null,2)); toast("JSON copied"); }catch{} } };
 }
 
-function renderCreate(w){
-  $("#pk-id").textContent="New job";
-  if(map){ $("#pbody").innerHTML=""; if(!V.draw && S.creating===w.id) addPoints(w.id); return; }   // with a map the pill carries Create job / Cancel; the panel below is the no-map fallback
-  const P0=pts(w); const sh=locShape(w);
-  $("#pbody").innerHTML=`<div class="create">
-    <h2 style="font-size:22px;font-weight:600;margin:6px 0 4px">Mark the job area</h2>
-    <p class="hint">The map is not loaded — enter a Maps key to place points on the model.</p>
-    <div class="locbox" style="margin-top:12px"><div class="eyebrow">${P0.length?"Job area · "+shapeLabel(sh):"Nothing placed yet"}</div></div>
-    <div class="create-foot"><button class="btn" id="c-cancel">Cancel</button><button class="btn teal" id="c-create" ${P0.length?"":"disabled"} title="${P0.length?"":"Place at least one point"}">Create Job</button></div>
-  </div>`;
-  $("#c-cancel").onclick=cancelCreate; $("#c-create").onclick=finishCreate;
-}
+
 
 /* =====================================================================
    VIEWS — Board, Table, Trash + register + top bar
@@ -1496,7 +1555,7 @@ function wireUI(){
   dragSheet($("#peek .ph"),$("#peek"),h=>{ const f=h/innerHeight; setSheet(f<0.3?"peek":f<0.78?"half":"full"); });
   $("#search-toggle").onclick=()=>{ document.body.classList.toggle("search-open"); if(document.body.classList.contains("search-open")) $("#q").focus(); };
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.body.classList.contains("search-open")&&!S.q){ document.body.classList.remove("search-open"); } });
-  $$("#bar [data-tab]:not([data-tab=\"auto\"])").forEach(b=>b.onclick=()=>{ if(S.creating&&b.dataset.tab!=="map") cancelCreate(); setTab(b.dataset.tab); });
+  $$("#bar [data-tab]:not([data-tab=\"auto\"])").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
   $$("#reg .sub button").forEach(b=>b.onclick=()=>{ S.sub=b.dataset.sub; $$("#reg .sub button").forEach(x=>x.setAttribute("aria-selected",x===b)); renderTree(); });
   $$("#viewsw button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; saveView(); renderViews(); });
   $("#q").oninput=e=>{ S.q=e.target.value; renderAll(); };
@@ -1507,13 +1566,13 @@ function wireUI(){
   $("#b-props").onclick=e=>propsToggle(e.currentTarget);
   $("#b-export").onclick=exportJSON;
   $("#pk-close").onclick=closePeek; $("#pk-more").onclick=e=>recordMenu(e.currentTarget); $("#pk-fly").onclick=()=>{ const w=W(S.open); if(w) enterWOView(w.id); };
-  $("#site-view").onclick=exitWOView; $("#pk-exit").onclick=()=>{ if(S.creating) cancelCreate(); else exitWOView(); };
+  $("#site-view").onclick=exitWOView; $("#pk-exit").onclick=exitWOView;
   $("#pk-save").onclick=saveClick; $("#bar-save").onclick=saveClick; renderSave();
   $("#userbtn").onclick=e=>userMenu(e.currentTarget);
   $("#new-asset").onclick=e=>assetEditor(null,e.currentTarget);
   document.addEventListener("pointerdown",e=>{ // click outside the peek closes it (V11) — not on popovers, map or toolbar buttons
     if(!S.open||S.woView) return; const pk=$("#peek"); const tg=e.target.isConnected?e.target:document.elementFromPoint(e.clientX,e.clientY); if(!tg) return;   // the editor that just closed may have re-rendered what was clicked
-    if(pk.contains(tg)||tg.closest(".pop,.kcard,.it,.tbl,#bar,#mode,#hud,#legend,gmp-map-3d,.toast,#viewer,#cam,#draw-acts")) return; closePeek(); },true);
+    if(pk.contains(tg)||tg.closest(".pop,.kcard,.it,.tbl,#bar,#mode,#hud,#legend,gmp-map-3d,.toast,#viewer,#cam,#draw-acts,#job-wizard")) return; closePeek(); },true);
   window.addEventListener("keydown",e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){ e.preventDefault(); $("#q").focus(); } });
   $("#keySave").onclick=async()=>{ const k=$("#keyInput").value.trim(); if(!/^AIza[0-9A-Za-z_\-]{20,}$/.test(k)){ $("#keyErr").textContent="That doesn't look like a Google Maps key (they start with AIza)."; return; } if(S.admin){ try{ await DB.set("config/maps",{ key:k, updated:now(), updatedBy:S.user.email }); }catch(e){ $("#keyErr").textContent="Could not save the key: "+(e.message||e); return; } } try{ localStorage.setItem(LSK.key,k); }catch{} location.reload(); };
   $("#keyInput").onkeydown=e=>{ if(e.key==="Enter") $("#keySave").click(); };
@@ -1600,7 +1659,7 @@ function sceneSchedule(){ if(SCENE.pending) return; SCENE.pending=true; requestA
 function sceneKnown(){ const k=new Set(); const add=x=>{ if(x) k.add(x); };
   Object.values(OV.wo).forEach(o=>{ if(o.hidden) return; if(!o.pinHidden) add(o.m); add(o.area); add(o.line); add(o.box); (o.labels||[]).forEach(add); }); add(OV.site); (OV.draw||[]).forEach(add);
   if(typeof PTH!=="undefined") PTH.forEach(add); if(typeof PINOV!=="undefined") Object.values(PINOV).forEach(a=>a.forEach(add)); if(typeof PHOV!=="undefined") Object.values(PHOV).forEach(o=>{ add(o.m); (o.sight||[]).forEach(add); });
-  if(typeof LKOV!=="undefined") LKOV.els.forEach(add);
+  if(typeof LKOV!=="undefined") LKOV.els.forEach(add); if(typeof JW_MAP!=="undefined") JW_MAP.forEach(add);
   Object.values(POOL.free).forEach(l=>l.forEach(add));
   return k; }
 function sceneChildren(){ if(!map) return []; const c=map.children; return Array.isArray(c)?c.slice():[...c].filter(el=>/^GMP-/i.test(el.tagName||"")); }
@@ -1715,7 +1774,7 @@ function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const
 function syncAssetOverlays(){ /* assets carry no location (register only) */ }
 const rgb = hex => { const n=parseInt(hex.slice(1),16); return `${n>>16},${(n>>8)&255},${n&255}`; };
 function woColor(w){ return col(status(w.statusId)?.color).map; }
-function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
+function syncOverlays(){ if(!map||!lib) return; if(JW?.home){ jwParkJobs(); jwDrawMap(); return; }   /* the map is in the new-job dialog: the other jobs stay parked */ Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 /* Points stay where they were clicked on the model (roof, platform, shell) instead of dropping to the ground: each point
    stores the surface altitude `ground` from the click, and overlays use ABSOLUTE altitude from it. Legacy points without
    it fall back to RELATIVE_TO_MESH, which also sits on the surface. */
@@ -1742,7 +1801,7 @@ function minGround(P){ const g=P.map(p=>p.ground).filter(x=>x!=null); return g.l
 function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(o.hidden){ if(w.trashed) delete OV.wo[w.id]; else applyLegendTo(w); return; } if(w.trashed||force||o.sig!==woSig(w)){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
 /* a hidden job keeps only a stub: its elements went back to the pool and may already belong to another job */
 const linkedToOpen = w => { if(!S.woView||!S.open||S.note||typeof waitsOnIds!=="function") return false; const o=W(S.open); return !!o&&(waitsOnIds(o).includes(w.id)||blocksOf(o).some(d=>d.id===w.id)); };
-function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId)&&S.open!==w.id&&S.creating!==w.id&&!linkedToOpen(w);   /* the job you have open, and the jobs linked to it, always show */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); OV.wo[w.id]={ hidden:true, labels:[] }; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
+function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId)&&S.open!==w.id&&!linkedToOpen(w);   /* the job you have open, and the jobs linked to it, always show */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); OV.wo[w.id]={ hidden:true, labels:[] }; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
 /* Status toggles on the model (1 Oct 2026): switches, not a key. Default view = jobs that need attention now —
    In progress and On hold; Requested and Completed start switched off. Tests on ?mock=1 start with everything on. */
 const legendDefaultOff = () => new Set(statuses().filter(o=>!(o.group==="progress"||/hold/i.test(o.name||""))).map(o=>o.id));
@@ -1772,6 +1831,7 @@ function resetMode(){ if(S.woView&&S.open){ woMode(); return; } $("#site-view").
 $("#mode-exit").onclick=()=>{ const d=V.draw; if(d){ if(d.moving){ selCancelMove(); return; } if(d.sel!=null){ d.sel=null; renderDraw(); return; } if(d.live){ $("#draw-done").click(); return; } selCancel(); return; } V.placing=null; placePin?.remove(); placePin=null; map?.classList.remove("placing"); selPt=null; resetMode(); syncPointHandles(); orbitSync(); };
 function onMapClick(e){
   if(!e.position) return; const p={ lat:e.position.lat, lng:e.position.lng, ground:Math.round((e.position.altitude||0)*10)/10 }; previewCheck(p);
+  if(JW?.home){ jwMapClick(p); return; }   // the map is in the new-job dialog: the click places its spot
   if(V.draw){ const d=V.draw; if(PV.overBox) return; if(!d.site&&!inPoly(p,BOUNDARY())){ toast("Outside the site boundary.",true); return; }
     if(d.moving&&d.sel!=null){ d.pts[d.sel]={ ...d.pts[d.sel], ...p }; d.moving=false; selChanged(); return; }   // stays selected: the box comes back on the moved point
     if(PV.seg){ selInsertAt(p,PV.seg.i); return; }
@@ -1897,9 +1957,9 @@ $("#edit-site").onclick=()=>{ if(!map) return; setTab("map"); closePeek();
 /* ---------- job area: the selector with live save; numbered handles when idle ---------- */
 function addPoints(id){ const w=W(id); if(!w||!map){ toast("The map is not loaded — enter a Maps key first.",true); return; } if(S.tab!=="map") setTab("map");
   const before=locShape(w);
-  select3D({ initial:before, label:"Job area", live:true, primary:W(id)?.draft?{ label:"Create job", onClick:()=>finishCreate(), onClose:()=>finishCreate(), cancelLabel:"Cancel", onCancel:()=>cancelCreate() }:null,
+  select3D({ initial:before, label:"Job area", live:true,
     onChange:sh=>setPoints(id,sh.points,undefined,true,sh.closed),
-    onDone:sh=>{ setPoints(id,sh.points,undefined,true,sh.closed); syncPointHandles(); relock(); if(!W(id)?.draft&&JSON.stringify(sh)!==JSON.stringify(before)) log(id, sh.kind==="none"?"cleared the job area":before.kind==="none"?`set the job area (${shapeLabel(sh)})`:`changed the job area (${shapeLabel(sh)})`); if(typeof editLoc!=="undefined"&&editLoc===id){ editLoc=null; renderRecord(); } },
+    onDone:sh=>{ setPoints(id,sh.points,undefined,true,sh.closed); syncPointHandles(); relock(); if(JSON.stringify(sh)!==JSON.stringify(before)) log(id, sh.kind==="none"?"cleared the job area":before.kind==="none"?`set the job area (${shapeLabel(sh)})`:`changed the job area (${shapeLabel(sh)})`); if(typeof editLoc!=="undefined"&&editLoc===id){ editLoc=null; renderRecord(); } },
     onCancel:sh=>{ setPoints(id,sh.points,undefined,true,sh.closed); syncPointHandles(); relock(); if(typeof editLoc!=="undefined"&&editLoc===id){ editLoc=null; renderRecord(); } } }); }
 function shapeLabel(sh){ const n=sh.points.length; return sh.kind==="point"?"point":sh.kind==="line"?`line · ${n} points`:`area · ${n} points`; }
 function relock(){ if(S.woView&&S.open&&map){ const w=W(S.open); if(w&&pts(w).length) flyWO(w); } }
@@ -1961,29 +2021,8 @@ function installLock(){ return;
   el.addEventListener("dblclick",()=>{ const w=W(S.open); if(w) flyWO(w); });
 }
 
-/* ---------- Creation flow: location first, then Create Job ---------- */
-let CREATING_NOW=false;
-async function startCreate(init={}){
-  if(S.creating){ if(isMobile()) setSheet("half"); return; }   // already creating: just bring the panel back
-  if(CREATING_NOW) return; CREATING_NOW=true;   // a second click while the draft is still being written does nothing
-  const openBefore=S.open, tabBefore=S.tab;
-  let id; try{ id=await createWO({ ...init, draft:true }); }catch(e){ CREATING_NOW=false; toast("Couldn't start a job — "+(navigator.onLine===false?"you are offline.":(e.message||e)),true); return; } CREATING_NOW=false;
-  if(S.open!==openBefore||S.tab!==tabBefore||S.creating){ purgeWO(id).catch(()=>{}); return; }   // the user moved on while the draft was being written
-  S.creating=id; document.body.classList.add("creating"); if(map) document.body.classList.add("creating-map");   // with a map the pill carries Create job / Cancel and the panel stays hidden; without one the panel is the fallback
-  enterWOView(id); if(map) addPoints(id); else toast("The map is not loaded — points can be added once it is.",true);
-}
-async function finishCreate(){
-  const id=S.creating; const w=W(id); if(!w) return; if(!pts(w).length){ toast("Mark the job area on the model first.",true); return; }
-  try{ await DB.update(WO_COL+"/"+id,{ draft:false, ...stamp() }); }catch(e){ toast("The job could not be saved — "+(e?.message||e)+". Your points are still here; try again.",true); return; }   // the draft stays open until the job is really saved
-  clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); w.draft=false; w._focusTitle=true;
-  if(S.legendOff.has(w.statusId)){ S.legendOff.delete(w.statusId); renderLegend(); live().forEach(applyLegendTo); }   // a new job in a hidden status: switch that status on so it does not vanish
-  const n=pts(w).length; log(id,`created the job · ${shapeLabel(locShape(w))}`);
-  refreshWOOverlay(w,true); syncPointHandles(); renderAll(); woMode(); if(map) flyWO(w); setTimeout(()=>$("#ptitle")?.focus(),50);
-  if(typeof autoEvent==="function") autoEvent("created",w);
-}
-async function cancelCreate(ask){
-  const id=S.creating; if(ask&&id&&pts(W(id)||{}).length&&!confirm("Throw away this new job and the points you placed?")) return false; clearDraw(); S.creating=null; document.body.classList.remove("creating","creating-map"); exitWOView(); if(id) await purgeWO(id);
-}
+/* New jobs: the four-step dialog in p16newjob.js (startCreate). */
+
 
 /* =====================================================================
    PHOTOS + POSE (§5a/§5b) — stored in Firestore until Storage is enabled (R40)
@@ -2545,7 +2584,7 @@ function aboutLabel(t){ const a=t.about||{kind:"job"}; if(a.kind==="auto") retur
 function snippet(s,n=90){ return String(s||"").replace(/\s+/g," ").trim().slice(0,n); }
 
 /* ---------- subscriptions ---------- */
-function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&!T(IB.sel)) closeThread(); if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note&&!S.creating) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
+function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&!T(IB.sel)) closeThread(); if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
   S.unsub.push(()=>{ thUnsub?.(); thUnsub=null; msgUnsub?.(); msgUnsub=null; });
   S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; if(S.tab==="inbox") renderInbox(); },e=>{ console.warn("config/mail",e); MAILCFG=null; }));
   if(S.admin) S.unsub.push(DB.watchCol("workspace/main/mail_undelivered",rows=>{ UNDEL=rows.sort((a,b)=>String(b.t).localeCompare(String(a.t))); if(S.tab==="inbox") renderInbox(); },()=>{ UNDEL=[]; })); }
@@ -2733,7 +2772,7 @@ function mailSectionHTML(w){ const ts=jobThreads(w.id); const un=ts.filter(isUnr
 function wireMailSection(w){ $$("#pbody [data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Address copied — CC it from Outlook"); }catch{ prompt("Copy this address",b.dataset.copy); } });
   $("#m-new")?.addEventListener("click",()=>newThreadFrom(w.id,{kind:"job"}));
   $$("#pbody .thr").forEach(r=>r.onclick=()=>openThread(r.dataset.tid)); }
-function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el||S.note||S.creating) return; const tmp=document.createElement("div"); tmp.innerHTML=mailSectionHTML(w); el.replaceWith(tmp.firstElementChild); wireMailSection(w); }
+function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el||S.note) return; const tmp=document.createElement("div"); tmp.innerHTML=mailSectionHTML(w); el.replaceWith(tmp.firstElementChild); wireMailSection(w); }
 
 /* =====================================================================
    LINKS — "waits on" between jobs, enabling work (scaffold, insulation, isolation…), hold reasons
@@ -2986,7 +3025,7 @@ const personLabel=p=>p?.name||p?.email||"";
 function startAuto(){
   auUnsub.forEach(f=>{ try{ f(); }catch{} });
   auUnsub=[
-    DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note&&!S.creating) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
+    DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
   ];
   S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); AU_LOADED=false; auRunsUnsub?.(); auRunsUnsub=null; });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
@@ -3191,7 +3230,7 @@ const BOLT=`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="
 function autoCardBits(w){ const b=[]; const a=w.series?AUX(w.series.auto):null; if(a) b.push(`<span class="aub rep" title="${P(a.name)}">↻ ${P(rhythm(a))}</span>`);
   const rs=rulesFor(w).filter(r=>(r.rule.conds||[]).length); if(rs.length) b.push(`<span class="aub rule" title="${P(rs.map(r=>r.name).join(", "))}">${BOLT}${rs.length} rule${rs.length===1?"":"s"}</span>`); return b; }   // rules that apply to every job (reminders) are left off the card; the panel lists them
 function openAuto(id){ const a=AUX(id); if(a) AUV.f=a.kind; AUV.sel=id; if(S.woView) exitWOView(); else if(S.open) closePeek(); setTab("auto"); }
-function openAutoPage(kind){ AUV.f=kind; const cur=AUX(AUV.sel); if(!cur||cur.kind!==kind) AUV.sel=null; if(S.creating) cancelCreate(); setTab("auto"); }
+function openAutoPage(kind){ AUV.f=kind; const cur=AUX(AUV.sel); if(!cur||cur.kind!==kind) AUV.sel=null; setTab("auto"); }
 /* the top-bar "Automations ▾" button is a menu: Schedules and Rules are separate pages */
 function autoMenu(anchor){ const n=k=>AU.filter(a=>a.kind===k).length, on=k=>AU.filter(a=>a.kind===k&&a.on).length;
   const cur=S.tab==="auto"?AUV.f:null;
@@ -3449,6 +3488,198 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 .act .aubadge{display:inline-flex;align-items:center;gap:3px;background:#E3D6FA;color:#331466;border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:600}
 .msg .st.scheduled{color:var(--accent)}.msg .st.cancelled{color:var(--ink-3)}
 @media (max-width:860px){ .au-body{grid-template-columns:minmax(0,1fr)} .au-detail{position:static} }`; document.head.append(st); })();
+
+/* =====================================================================
+   NEW JOB (6 Oct 2026): one dialog, four steps — Who → What → Where → Why. Only the name is required.
+   Nothing is written until Create job. The unfinished draft lives in this tab's sessionStorage (LSK.draft): it survives a
+   reload, other tabs never see it. The Where step borrows the real map (#canvas-wrap moves into the dialog, JW.home set) and parks
+   every other job's overlay while it is there; handing the map back clears JW.home first, then redraws them (syncOverlays). The lead is a flag on one
+   tagged person ({ …, lead:true }); equipment / reason / outcome are fields on the job (the Job brief on the panel).
+   ===================================================================== */
+let JW=null; const JW_MAP=[];
+const JW_STEPS=[{ name:"Who", detail:"People" },{ name:"What", detail:"The work" },{ name:"Where", detail:"Location" },{ name:"Why", detail:"The outcome" }];
+const JW_OWN=["asset","worktype","deadline","reference","people"];   // their own fields; every other editable property sits under More details
+const JW_MORE_TYPES=["multi","select","text","url","number","date","checkbox"];
+const JW_EXAMPLES={
+  reason:[["Follow-up to a finding","Follow-up to a finding: corrosion was reported at the last walkdown and needs to be measured."],["Scheduled inspection","Scheduled inspection: due under the site inspection plan."],["Before a shutdown","Needed before the next shutdown so repairs can be planned and materials ordered."],["Safety concern","Operations raised a safety concern; confirm whether the area is safe to use."]],
+  outcome:[["Thickness report","A thickness report with readings, marked-up photos, and any areas below minimum."],["Repair decision","A clear decision: repair now, monitor, or no action, with the reason."],["Work completed","The work is done, checked, and signed off, with before-and-after photos."],["Findings and next steps","Findings marked on the model, each with a recommended next step."]] };
+const jwKey = x => (x.email||x.uid||"").toLowerCase();
+const jwRec = x => { const m=S.members.find(mm=>(x.uid&&mm.id===x.uid)||(x.email&&(mm.email||"").toLowerCase()===x.email.toLowerCase())); return m?{ uid:m.id, name:m.name, email:m.email }:{ email:(x.email||"").toLowerCase(), ...(x.name?{ name:x.name }:{}) }; };
+const jwLead = d => d.people.some(x=>jwKey(x)===d.lead)?d.lead:(d.people[0]?jwKey(d.people[0]):"");
+const jwMe = x => (x.uid&&x.uid===S.user?.uid)||(!!x.email&&x.email.toLowerCase()===(S.user?.email||"").toLowerCase());
+function jwDefault(init={}){ return { step:0, init, people:[], lead:"", title:init.title||"", asset:"", deadline:"", equipment:"", methods:[], scope:"", more:{}, reason:"", outcome:"", location:{ points:[], height:0, closed:false }, mode:"pin", skip:false }; }
+function jwHas(d){ return !!(d.title.trim()||d.people.length||d.asset||d.deadline||d.equipment.trim()||d.methods.length||d.scope.trim()||Object.values(d.more).some(v=>!isEmpty(v)&&v!==false)||d.reason.trim()||d.outcome.trim()||d.location.points.length||d.skip); }
+function jwDraft(){ try{ return JSON.parse(sessionStorage.getItem(LSK.draft)||"null"); }catch{ return null; } }
+function jwSave(){ if(!JW) return; const has=jwHas(JW.data);
+  try{ if(has) sessionStorage.setItem(LSK.draft,JSON.stringify(JW.data)); else sessionStorage.removeItem(LSK.draft); $("#jw-saved").textContent=has?"Draft saved in this tab":""; }catch{ $("#jw-saved").textContent=has?"Draft kept while open":""; }
+  $("#jw-discard").hidden=!has; jwButtons(); }
+/* "Resume draft" on the New job buttons while this tab holds one */
+function jwButtons(){ const d=jwDraft(), tip=d?`Resume “${(d.title||"").trim()||"Untitled job"}” · step ${(d.step||0)+1} of 4`:"";
+  ["#b-new","#new-wo-map"].forEach(s=>{ const b=$(s); if(!b) return; b.dataset.label??=b.textContent; b.textContent=d?"Resume draft":b.dataset.label; b.title=tip; b.classList.toggle("has-draft",!!d); });
+  const m=$("#reg-new-mini"); if(m){ m.dataset.label??=m.getAttribute("aria-label")||"New job"; m.setAttribute("aria-label",d?"Resume draft":m.dataset.label); m.title=tip; m.classList.toggle("has-draft",!!d); } }
+
+/* ---------- Who ---------- */
+function jwPeople(){ if(!JW) return; const d=JW.data, q=($("#jw-q")?.value||"").trim().toLowerCase(), lead=jwLead(d);
+  const known=knownPeople(); d.people.forEach(x=>{ if(!known.some(k=>jwKey(k)===jwKey(x))) known.push(x); });   // someone added by email stays listed
+  const list=known.filter(x=>!q||((x.name||"")+" "+(x.email||"")).toLowerCase().includes(q));
+  const isEmail=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q)&&!known.some(x=>(x.email||"").toLowerCase()===q);
+  const card=(x,i)=>{ const k=jwKey(x), sel=d.people.some(p=>jwKey(p)===k), nm=nameOf(x);
+    return `<div class="jw-person${sel?" sel":""}"><button type="button" class="jw-pmain" data-jw-person="${P(k)}" aria-pressed="${sel}"><span class="avatar jw-av t${i%3}">${P(initials(nm))}</span><span class="jw-pname"><b>${P(nm)}${jwMe(x)?' <small>You</small>':""}</b>${x.email&&nm!==x.email?`<span>${P(x.email)}</span>`:""}</span></button>${sel?`<label class="jw-leadpill"><input type="radio" name="jw-lead" value="${P(k)}" ${k===lead?"checked":""} aria-label="Job lead: ${P(nm)}"><span class="on">Lead</span><span class="off">Make lead</span></label>`:""}<span class="jw-tick" aria-hidden="true">${sel?"✓":"+"}</span></div>`; };
+  $("#jw-people").innerHTML=list.map(card).join("")
+    +(isEmail?`<div class="jw-person"><button type="button" class="jw-pmain" data-jw-email="${P(q)}"><span class="avatar jw-av">✉</span><span class="jw-pname"><b>Add ${P(q)}</b><span>Not on any job yet</span></span></button><span class="jw-tick" aria-hidden="true">+</span></div>`:"")
+    ||`<p class="jw-none">${q?"No match. Type a full email address to add someone new.":"No people yet. Type an email address to add someone."}</p>`;
+  jwReview(); }
+function jwToggle(k){ const d=JW.data; if(d.people.some(x=>jwKey(x)===k)) d.people=d.people.filter(x=>jwKey(x)!==k); else { const x=knownPeople().find(p=>jwKey(p)===k); if(x) d.people.push(jwRec(x)); }
+  d.lead=jwLead(d); jwPeople(); jwSave(); $(`[data-jw-person="${CSS.escape(k)}"]`)?.focus(); }
+
+/* ---------- What: the other editable properties of this site, collapsed ---------- */
+const jwMoreProps = () => props().filter(p=>!p.system&&!JW_OWN.includes(p.id)&&JW_MORE_TYPES.includes(p.type));
+function jwChips(p,sel,name){ const t=p.type==="select"?"radio":"checkbox"; return `<div class="jw-chips">${(p.options||[]).map(o=>`<label class="jw-chip"><input type="${t}" name="${P(name)}" value="${P(o.id)}" ${sel.includes(o.id)?"checked":""}><span>${P(o.name)}</span></label>`).join("")}</div>`; }
+function jwMoreField(p){ const v=JW.data.more[p.id], id="jw-m-"+p.id;
+  if(p.type==="multi"||p.type==="select") return `<fieldset class="jw-fs"><legend>${P(p.name)}</legend>${jwChips(p,p.type==="select"?(v?[v]:[]):(v||[]),"more:"+p.id)}</fieldset>`;
+  if(p.type==="checkbox") return `<label class="jw-checkrow"><input type="checkbox" data-jw-more="${P(p.id)}" ${v?"checked":""}> ${P(p.name)}</label>`;
+  if(p.type==="date") return `<label class="jw-label" for="${id}">${P(p.name)}</label><input id="${id}" type="date" data-jw-more="${P(p.id)}" value="${P(v?.start||"")}">`;
+  return `<label class="jw-label" for="${id}">${P(p.name)}</label><input id="${id}" type="${p.type==="number"?"number":p.type==="url"?"url":"text"}" data-jw-more="${P(p.id)}" value="${P(v??"")}">`; }
+function jwMoreValue(p,el){ if(p.type==="checkbox") return el.checked||null; if(p.type==="date") return el.value?{ start:el.value, end:null, time:null }:null; if(p.type==="number") return el.value===""?null:+el.value; return el.value.trim()||null; }
+
+/* ---------- the summary beside the form (on phones: before Create only) ---------- */
+function jwWhere(d){ const n=d.location.points.length; return d.skip?"Add location later":!n?"Not placed yet":d.location.closed?`Area · ${n} corners`:d.mode==="area"?`Area · ${n} ${n===1?"corner":"corners"} so far`:"Pin on the model"; }
+function jwReview(){ if(!JW) return; const d=JW.data, ppl=d.people, lead=ppl.find(x=>jwKey(x)===jwLead(d)), a=d.asset?asset(d.asset):null;
+  const methods=(prop("worktype")?.options||[]).filter(o=>d.methods.includes(o.id)).map(o=>o.name);
+  const row=(i,label,main,sub)=>`<div class="jw-row"><div><span>${label}</span>${JW.step!==i?`<button type="button" data-jw-go="${i}">Edit</button>`:""}</div><strong>${P(main)}</strong>${sub?`<small>${P(sub)}</small>`:""}</div>`;
+  const whatSub=[a?methods.join(" · "):"",(a||methods.length)?d.equipment.trim():"",d.deadline?"Due "+fmtDate(d.deadline):""].filter(Boolean).join(" · ");
+  $("#jw-summary").innerHTML=`<span class="jw-cap">Job preview</span><h3>${P(d.title.trim()||"Your next job")}</h3><p class="jw-intro">One place for the people, the work and the result.</p>`
+    +row(0,"Who",ppl.length?ppl.map(x=>nameOf(x).split(/[\s@]/)[0]).join(", "):"Assign later",lead?nameOf(lead)+" · job lead":"")
+    +row(1,"What",a?`${a.tag}${a.name?" · "+a.name:""}`:methods.join(" · ")||d.equipment.trim()||"Details to follow",whatSub)
+    +row(2,"Where",jwWhere(d),"")
+    +row(3,"Why",d.outcome.trim()||"Define a clear result",d.reason.trim()?"Why: "+d.reason.trim():"")
+    +`<p class="jw-note">${JW.step===3?"Ready when you are. Every detail stays editable on the job.":"Nothing is added to your jobs until you choose Create job."}</p>`;
+  const ts=$("#jw-team"), sig=JSON.stringify([ppl.map(jwKey),jwLead(d)]);
+  if(ts&&JW.teamSig!==sig){ JW.teamSig=sig; ts.innerHTML=ppl.length?`<span class="jw-stack">${ppl.slice(0,5).map(x=>`<span class="avatar jw-av">${P(initials(nameOf(x)))}</span>`).join("")}</span><span><b>${ppl.length} ${ppl.length===1?"person":"people"} · ${P(nameOf(lead))} leads</b><small>${ppl.length>1?"Change the lead with Make lead on a card. ":""}Everyone selected is tagged on the job.</small></span>`:`<span><b>No one assigned yet</b><small>You can assign people later. Continue when you’re ready.</small></span>`; }
+  $("#jw-count").textContent=`Step ${JW.step+1} of 4`; }
+
+/* ---------- steps ---------- */
+function jwError(msg,field){ $("#jw-error").textContent=msg; field?.focus(); }
+function jwValid(step){ const d=JW.data;
+  if(step===1&&!d.title.trim()){ jwError("Give the job a name before continuing.",$("#jw-title")); return false; }
+  if(step===2&&!d.skip){ const n=d.location.points.length; if(!n){ jwError("Choose a spot on the model, or tick Add location later."); return false; } if(d.mode==="area"&&n<3){ jwError("An area needs at least three corners. Keep clicking the model, or use a pin."); return false; } }
+  return true; }
+function jwGo(step){ if(!JW||JW.busy) return;
+  for(let i=0;i<step;i++) if(!jwValid(i)){ if(i!==JW.step){ jwGo(i); jwValid(i); } return; }
+  if(JW.step===2&&step!==2) jwDetachMap();
+  const dlg=JW.dialog; JW.step=step; JW.data.step=step; dlg.classList.toggle("jw-mapstep",step===2);
+  dlg.querySelectorAll("[data-jw-panel]").forEach(el=>el.hidden=+el.dataset.jwPanel!==step);
+  dlg.querySelectorAll(".jw-steps [data-jw-go]").forEach((el,i)=>{ el.setAttribute("aria-current",i===step?"step":"false"); el.classList.toggle("done",i<step); el.querySelector(".jw-n").textContent=i<step?"✓":i+1; });
+  $("#jw-back").hidden=step===0; $("#jw-next").innerHTML=step===3?"Create job":`Continue<span class="jw-to"> to ${JW_STEPS[step+1].name.toLowerCase()}</span> →`;
+  $("#jw-error").textContent=""; $("#jw-main").scrollTop=0; jwReview(); jwSave();
+  if(step===2&&!JW.home) jwAttachMap();
+  requestAnimationFrame(()=>JW?.dialog.querySelector(`[data-jw-panel="${step}"] h2`)?.focus()); }
+
+/* ---------- Where: the real map, borrowed ---------- */
+function jwParkJobs(){ Object.values(OV.wo).forEach(o=>killAll([o.m,o.area,o.line,o.box,...(o.labels||[])])); OV.wo={}; leaveJobScene(); }
+function jwAttachMap(){ const wrap=$("#canvas-wrap"); JW.home={ parent:wrap.parentNode, next:wrap.nextSibling }; $("#jw-map-mount").append(wrap); document.body.classList.add("jw-map");
+  jwParkJobs(); JW.sig=null; jwDrawMap(); requestAnimationFrame(()=>{ if(JW?.step===2) jwFit(); }); }
+function jwDetachMap(){ if(!JW) return; killAll(JW_MAP); JW_MAP.length=0; JW.sig=null;
+  if(JW.home){ const wrap=$("#canvas-wrap"), h=JW.home; h.parent.insertBefore(wrap,h.next); JW.home=null; }
+  document.body.classList.remove("jw-map"); if(map) map.style.cursor=""; syncOverlays(); }
+function jwFit(){ if(!map||JW?.step!==2) return; const p=JW.data.skip?[]:JW.data.location.points; if(!p.length){ fly(siteCam(),900); return; }
+  const e=extentM(bbox(p)); fly({ center:{ ...centroid(p), altitude:minGround(p) }, range:Math.max(180,Math.max(e.ns,e.ew)*3), tilt:55, heading:map.heading??-15 },900); }
+function jwDrawMap(){ if(!JW||JW.step!==2) return; const d=JW.data, p=d.skip?[]:d.location.points, n=p.length;
+  $("#jw-status").textContent=d.skip?"You can place this job later from its page.":!n?(d.mode==="area"?"Click at least three corners on the model to outline the work area.":"Click the model to place a pin. Click again to move it."):d.mode==="area"?`${n} ${n===1?"corner":"corners"} placed${n<3?" · add another corner":" · area ready"}`:"Pin placed · click the model to move it.";
+  $("#jw-undo").disabled=!n; $("#jw-clear").disabled=!n; $("#jw-fit").disabled=!map; $("#jw-site").disabled=!map;
+  JW.dialog.querySelectorAll("[data-jw-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.jwMode===d.mode));
+  if(!map||!lib) return; map.style.cursor=d.skip?"":"crosshair";
+  const sig=JSON.stringify([p,d.mode]); if(JW.sig===sig) return; JW.sig=sig; killAll(JW_MAP); JW_MAP.length=0;
+  const mode=surf(p), push=el=>{ if(el) JW_MAP.push(el); };
+  if(n>1){ const closed=d.mode==="area"&&n>=3; push(mk3(closed?"pg":"pl",{ altitudeMode:mode, path:[...p,...(closed?[p[0]]:[])].map(a=>atSurf(a,0.9,mode)), strokeColor:"#FF6A00", strokeWidth:4, fillColor:"rgba(255,106,0,0.22)" })); }
+  p.forEach((a,i)=>push(mk3("m",{ position:atSurf(a,1.5,mode), altitudeMode:mode, tpl:pinTemplate("#FF6A00",1.1,"#fff",n>1?i+1:undefined).tpl }))); }
+function jwMapClick(p){ if(!JW||JW.step!==2||JW.data.skip) return; if(!inPoly(p,BOUNDARY())){ jwError("Choose a spot inside the site boundary."); return; }
+  const d=JW.data; if(d.mode==="pin") d.location.points=[p]; else d.location.points.push(p); d.location.closed=d.mode==="area"&&d.location.points.length>=3;
+  $("#jw-error").textContent=""; jwDrawMap(); jwReview(); jwSave(); }
+
+/* ---------- open / close / discard / create ---------- */
+function jwShut(){ const dlg=JW.dialog; jwDetachMap(); JW=null; dlg.close(); dlg.remove(); }
+function jwClose(){ if(!JW||JW.busy) return; jwSave(); jwShut(); }
+function jwDiscard(){ if(!JW||JW.busy) return; const snap=structuredClone(JW.data); try{ sessionStorage.removeItem(LSK.draft); }catch{} jwShut(); startCreate();
+  if(!JW) return; $("#jw-saved").innerHTML='Draft discarded <button type="button" id="jw-undo-discard">Undo</button>';
+  $("#jw-undo-discard").onclick=()=>{ jwShut(); startCreate(snap.init||{},snap); }; }
+async function jwCreate(){
+  if(!JW||JW.busy) return;   // a second click while the first save is running does nothing
+  if(!jwValid(1)){ jwGo(1); jwValid(1); return; } if(!jwValid(2)){ jwGo(2); jwValid(2); return; }
+  const d=JW.data, lead=jwLead(d), values={ ...(d.init.values||{}) }, wp=prop("worktype");
+  if(d.people.length) values.people=d.people.map(x=>({ ...jwRec(x), ...(jwKey(x)===lead?{ lead:true }:{}) }));
+  if(d.asset&&prop("asset")) values.asset=[d.asset];
+  if(d.methods.length&&wp) values.worktype=wp.type==="select"?d.methods[0]:d.methods;
+  if(d.deadline&&prop("deadline")) values.deadline={ start:d.deadline, end:null, time:null };
+  if(d.scope.trim()&&prop("reference")) values.reference=d.scope.trim();
+  for(const [pid,v] of Object.entries(d.more)) if(prop(pid)&&!isEmpty(v)&&v!==false) values[pid]=v;
+  const location=d.skip?{ points:[], height:0, closed:false }:structuredClone(d.location);
+  JW.busy=true; $("#jw-next").disabled=true; $("#jw-next").textContent="Creating job…";
+  let id; try{ id=await createWO({ ...d.init, title:d.title.trim(), values, location, equipment:d.equipment.trim(), reason:d.reason.trim(), outcome:d.outcome.trim(), quiet:true }); }
+  catch(e){ JW.busy=false; $("#jw-next").disabled=false; $("#jw-next").textContent="Create job"; jwError("The job could not be saved — "+(e?.message||e)+". Your draft is still here; try again."); return; }
+  try{ sessionStorage.removeItem(LSK.draft); }catch{}
+  JW.busy=false; jwShut(); jwButtons();
+  log(id,"created the job"+(location.points.length?` · ${shapeLabel(locShape({ location }))}`:""));
+  for(let i=0;i<40&&!W(id);i++) await new Promise(r=>setTimeout(r,25));   // the snapshot that brings the new job in
+  const w=W(id); if(!w) return;
+  if(S.legendOff.has(w.statusId)){ S.legendOff.delete(w.statusId); renderLegend(); live().forEach(applyLegendTo); }   // a new job in a hidden status: switch that status on so it does not vanish
+  if(map&&S.tab==="map"&&pts(w).length) enterWOView(id); else openWO(id);
+  toast(`${P(id)} created`); }
+/* Every "New job" button lands here. A draft in this tab is resumed (a column's status preset still applies). */
+async function startCreate(init={},restore=null){
+  if(JW) return; closePop(); if(S.woView) exitWOView(); else if(S.open) closePeek();
+  let data=jwDefault(init); const saved=restore||jwDraft(); if(saved) data={ ...data, ...saved, init:{ ...(saved.init||{}), ...init } };
+  data.more={ ...(data.more||{}) };
+  const dlg=document.createElement("dialog"); dlg.id="job-wizard"; dlg.setAttribute("aria-labelledby","jw-h");
+  JW={ dialog:dlg, data, step:0, busy:false, home:null, sig:null, teamSig:null };
+  const ap=prop("asset"), wp=prop("worktype"), dp=prop("deadline"), rp=prop("reference"), more=jwMoreProps(), d=data;
+  const ex=f=>`<div class="jw-ex" data-for="${f}"><span>Examples</span>${JW_EXAMPLES[f].map(([l,t])=>`<button type="button" data-jw-example="${P(t)}" title="${P(t)}">${P(l)}</button>`).join("")}</div>`;
+  dlg.innerHTML=`<header class="jw-head"><div><span class="jw-cap">Jobs</span><h1 id="jw-h">New job</h1></div><span id="jw-saved"></span><button type="button" class="jw-x" id="jw-x" aria-label="Save draft and close">×</button></header>
+  <nav class="jw-steps" aria-label="Steps">${JW_STEPS.map((s,i)=>`<button type="button" data-jw-go="${i}"><span class="jw-n">${i+1}</span><span><b>${s.name}</b><small>${s.detail}</small></span></button>`).join("")}</nav>
+  <div class="jw-body"><main id="jw-main">
+  <section data-jw-panel="0"><div class="jw-hero"><span class="jw-cap">01 · People</span><h2 tabindex="-1">Who’s doing the work?</h2><p>Choose the people involved and give one of them the lead.</p></div>
+    <input id="jw-q" type="search" placeholder="Find someone — name or email" aria-label="Find people" autocomplete="off"><div id="jw-people"></div><div id="jw-team" class="jw-team"></div></section>
+  <section data-jw-panel="1" hidden><div class="jw-hero"><span class="jw-cap">02 · The work</span><h2 tabindex="-1">What needs to happen?</h2><p>A clear name and scope help everyone arrive prepared.</p></div>
+    <label class="jw-label" for="jw-title">Job name <small>Required</small></label><input id="jw-title" data-jw-field="title" maxlength="200" autocomplete="off" value="${P(d.title)}" placeholder="e.g. Tank T-1 shell UT survey">
+    <div class="jw-grid">${ap?`<div><label class="jw-label" for="jw-asset">${P(ap.name)} <small>Optional</small></label><select id="jw-asset" data-jw-field="asset"><option value="">Choose an asset</option>${S.assets.map(a=>`<option value="${P(a.tag)}" ${d.asset===a.tag?"selected":""}>${P(a.tag)}${a.name?" · "+P(a.name):""}</option>`).join("")}</select></div>`:""}${dp?`<div><label class="jw-label" for="jw-due">Due date <small>Optional</small></label><input id="jw-due" type="date" data-jw-field="deadline" value="${P(d.deadline)}"></div>`:""}</div>
+    <label class="jw-label" for="jw-equip">Equipment needed <small>Optional</small></label><input id="jw-equip" data-jw-field="equipment" autocomplete="off" value="${P(d.equipment)}" placeholder="e.g. Drone, UT probe, rope access kit">
+    ${wp?`<fieldset class="jw-fs"><legend>${P(wp.name)} <small>Select any that apply</small></legend>${jwChips(wp,d.methods,"methods")}</fieldset>`:""}
+    ${rp?`<label class="jw-label" for="jw-scope">${P(rp.name)} <small>Optional</small></label><textarea id="jw-scope" data-jw-field="scope" rows="3" placeholder="Scope: what should the team inspect, measure, or complete?">${P(d.scope)}</textarea>`:""}
+    ${more.length?`<details class="jw-more"${more.some(p=>!isEmpty(d.more[p.id]))?" open":""}><summary>More details <span>${P(more.map(p=>p.name).join(" · "))}</span></summary>${more.map(jwMoreField).join("")}</details>`:""}</section>
+  <section data-jw-panel="2" hidden><div class="jw-hero jw-whero"><div><span class="jw-cap">03 · Location</span><h2 tabindex="-1">Where is the work?</h2><p>Place a pin or outline the area on the model.</p></div><label class="jw-skip"><input id="jw-skip" type="checkbox" ${d.skip?"checked":""}> Add location later</label></div>
+    <div class="jw-tools"><div class="jw-modes" role="group" aria-label="Location type"><button type="button" data-jw-mode="pin">Pin</button><button type="button" data-jw-mode="area">Area</button></div><span class="jw-sp"></span><button type="button" id="jw-undo">Undo</button><button type="button" id="jw-clear">Clear</button><button type="button" id="jw-fit">Fit selection</button><button type="button" id="jw-site">Site overview</button></div>
+    <div id="jw-map-mount"></div><p id="jw-status" role="status"></p></section>
+  <section data-jw-panel="3" hidden><div class="jw-hero"><span class="jw-cap">04 · The outcome</span><h2 tabindex="-1">What will this job achieve?</h2><p>Give the team the context and a clear finish line.</p></div>
+    <label class="jw-label" for="jw-reason">Why does this job exist? <small>Optional</small></label><textarea id="jw-reason" data-jw-field="reason" rows="3" placeholder="e.g. Corrosion was flagged at the last walkdown. We need the condition before the next shutdown.">${P(d.reason)}</textarea>${ex("reason")}
+    <label class="jw-label" for="jw-outcome">What does done look like? <small>Optional</small></label><textarea id="jw-outcome" data-jw-field="outcome" rows="3" placeholder="e.g. A thickness report with marked-up photos and a recommendation on repairs.">${P(d.outcome)}</textarea>${ex("outcome")}</section>
+  </main><aside id="jw-summary" aria-label="Job preview"></aside></div>
+  <footer class="jw-foot"><div><span id="jw-count"></span><button type="button" id="jw-close">Save &amp; close</button><button type="button" id="jw-discard" hidden>Discard draft</button></div><p id="jw-error" role="alert"></p><button type="button" class="btn" id="jw-back" hidden>← Back</button><button type="button" class="btn primary" id="jw-next"></button></footer>`;
+  document.body.append(dlg);
+  dlg.oncancel=e=>{ e.preventDefault(); jwClose(); };   // Escape keeps the draft
+  $("#jw-x").onclick=$("#jw-close").onclick=jwClose; $("#jw-discard").onclick=jwDiscard;
+  $("#jw-back").onclick=()=>jwGo(JW.step-1); $("#jw-next").onclick=()=>JW.step===3?jwCreate():jwGo(JW.step+1);
+  $("#jw-q").oninput=jwPeople; $("#jw-q").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); dlg.querySelector("[data-jw-email]")?.click(); } };
+  dlg.addEventListener("input",e=>{ const f=e.target.dataset.jwField; if(f){ data[f]=e.target.value; $("#jw-error").textContent=""; jwReview(); jwSave(); return; }
+    const m=e.target.dataset.jwMore; if(m&&e.target.type!=="checkbox"){ data.more[m]=jwMoreValue(prop(m),e.target); jwSave(); } });
+  dlg.addEventListener("change",e=>{ const t=e.target;
+    if(t.dataset.jwField){ data[t.dataset.jwField]=t.value; jwReview(); jwSave(); }
+    if(t.name==="jw-lead"){ data.lead=t.value; jwReview(); jwSave(); }
+    if(t.name==="methods"){ data.methods=[...dlg.querySelectorAll('input[name="methods"]:checked')].map(x=>x.value); jwReview(); jwSave(); }
+    if(t.name?.startsWith("more:")){ const pid=t.name.slice(5), p=prop(pid), on=[...dlg.querySelectorAll(`input[name="${CSS.escape(t.name)}"]:checked`)].map(x=>x.value); data.more[pid]=p?.type==="select"?(on[0]||null):on; jwSave(); }
+    if(t.dataset.jwMore&&t.type==="checkbox"){ data.more[t.dataset.jwMore]=t.checked||null; jwSave(); } });
+  dlg.addEventListener("click",e=>{ const t=e.target;
+    const go=t.closest("[data-jw-go]"); if(go){ jwGo(+go.dataset.jwGo); return; }
+    const per=t.closest("[data-jw-person]"); if(per){ jwToggle(per.dataset.jwPerson); return; }
+    const em=t.closest("[data-jw-email]"); if(em){ data.people.push(jwRec({ email:em.dataset.jwEmail })); data.lead=jwLead(data); $("#jw-q").value=""; jwPeople(); jwSave(); $("#jw-q").focus(); return; }
+    const md=t.closest("[data-jw-mode]"); if(md){ const m=md.dataset.jwMode; if(m!==data.mode){ data.mode=m; if(m==="pin") data.location.points=data.location.points.slice(0,1); data.location.closed=m==="area"&&data.location.points.length>=3; } data.skip=false; $("#jw-skip").checked=false; jwDrawMap(); jwReview(); jwSave(); return; }
+    const x=t.closest("[data-jw-example]"); if(x){ const f=x.closest(".jw-ex").dataset.for, ta=$("#jw-"+f), cur=ta.value.trimEnd(); ta.value=cur?cur+" "+x.dataset.jwExample:x.dataset.jwExample; data[f]=ta.value; $("#jw-error").textContent=""; jwReview(); jwSave(); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } });
+  $("#jw-skip").onchange=e=>{ data.skip=e.target.checked; $("#jw-error").textContent=""; jwDrawMap(); jwReview(); jwSave(); };
+  $("#jw-undo").onclick=()=>{ data.location.points.pop(); data.location.closed=data.mode==="area"&&data.location.points.length>=3; jwDrawMap(); jwReview(); jwSave(); };
+  $("#jw-clear").onclick=()=>{ data.location={ points:[], height:0, closed:false }; jwDrawMap(); jwReview(); jwSave(); };
+  $("#jw-fit").onclick=jwFit; $("#jw-site").onclick=()=>{ if(map) fly(siteCam(),900); };
+  dlg.showModal(); jwPeople(); jwGo(Math.max(0,Math.min(3,data.step||0))); }
+jwButtons();
+if(window.__t) Object.defineProperty(window.__t,"JW_MAP",{ get:()=>JW_MAP });   // test harness (mock mode only)
 
 /* =====================================================================
    DEMO — public sandbox build. Every visitor gets the same sample site in their own browser (in-memory store, no
