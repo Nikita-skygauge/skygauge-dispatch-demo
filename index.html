@@ -432,13 +432,14 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 .jw-none{padding:16px;text-align:center;color:var(--ink-3);font-size:13px}
 .jw-team{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2)}.jw-team b{display:block;font-size:13px;font-weight:600}.jw-team small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px}
 .jw-stack{display:flex;padding-left:6px;flex:none}.jw-stack .jw-av{width:28px;height:28px;font-size:11px;margin-left:-6px;border:2px solid var(--panel-2)}
-.jw-whero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}.jw-skip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);white-space:nowrap;cursor:pointer}
-.jw-tools{display:flex;gap:6px;align-items:center;margin-bottom:10px}.jw-sp{flex:1}.jw-modes{display:flex;gap:4px}
+.jw-mhero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:12px}.jw-mhero h2{margin-bottom:0}
+.jw-tools{display:flex;gap:6px;align-items:center}.jw-modes{display:flex;gap:4px;margin-right:6px}
 .jw-tools button{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;font-size:13px;padding:7px 12px;min-height:36px;cursor:pointer}.jw-tools button:hover:not(:disabled){background:var(--panel-2)}.jw-tools button:disabled{opacity:.45;cursor:default}
 .jw-modes [aria-pressed=true]{background:var(--steel-2);border-color:var(--accent);color:var(--accent);font-weight:600}
-#jw-map-mount{position:relative;height:clamp(260px,44vh,460px);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--canvas)}
+#jw-map-mount{position:relative;flex:1;min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--canvas)}
 #jw-map-mount #canvas-wrap{position:absolute!important;inset:0!important;width:100%;height:100%}#jw-map-mount :is(#mode,#hud,#orbit,#legend,#sel-hint,#act-box,#draw-preview){display:none!important}
-#jw-status{font-size:13px;color:var(--ink-3);margin:8px 0 0}#job-wizard.jw-mapstep .jw-body{grid-template-columns:minmax(0,1fr)}#job-wizard.jw-mapstep #jw-summary{display:none}
+#jw-status{font-size:13px;color:var(--ink-3);margin:8px 0 0}#job-wizard.jw-mapstep{width:min(1400px,calc(100vw - 32px));height:calc(100dvh - 32px)}   /* the map step gets the window; the map fills it */
+#job-wizard.jw-mapstep .jw-body{grid-template-columns:minmax(0,1fr)}#job-wizard.jw-mapstep #jw-summary{display:none}#job-wizard.jw-mapstep #jw-main{display:flex;flex-direction:column;padding:18px 24px 10px}#job-wizard.jw-mapstep [data-jw-panel="2"]{display:flex;flex-direction:column;flex:1;min-height:0}
 .jw-ex{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px}.jw-ex>span{font-size:12px;color:var(--ink-3);margin-right:2px}
 .jw-ex button{border:1px dashed var(--line);background:var(--panel-2);color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12px;min-height:30px;cursor:pointer}.jw-ex button:hover{border-style:solid;border-color:var(--accent);color:var(--accent)}
 #jw-summary{padding:26px 22px;background:var(--panel-2);border-left:1px solid var(--line);overflow-y:auto;min-height:0}#jw-summary h3{font-size:18px;line-height:1.35;font-weight:600;margin:8px 0 4px;overflow-wrap:anywhere}.jw-intro{font-size:13px;color:var(--ink-3);margin:0 0 14px}
@@ -455,9 +456,9 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   .jw-body{display:block;overflow-y:auto}#jw-main{padding:20px 16px;overflow:visible}#jw-summary{display:none}
   #job-wizard:has([data-jw-panel="3"]:not([hidden])) #jw-summary{display:block;border:1px solid var(--line);border-radius:12px;margin:0 16px 20px;padding:18px}
   .jw-hero h2{font-size:23px}.jw-grid{grid-template-columns:1fr 150px;gap:10px}#job-wizard :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
-  .jw-whero{display:block}.jw-whero .jw-skip{margin-top:10px}
-  .jw-tools{display:grid;grid-template-columns:repeat(4,1fr)}.jw-modes{grid-column:span 2}.jw-modes button{flex:1}.jw-sp{display:none}#jw-fit,#jw-site{grid-column:span 2}.jw-tools button{min-height:40px;padding:6px 8px}
-  #jw-map-mount{height:max(240px,calc(100dvh - 500px))}#job-wizard.jw-mapstep #jw-main{padding:16px}
+  .jw-mhero{display:block}.jw-mhero .jw-tools{margin-top:12px}#job-wizard.jw-mapstep{width:100vw;height:100dvh}
+  .jw-tools{display:grid;grid-template-columns:repeat(4,1fr)}.jw-modes{grid-column:span 2}.jw-modes{margin-right:0}.jw-modes button{flex:1}.jw-tools button{min-height:40px;padding:6px 8px}
+  #jw-map-mount{flex:none;height:max(260px,calc(100dvh - 370px))}#job-wizard.jw-mapstep #jw-main{padding:16px;display:block}
   .jw-foot{padding:10px 14px calc(10px + var(--sab,0px));flex-wrap:wrap;gap:8px}.jw-foot>div{flex-direction:column;align-items:flex-start;gap:2px}#jw-count,.jw-to{display:none}
   #jw-error{order:-1;width:100%;max-width:none}.jw-foot .btn{min-height:44px;padding:0 16px} }
 /* Job brief on the panel; Lead in the People list */
@@ -3492,8 +3493,9 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 /* =====================================================================
    NEW JOB (6 Oct 2026): one dialog, four steps — Who → What → Where → Why. Only the name is required.
    Nothing is written until Create job. The unfinished draft lives in this tab's sessionStorage (LSK.draft): it survives a
-   reload, other tabs never see it. The Where step borrows the real map (#canvas-wrap moves into the dialog, JW.home set) and parks
-   every other job's overlay while it is there; handing the map back clears JW.home first, then redraws them (syncOverlays). The lead is a flag on one
+   reload, other tabs never see it. The Where step borrows the real map (#canvas-wrap moves into the dialog, JW.home set; the dialog grows to the
+   window and the map fills it) and parks every other job's overlay while it is there; the location is optional (only a
+   half-drawn area blocks Continue); handing the map back clears JW.home first, then redraws them (syncOverlays). The lead is a flag on one
    tagged person ({ …, lead:true }); equipment / reason / outcome are fields on the job (the Job brief on the panel).
    ===================================================================== */
 let JW=null; const JW_MAP=[];
@@ -3507,8 +3509,8 @@ const jwKey = x => (x.email||x.uid||"").toLowerCase();
 const jwRec = x => { const m=S.members.find(mm=>(x.uid&&mm.id===x.uid)||(x.email&&(mm.email||"").toLowerCase()===x.email.toLowerCase())); return m?{ uid:m.id, name:m.name, email:m.email }:{ email:(x.email||"").toLowerCase(), ...(x.name?{ name:x.name }:{}) }; };
 const jwLead = d => d.people.some(x=>jwKey(x)===d.lead)?d.lead:(d.people[0]?jwKey(d.people[0]):"");
 const jwMe = x => (x.uid&&x.uid===S.user?.uid)||(!!x.email&&x.email.toLowerCase()===(S.user?.email||"").toLowerCase());
-function jwDefault(init={}){ return { step:0, init, people:[], lead:"", title:init.title||"", asset:"", deadline:"", equipment:"", methods:[], scope:"", more:{}, reason:"", outcome:"", location:{ points:[], height:0, closed:false }, mode:"pin", skip:false }; }
-function jwHas(d){ return !!(d.title.trim()||d.people.length||d.asset||d.deadline||d.equipment.trim()||d.methods.length||d.scope.trim()||Object.values(d.more).some(v=>!isEmpty(v)&&v!==false)||d.reason.trim()||d.outcome.trim()||d.location.points.length||d.skip); }
+function jwDefault(init={}){ return { step:0, init, people:[], lead:"", title:init.title||"", asset:"", deadline:"", equipment:"", methods:[], scope:"", more:{}, reason:"", outcome:"", location:{ points:[], height:0, closed:false }, mode:"pin" }; }
+function jwHas(d){ return !!(d.title.trim()||d.people.length||d.asset||d.deadline||d.equipment.trim()||d.methods.length||d.scope.trim()||Object.values(d.more).some(v=>!isEmpty(v)&&v!==false)||d.reason.trim()||d.outcome.trim()||d.location.points.length); }
 function jwDraft(){ try{ return JSON.parse(sessionStorage.getItem(LSK.draft)||"null"); }catch{ return null; } }
 function jwSave(){ if(!JW) return; const has=jwHas(JW.data);
   try{ if(has) sessionStorage.setItem(LSK.draft,JSON.stringify(JW.data)); else sessionStorage.removeItem(LSK.draft); $("#jw-saved").textContent=has?"Draft saved in this tab":""; }catch{ $("#jw-saved").textContent=has?"Draft kept while open":""; }
@@ -3543,7 +3545,7 @@ function jwMoreField(p){ const v=JW.data.more[p.id], id="jw-m-"+p.id;
 function jwMoreValue(p,el){ if(p.type==="checkbox") return el.checked||null; if(p.type==="date") return el.value?{ start:el.value, end:null, time:null }:null; if(p.type==="number") return el.value===""?null:+el.value; return el.value.trim()||null; }
 
 /* ---------- the summary beside the form (on phones: before Create only) ---------- */
-function jwWhere(d){ const n=d.location.points.length; return d.skip?"Add location later":!n?"Not placed yet":d.location.closed?`Area · ${n} corners`:d.mode==="area"?`Area · ${n} ${n===1?"corner":"corners"} so far`:"Pin on the model"; }
+function jwWhere(d){ const n=d.location.points.length; return !n?"Not placed yet":d.location.closed?`Area · ${n} corners`:d.mode==="area"?`Area · ${n} ${n===1?"corner":"corners"} so far`:"Pin on the model"; }
 function jwReview(){ if(!JW) return; const d=JW.data, ppl=d.people, lead=ppl.find(x=>jwKey(x)===jwLead(d)), a=d.asset?asset(d.asset):null;
   const methods=(prop("worktype")?.options||[]).filter(o=>d.methods.includes(o.id)).map(o=>o.name);
   const row=(i,label,main,sub)=>`<div class="jw-row"><div><span>${label}</span>${JW.step!==i?`<button type="button" data-jw-go="${i}">Edit</button>`:""}</div><strong>${P(main)}</strong>${sub?`<small>${P(sub)}</small>`:""}</div>`;
@@ -3562,7 +3564,7 @@ function jwReview(){ if(!JW) return; const d=JW.data, ppl=d.people, lead=ppl.fin
 function jwError(msg,field){ $("#jw-error").textContent=msg; field?.focus(); }
 function jwValid(step){ const d=JW.data;
   if(step===1&&!d.title.trim()){ jwError("Give the job a name before continuing.",$("#jw-title")); return false; }
-  if(step===2&&!d.skip){ const n=d.location.points.length; if(!n){ jwError("Choose a spot on the model, or tick Add location later."); return false; } if(d.mode==="area"&&n<3){ jwError("An area needs at least three corners. Keep clicking the model, or use a pin."); return false; } }
+  if(step===2){ const n=d.location.points.length; if(d.mode==="area"&&n&&n<3){ jwError("An area needs at least three corners. Add another, or Clear to place it later."); return false; } }   // nothing placed is fine: the location can come later
   return true; }
 function jwGo(step){ if(!JW||JW.busy) return;
   for(let i=0;i<step;i++) if(!jwValid(i)){ if(i!==JW.step){ jwGo(i); jwValid(i); } return; }
@@ -3582,18 +3584,18 @@ function jwAttachMap(){ const wrap=$("#canvas-wrap"); JW.home={ parent:wrap.pare
 function jwDetachMap(){ if(!JW) return; killAll(JW_MAP); JW_MAP.length=0; JW.sig=null;
   if(JW.home){ const wrap=$("#canvas-wrap"), h=JW.home; h.parent.insertBefore(wrap,h.next); JW.home=null; }
   document.body.classList.remove("jw-map"); if(map) map.style.cursor=""; syncOverlays(); }
-function jwFit(){ if(!map||JW?.step!==2) return; const p=JW.data.skip?[]:JW.data.location.points; if(!p.length){ fly(siteCam(),900); return; }
+function jwFit(){ if(!map||JW?.step!==2) return; const p=JW.data.location.points; if(!p.length){ fly(siteCam(),900); return; }
   const e=extentM(bbox(p)); fly({ center:{ ...centroid(p), altitude:minGround(p) }, range:Math.max(180,Math.max(e.ns,e.ew)*3), tilt:55, heading:map.heading??-15 },900); }
-function jwDrawMap(){ if(!JW||JW.step!==2) return; const d=JW.data, p=d.skip?[]:d.location.points, n=p.length;
-  $("#jw-status").textContent=d.skip?"You can place this job later from its page.":!n?(d.mode==="area"?"Click at least three corners on the model to outline the work area.":"Click the model to place a pin. Click again to move it."):d.mode==="area"?`${n} ${n===1?"corner":"corners"} placed${n<3?" · add another corner":" · area ready"}`:"Pin placed · click the model to move it.";
-  $("#jw-undo").disabled=!n; $("#jw-clear").disabled=!n; $("#jw-fit").disabled=!map; $("#jw-site").disabled=!map;
+function jwDrawMap(){ if(!JW||JW.step!==2) return; const d=JW.data, p=d.location.points, n=p.length;
+  $("#jw-status").textContent=!n?(d.mode==="area"?"Click at least three corners on the model to outline the work area — or continue and place it later from the job.":"Click the model to place a pin — or continue and place it later from the job."):d.mode==="area"?`${n} ${n===1?"corner":"corners"} placed${n<3?" · add another corner":" · area ready"}`:"Pin placed · click the model to move it.";
+  $("#jw-undo").disabled=!n; $("#jw-clear").disabled=!n;
   JW.dialog.querySelectorAll("[data-jw-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.jwMode===d.mode));
-  if(!map||!lib) return; map.style.cursor=d.skip?"":"crosshair";
+  if(!map||!lib) return; map.style.cursor="crosshair";
   const sig=JSON.stringify([p,d.mode]); if(JW.sig===sig) return; JW.sig=sig; killAll(JW_MAP); JW_MAP.length=0;
   const mode=surf(p), push=el=>{ if(el) JW_MAP.push(el); };
   if(n>1){ const closed=d.mode==="area"&&n>=3; push(mk3(closed?"pg":"pl",{ altitudeMode:mode, path:[...p,...(closed?[p[0]]:[])].map(a=>atSurf(a,0.9,mode)), strokeColor:"#FF6A00", strokeWidth:4, fillColor:"rgba(255,106,0,0.22)" })); }
   p.forEach((a,i)=>push(mk3("m",{ position:atSurf(a,1.5,mode), altitudeMode:mode, tpl:pinTemplate("#FF6A00",1.1,"#fff",n>1?i+1:undefined).tpl }))); }
-function jwMapClick(p){ if(!JW||JW.step!==2||JW.data.skip) return; if(!inPoly(p,BOUNDARY())){ jwError("Choose a spot inside the site boundary."); return; }
+function jwMapClick(p){ if(!JW||JW.step!==2) return; if(!inPoly(p,BOUNDARY())){ jwError("Choose a spot inside the site boundary."); return; }
   const d=JW.data; if(d.mode==="pin") d.location.points=[p]; else d.location.points.push(p); d.location.closed=d.mode==="area"&&d.location.points.length>=3;
   $("#jw-error").textContent=""; jwDrawMap(); jwReview(); jwSave(); }
 
@@ -3613,7 +3615,7 @@ async function jwCreate(){
   if(d.deadline&&prop("deadline")) values.deadline={ start:d.deadline, end:null, time:null };
   if(d.scope.trim()&&prop("reference")) values.reference=d.scope.trim();
   for(const [pid,v] of Object.entries(d.more)) if(prop(pid)&&!isEmpty(v)&&v!==false) values[pid]=v;
-  const location=d.skip?{ points:[], height:0, closed:false }:structuredClone(d.location);
+  const location=structuredClone(d.location);
   JW.busy=true; $("#jw-next").disabled=true; $("#jw-next").textContent="Creating job…";
   let id; try{ id=await createWO({ ...d.init, title:d.title.trim(), values, location, equipment:d.equipment.trim(), reason:d.reason.trim(), outcome:d.outcome.trim(), quiet:true }); }
   catch(e){ JW.busy=false; $("#jw-next").disabled=false; $("#jw-next").textContent="Create job"; jwError("The job could not be saved — "+(e?.message||e)+". Your draft is still here; try again."); return; }
@@ -3629,7 +3631,7 @@ async function jwCreate(){
 async function startCreate(init={},restore=null){
   if(JW) return; closePop(); if(S.woView) exitWOView(); else if(S.open) closePeek();
   let data=jwDefault(init); const saved=restore||jwDraft(); if(saved) data={ ...data, ...saved, init:{ ...(saved.init||{}), ...init } };
-  data.more={ ...(data.more||{}) };
+  data.more={ ...(data.more||{}) }; delete data.skip;   // drafts saved before 6 Oct had an "Add location later" tick
   const dlg=document.createElement("dialog"); dlg.id="job-wizard"; dlg.setAttribute("aria-labelledby","jw-h");
   JW={ dialog:dlg, data, step:0, busy:false, home:null, sig:null, teamSig:null };
   const ap=prop("asset"), wp=prop("worktype"), dp=prop("deadline"), rp=prop("reference"), more=jwMoreProps(), d=data;
@@ -3646,8 +3648,8 @@ async function startCreate(init={},restore=null){
     ${wp?`<fieldset class="jw-fs"><legend>${P(wp.name)} <small>Select any that apply</small></legend>${jwChips(wp,d.methods,"methods")}</fieldset>`:""}
     ${rp?`<label class="jw-label" for="jw-scope">${P(rp.name)} <small>Optional</small></label><textarea id="jw-scope" data-jw-field="scope" rows="3" placeholder="Scope: what should the team inspect, measure, or complete?">${P(d.scope)}</textarea>`:""}
     ${more.length?`<details class="jw-more"${more.some(p=>!isEmpty(d.more[p.id]))?" open":""}><summary>More details <span>${P(more.map(p=>p.name).join(" · "))}</span></summary>${more.map(jwMoreField).join("")}</details>`:""}</section>
-  <section data-jw-panel="2" hidden><div class="jw-hero jw-whero"><div><span class="jw-cap">03 · Location</span><h2 tabindex="-1">Where is the work?</h2><p>Place a pin or outline the area on the model.</p></div><label class="jw-skip"><input id="jw-skip" type="checkbox" ${d.skip?"checked":""}> Add location later</label></div>
-    <div class="jw-tools"><div class="jw-modes" role="group" aria-label="Location type"><button type="button" data-jw-mode="pin">Pin</button><button type="button" data-jw-mode="area">Area</button></div><span class="jw-sp"></span><button type="button" id="jw-undo">Undo</button><button type="button" id="jw-clear">Clear</button><button type="button" id="jw-fit">Fit selection</button><button type="button" id="jw-site">Site overview</button></div>
+  <section data-jw-panel="2" hidden><div class="jw-hero jw-mhero"><div><span class="jw-cap">03 · Location</span><h2 tabindex="-1">Where is the work?</h2></div>
+    <div class="jw-tools"><div class="jw-modes" role="group" aria-label="Location type"><button type="button" data-jw-mode="pin">Pin</button><button type="button" data-jw-mode="area">Area</button></div><button type="button" id="jw-undo">Undo</button><button type="button" id="jw-clear">Clear</button></div></div>
     <div id="jw-map-mount"></div><p id="jw-status" role="status"></p></section>
   <section data-jw-panel="3" hidden><div class="jw-hero"><span class="jw-cap">04 · The outcome</span><h2 tabindex="-1">What will this job achieve?</h2><p>Give the team the context and a clear finish line.</p></div>
     <label class="jw-label" for="jw-reason">Why does this job exist? <small>Optional</small></label><textarea id="jw-reason" data-jw-field="reason" rows="3" placeholder="e.g. Corrosion was flagged at the last walkdown. We need the condition before the next shutdown.">${P(d.reason)}</textarea>${ex("reason")}
@@ -3671,12 +3673,10 @@ async function startCreate(init={},restore=null){
     const go=t.closest("[data-jw-go]"); if(go){ jwGo(+go.dataset.jwGo); return; }
     const per=t.closest("[data-jw-person]"); if(per){ jwToggle(per.dataset.jwPerson); return; }
     const em=t.closest("[data-jw-email]"); if(em){ data.people.push(jwRec({ email:em.dataset.jwEmail })); data.lead=jwLead(data); $("#jw-q").value=""; jwPeople(); jwSave(); $("#jw-q").focus(); return; }
-    const md=t.closest("[data-jw-mode]"); if(md){ const m=md.dataset.jwMode; if(m!==data.mode){ data.mode=m; if(m==="pin") data.location.points=data.location.points.slice(0,1); data.location.closed=m==="area"&&data.location.points.length>=3; } data.skip=false; $("#jw-skip").checked=false; jwDrawMap(); jwReview(); jwSave(); return; }
+    const md=t.closest("[data-jw-mode]"); if(md){ const m=md.dataset.jwMode; if(m!==data.mode){ data.mode=m; if(m==="pin") data.location.points=data.location.points.slice(0,1); data.location.closed=m==="area"&&data.location.points.length>=3; } jwDrawMap(); jwReview(); jwSave(); return; }
     const x=t.closest("[data-jw-example]"); if(x){ const f=x.closest(".jw-ex").dataset.for, ta=$("#jw-"+f), cur=ta.value.trimEnd(); ta.value=cur?cur+" "+x.dataset.jwExample:x.dataset.jwExample; data[f]=ta.value; $("#jw-error").textContent=""; jwReview(); jwSave(); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } });
-  $("#jw-skip").onchange=e=>{ data.skip=e.target.checked; $("#jw-error").textContent=""; jwDrawMap(); jwReview(); jwSave(); };
   $("#jw-undo").onclick=()=>{ data.location.points.pop(); data.location.closed=data.mode==="area"&&data.location.points.length>=3; jwDrawMap(); jwReview(); jwSave(); };
   $("#jw-clear").onclick=()=>{ data.location={ points:[], height:0, closed:false }; jwDrawMap(); jwReview(); jwSave(); };
-  $("#jw-fit").onclick=jwFit; $("#jw-site").onclick=()=>{ if(map) fly(siteCam(),900); };
   dlg.showModal(); jwPeople(); jwGo(Math.max(0,Math.min(3,data.step||0))); }
 jwButtons();
 if(window.__t) Object.defineProperty(window.__t,"JW_MAP",{ get:()=>JW_MAP });   // test harness (mock mode only)
