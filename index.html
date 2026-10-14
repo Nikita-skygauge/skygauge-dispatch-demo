@@ -188,6 +188,12 @@ body.note-view #peek{box-shadow:inset 0 0 0 2px #00FFE5} body.note-view #pk-exit
 .kcard:hover{border-color:var(--accent)}.kcard.drag{opacity:.45}.kcard.hl{outline:2px solid var(--sel)}
 .kcard .id{font-family:var(--mono);font-size:11px;color:var(--ink-3)}.kcard .t{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
 .kcard .m{display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--ink-2)}
+/* board card rows (14 Oct 2026): what it is · one attention line · people, due, number */
+.kcard{gap:6px}.kcard .km{font-size:12px;color:var(--ink-2);overflow-wrap:anywhere}
+.kcard .kflag{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px}
+.kflag.wait{background:rgba(232,169,58,.16);color:var(--warn)}.kflag.go{background:rgba(47,201,138,.16);color:var(--ok)}
+.kcard .kf{display:flex;align-items:center;gap:8px;min-height:24px;padding-top:6px;margin-top:2px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3)}
+.kcard .kf .sp{flex:1}.kcard .kdue{white-space:nowrap}.kcard .kdue.late{color:var(--crit);font-weight:600}.kcard .kdue.soon{color:var(--warn);font-weight:600}.kcard .krep{color:var(--ink-3)}
 .kadd{border:0;background:transparent;color:var(--ink-3);text-align:left;padding:8px 12px;cursor:pointer;font-size:12.5px}.kadd:hover{color:var(--ink);background:var(--panel-2)}
 .kempty{color:var(--ink-3);font-size:12px;padding:14px 8px;text-align:center}
 table.tbl{border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:12.5px;min-width:100%}
@@ -358,9 +364,8 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 #notices .st.scheduled{color:var(--accent)}#notices .st.failed{color:var(--crit)}#notices .st.sent{color:var(--ink-2)}
 @media (max-width:860px){ .pop .nj .in{font-size:16px} }
 /* Job brief on the panel; Lead in the People list */
-.brief .bf{display:block;margin:0 0 6px}.brief .bfl{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:2px}
-.brief .bft{width:100%;font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px;margin-left:-7px;resize:none;overflow:hidden;min-height:30px;display:block}
-.brief .bft:hover{background:var(--panel-2)}.brief .bft:focus{background:var(--panel);border-color:var(--line)}.brief .bft::placeholder{color:var(--ink-3);opacity:.8}
+.brief .dh{cursor:pointer}.brief .bft{width:100%;font:inherit;font-size:13.5px;line-height:1.5;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:none;overflow:hidden;min-height:64px;display:block}
+.brief .bft:focus{background:var(--panel);border-color:var(--accent);outline:none}.brief .bft::placeholder{color:var(--ink-3);opacity:.8}
 .pop .plead{border:1px solid var(--line);background:var(--panel);color:var(--ink-3);border-radius:999px;font-size:11.5px;padding:2px 9px;cursor:pointer;flex:none}.pop .plead.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 @media (max-width:860px){ .brief .bft{font-size:16px} }
 
@@ -815,7 +820,6 @@ async function createWO(init={}){
   const id=`J-${yy}-${String(seq).padStart(3,"0")}`;
   const st=init.statusId||defaultStatus("todo")?.id;
   const w={ seq, title:init.title||"", statusId:st, values:init.values||{}, location:init.location||{points:[],height:0,closed:false}, created:now(), createdBy:userRef(), edited:now(), editedBy:userRef(), trashed:false, draft:!!init.draft, completedAt:status(st)?.group==="complete"?now():null };
-  for(const k of ["equipment","reason","outcome"]) if(init[k]) w[k]=init[k];   // the Job brief
   if(init.links) w.links=init.links; if(init.enabling) w.enabling=init.enabling; if(init.holdReason) w.holdReason=init.holdReason; if(init.series) w.series=init.series;
   await DB.set(WO_COL+"/"+id,w);
   if(!init.draft&&!init.quiet) log(id,"created the job");
@@ -916,7 +920,7 @@ async function purgeWO(id){ if(S.open===id){ if(S.woView) exitWOView(); else clo
   if(series){ const patch={ "schedule.fired":null }; if(isDone(w0)&&w0.completedAt){ const cur=AUX?.(series)?.schedule?.lastDone||""; if(w0.completedAt>cur) patch["schedule.lastDone"]=w0.completedAt; }   // its completion still counts for "N months after the last one"
     DB.update("workspace/main/automations/"+series,patch,QUIET).catch(()=>{}); } }   // an "after completion" series keys its next fire on this job existing: let it fire again
 function purgeTrash(){ const cut=Date.now()-30*86400000; trashed().filter(w=>w.trashedAt&&new Date(w.trashedAt)<cut).forEach(w=>purgeWO(w.id)); const dcut=Date.now()-86400000; S.wos.filter(w=>w.draft&&w.createdBy?.uid===S.user.uid&&new Date(w.created)<dcut).forEach(w=>purgeWO(w.id)); }
-async function duplicateWO(id){ const w=W(id); if(!w) return; const nid=await createWO({ title:(w.title||"Untitled")+" (copy)", statusId:w.statusId, values:structuredClone(w.values||{}), location:structuredClone(w.location), equipment:w.equipment, reason:w.reason, outcome:w.outcome }); openWO(nid); }
+async function duplicateWO(id){ const w=W(id); if(!w) return; const nid=await createWO({ title:(w.title||"Untitled")+" (copy)", statusId:w.statusId, values:structuredClone(w.values||{}), location:structuredClone(w.location) }); openWO(nid); }
 async function saveSchema(){ S.schema.version=(S.schema.version||1); await DB.set("workspace/schema",S.schema); renderAll(); }
 
 /* a value of the wrong shape (a type changed elsewhere, old data) must never throw: lists are coerced, objects read loosely */
@@ -936,7 +940,7 @@ function describe(p,v){
 }
 function isEmpty(v){ return v==null||v===""||(Array.isArray(v)&&!v.length)||(typeof v==="object"&&!Array.isArray(v)&&!v.start&&!v.length); }
 function textOf(w){ // for search
-  const parts=[w.id,w.title,status(w.statusId)?.name,w.equipment,w.reason,w.outcome];
+  const parts=[w.id,w.title,status(w.statusId)?.name,w.equipment,w.reason,w.outcome];   // equipment/reason/outcome: the Job brief, 6–14 Oct; still found by search
   for(const p of props()){ const v=w.values?.[p.id]; if(!isEmpty(v)) parts.push(describe(p,v)); }
   return parts.join(" ").toLowerCase();
 }
@@ -1255,13 +1259,13 @@ function renderRecord(){
   $("#pbody").innerHTML=`
     <div class="trow"><textarea class="ptitle" id="ptitle" rows="1" placeholder="Untitled">${P(w.title||"")}</textarea><div class="pv" data-status>${statusPill(w)}</div></div>
     ${basicsHTML(w)}
-    ${propsHTML(w)}
-    ${briefHTML(w)}
     ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span class="hint">Not placed yet</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Place on map</button>`}</div>`
     :`<section class="ps"><h3 style="cursor:default">Job area <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${areaTxt}</span></h3><div class="locbox editing">
       ${P0.length?`<div class="ptlist">${P0.map((p,i)=>`<div class="ptrow ${V.draw?.sel===i?"sel":""}" data-i="${i}"><span class="ptn">${i+1}</span><span class="mono">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><button class="btn sm" data-mv="${i}" title="Click the model to move this point">Move</button><button class="btn sm" data-rm="${i}" title="Remove this point">✕</button></div>`).join("")}</div>`:`<div class="hint">${isMobile()?"Tap":"Click"} the model: one point, more for a line, then point ① to close an area.</div>`}
       <div class="acts">${locKindW(w)==="area"?`<label class="hint" style="display:flex;align-items:center;gap:4px">Height <input class="in mono" id="l-h" type="number" min="0" value="${locHeight(w)}" style="width:64px;padding:2px 6px"> m <span class="hint">(0 = flat)</span></label>`:""}
       <button class="btn sm teal" id="l-done" style="margin-left:auto">Done</button></div></div></section>`}
+    ${propsHTML(w)}
+    ${descHTML(w)}
     ${typeof linksStripHTML==="function"?linksStripHTML(w):""}
     ${typeof autoStripHTML==="function"?autoStripHTML(w):""}
     ${notesHTML()}
@@ -1276,9 +1280,10 @@ function renderRecord(){
   $$("#pbody .pv[data-edit]").forEach(el=>el.onclick=e=>{ if(e.target.closest("a")) return; startEdit(prop(el.dataset.edit),w,el); });   // the whole cell opens its editor (assets are edited in the site register)
   $$("#pbody .pn[title]").forEach(el=>el.onclick=()=>propertyMenu(prop(el.closest(".prop").dataset.pid),el));
     $("#add-prop")?.addEventListener("click",e=>propertyCreator(e.currentTarget,p=>{ showEmpty=true; renderRecord(); const el=document.querySelector(`#pbody .pv[data-edit="${p.id}"]`); if(el&&p.type!=="checkbox") startEdit(p,w,el); }));
-  $$("#pbody [data-brief]").forEach(t=>{ const k=t.dataset.brief, fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
-    t.onkeydown=e=>{ if(e.key==="Escape"){ t.value=w[k]||""; fit(); t.blur(); e.stopPropagation(); } };
-    t.onblur=()=>{ const v=t.value.trim(), J=W(w.id)||w; if(v===(J[k]||"")) return; J[k]=v; flashSaved(t,()=>DB.update(WO_COL+"/"+w.id,{ [k]:v, ...stamp() })).catch(()=>{}); log(w.id,`${v?"updated":"cleared"} ${BRIEF.find(b=>b[0]===k)[1].toLowerCase()}`); }; });
+  { const t=$("#desc-t"), dp=descProp(); if(t&&dp){ const fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
+    t.onkeydown=e=>{ if(e.key==="Escape"){ t.value=w.values?.[dp.id]||""; fit(); t.blur(); e.stopPropagation(); } };
+    t.onblur=()=>{ const v=t.value.trim(), J=W(w.id)||w; if(v===(J.values?.[dp.id]||"")) return; J.values={ ...(J.values||{}), [dp.id]:v }; flashSaved(t,()=>DB.update(WO_COL+"/"+w.id,{ ["values."+dp.id]:v, ...stamp() })).catch(()=>{}); log(w.id,`${v?"updated":"cleared"} the ${dp.name.toLowerCase()}`); if(typeof autoEvent==="function") autoEvent("changed",J,{ pid:dp.id }); };
+    $("#desc .dh").onclick=e=>propertyMenu(dp,e.currentTarget); } }
   $("#act-h").onclick=()=>{ showAct=!showAct; renderRecord(); };
   $("#l-add")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
   $("#l-edit")?.addEventListener("click",()=>{ editLoc=w.id; if(!S.woView) enterWOView(w.id); addPoints(w.id); renderRecord(); });
@@ -1299,9 +1304,12 @@ function dueInfo(w){ const v=w.values?.deadline; if(isEmpty(v)) return null; con
   if(isDone(w)) return { cls:"ok", sub:w.completedAt?`Completed ${new Date(w.completedAt).toLocaleDateString(undefined,{ month:"short", day:"numeric" })}`:"Completed" };
   if(d<0) return { cls:"late", sub:`${-d} day${d===-1?"":"s"} overdue` }; if(d===0) return { cls:"soon", sub:"Today" }; if(d===1) return { cls:"soon", sub:"Tomorrow" };
   if(d<=2) return { cls:"soon", sub:`in ${d} days` }; return { cls:"", sub:`in ${d} days` }; }
-/* Job brief (new-job dialog, 6 Oct 2026): equipment, why the job exists, what done looks like. Fields on the job, edited in place. */
-const BRIEF=[["equipment","Equipment needed","Add equipment or tools"],["reason","Why this job exists","Give the team the context"],["outcome","What done looks like","The report, decision, or finished work you expect"]];
-function briefHTML(w){ return `<section class="ps brief" id="brief"><h3 style="cursor:default">Job brief</h3>${BRIEF.map(([k,l,ph])=>`<label class="bf"><span class="bfl">${l}</span><textarea class="bft" data-brief="${k}" rows="1" placeholder="${ph}">${P(w[k]||"")}</textarea></label>`).join("")}</section>`; }
+/* Description (14 Oct 2026, Nikita: "just the job description"): the text property `reference`, shown as one box under the
+   properties instead of in their grid. Its header opens the usual property menu (rename, change type); as another type it
+   goes back into the grid. Replaced the Job brief (equipment / why / done-looks-like, 6 Oct). */
+const descProp=()=>{ const p=prop("reference"); return p&&p.type==="text"?p:null; };
+function descHTML(w){ const p=descProp(); if(!p) return "";
+  return `<section class="ps brief" id="desc"><h3 class="dh" title="${P(p.name)} · ${TYPE_LABEL[p.type]}">${P(p.name)}</h3><textarea class="bft" id="desc-t" rows="2" placeholder="What needs doing, and anything the team should know">${P(w.values?.[p.id]||"")}</textarea></section>`; }
 function peopleBoxHTML(list){ const n=list.length, lead=list.find(x=>x.lead), leadLine=lead&&n>1?`<span class="bs">${P(nameOf(lead))} leads</span>`:""; const av=(x,i)=>`<span class="avatar bav${i>0?" ov":""}" title="${P(nameOf(x))}">${P(initials(nameOf(x)))}</span>`;
   if(!n) return `<span class="badd">＋ Tag someone</span>`;
   if(n===1) return `<span class="bppl">${av(list[0],0)}<span class="bpn">${P(nameOf(list[0]))}</span></span>${lead?`<span class="bs">Lead</span>`:""}`;
@@ -1319,7 +1327,7 @@ function quietValue(p,v,w){ if(isEmpty(v)) return `<span class="padd">＋ Add</s
   if(p.type==="multi"||p.type==="select"){ const os=(p.type==="select"?[v]:(Array.isArray(v)?v:[v])).map(id=>p.options?.find(o=>o.id===id)).filter(Boolean);
     return warnProp(p)?os.map(o=>`<span class="pwarn">${P(o.name)}</span>`).join(""):`<span>${P(os.map(o=>o.name).join(", "))}</span>`; }
   return renderValue(p,v,w); }
-function propsHTML(w){ const list=props().filter(p=>!p.system&&!BASIC_IDS.includes(p.id)); const filled=list.filter(p=>!isEmpty(w.values?.[p.id])).length;
+function propsHTML(w){ const dp=descProp(), list=props().filter(p=>!p.system&&!BASIC_IDS.includes(p.id)&&p!==dp); const filled=list.filter(p=>!isEmpty(w.values?.[p.id])).length;
   const cell=p=>`<div class="prop pcell${["text","url"].includes(p.type)?" wide":""}" data-pid="${p.id}" draggable="true"><div class="pn" title="${P(p.name)} · ${TYPE_LABEL[p.type]}">${P(p.name)}</div><div class="pv" data-edit="${p.id}">${quietValue(p,w.values?.[p.id],w)}</div></div>`;
   return `<section class="ps props" id="props"><h3 style="cursor:default">Properties <span class="pcount">${filled} of ${list.length} filled</span><button type="button" class="link" id="add-prop" style="margin-left:auto;text-transform:none;letter-spacing:0">＋ New property</button></h3>${list.length?`<div class="pgrid">${list.map(cell).join("")}</div>`:`<div class="hint">No properties yet.</div>`}</section>`; }
 function renderActivity(){ const n=$("#act-n"); if(n) n.textContent=ACT.length; const a=$("#act"); if(a) a.innerHTML=ACT.map(x=>`<div class="act"><span class="t" title="${P(fmtDate(x.t,true))}">${P(rel(x.t))}</span><span>${x.by?.auto?`<span class="aubadge" title="${P(x.by.autoName||"")}">Automation</span>`:`<b>${P(x.by?.name||"")}</b>`} ${P(x.text)}</span></div>`).join("")||`<div class="hint">No activity yet.</div>`; }
@@ -1353,12 +1361,25 @@ function renderViews(){
   $("#b-props").hidden=S.view==="trash"; if(typeof lkfRender==="function") lkfRender();
   if(S.view==="board") renderBoard(rows); else if(S.view==="table") renderTable(rows); else renderTrash();
 }
+/* Board card (14 Oct 2026, Nikita: the row of chips was hard to read). The same rows on every card: title · what it is (the
+   card's properties as plain text) · one line only when something needs attention · people (lead first), due date, number.
+   Colour only for problems. The rest (repeats, rules, notes, photos, what it holds up) is in the tooltip and on the job page. */
 function cardHTML(w){
   const vis=props().filter(p=>(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id));
-  const bits=vis.map(p=>{ const v=w.values?.[p.id]; return isEmpty(v)&&!p.system?"":renderValue(p,v,w,true); }).filter(Boolean);
-  const nph=w.photoCount??(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
-  return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${P(w.id)}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${P(w.id)}</span>${bits.join("")}</div></div>`;
+  const meta=vis.filter(p=>!["person","date","created_time","created_by"].includes(p.type)).map(p=>describe(p,w.values?.[p.id])).filter(Boolean).join(" · ");
+  const pp=vis.find(p=>p.type==="person"), list=pp?[...(w.values?.[pp.id]||[])].sort((a,b)=>(b.lead?1:0)-(a.lead?1:0)):[];
+  const dp=vis.find(p=>p.type==="date"), due=dp?dueText(w,w.values?.[dp.id]):null;
+  const flag=typeof linkCardFlag==="function"?linkCardFlag(w):null, au=typeof autoCardInfo==="function"?autoCardInfo(w):{ repeat:"", rules:[] };
+  const nph=w.photoCount??(w.values?.photos||[]).length;
+  const tip=[list.length?`People: ${list.map(x=>nameOf(x)+(x.lead?" (lead)":"")).join(", ")}`:"", au.repeat?`Repeats: ${au.repeat}`:"", au.rules.length?`Rules: ${au.rules.join(", ")}`:"",
+    ...(typeof linkCardInfo==="function"?linkCardInfo(w):[]), [w.noteCount?`${w.noteCount} note${w.noteCount===1?"":"s"}`:"", nph?`${nph} photo${nph===1?"":"s"}`:""].filter(Boolean).join(" · ")].filter(Boolean).join("\n");
+  const av=(x,i)=>`<span class="avatar bav${i?" ov":""}">${P(initials(nameOf(x)))}</span>`;
+  return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${P(w.id)}"${tip?` title="${P(tip)}"`:""}><div class="t">${P(w.title||"Untitled")}</div>${meta?`<div class="km">${P(meta)}</div>`:""}${flag?`<div class="kflag ${flag.cls}"${flag.title?` title="${P(flag.title)}"`:""}>${flag.icon} ${P(flag.text)}</div>`:""}
+    <div class="kf">${list.length?`<span class="bstack">${list.slice(0,3).map(av).join("")}${list.length>3?`<span class="avatar bav ov more">+${list.length-3}</span>`:""}</span>`:""}<span class="sp"></span>${due?`<span class="kdue ${due.cls}">${P(due.text)}</span>`:""}<span class="id">${P(w.id)}</span>${au.repeat?`<span class="krep" aria-label="Repeats: ${P(au.repeat)}">↻</span>`:""}</div></div>`;
 }
+/* the due date in words; overdue and today red, the next three days amber; nothing once the job is complete */
+function dueText(w,v){ const d=v&&typeof v==="object"?v.start:v; if(!d||isDone(w)) return null; const n=daysUntil(d);
+  return n<0?{ cls:"late", text:`${-n} day${n===-1?"":"s"} overdue` }:n===0?{ cls:"late", text:"Due today" }:n===1?{ cls:"soon", text:"Due tomorrow" }:n<=3?{ cls:"soon", text:`Due in ${n} days` }:{ cls:"", text:`Due ${fmtDate(d)}` }; }
 function renderBoard(rows){
   const cols=statuses().map(o=>({ o, ws:rows.filter(w=>w.statusId===o.id) }));
   $("#views").innerHTML=`<div class="kanban">${cols.map(({o,ws})=>`<div class="kcol" data-s="${P(o.id)}"><h3 style="border-bottom-color:${col(o.color).map}">${pill(o.name,o.color,"st dot")}<span class="c">${ws.length}</span></h3><button class="kadd top" data-new="${P(o.id)}">＋ New job</button><div class="kcards">${ws.map(cardHTML).join("")||`<div class="kempty">No jobs</div>`}</div></div>`).join("")}<div style="flex:0 0 200px"><button class="kadd" id="k-edit-status" style="color:var(--ink-3)">＋ Edit statuses</button></div></div>`;
@@ -2479,7 +2500,7 @@ async function notifyAdded(w,p,auto){
   const lead=leadOf(w), d=w.values?.deadline?.start;
   const text=[`${auto?`The automation “${auto.name}”`:S.user.name||meEmail()} added you to ${w.id} · ${w.title||"Untitled"}.`, "",
     `Status: ${status(w.statusId)?.name||""}`, ...(d?[`Due: ${fmtDate(d)}`]:[]), ...(lead&&lead.email.toLowerCase()!==String(p.email).toLowerCase()?[`Lead: ${nameOf(lead)}`]:[]),
-    ...(w.reason?["",`Why: ${w.reason}`]:[]), ...(w.outcome?[`Done when: ${w.outcome}`]:[])].join("\n");
+    ...(w.values?.reference&&typeof w.values.reference==="string"?["",w.values.reference.length>600?w.values.reference.slice(0,600)+"…":w.values.reference]:[])].join("\n");
   const r=await notify(w,{ kind:"assigned", subject:`You're on ${w.id} · ${w.title||"Untitled"}`, text, to:[p], hold:ASSIGN_HOLD, ...(auto?{ fromName:"Dispatch automation", by:AUTO_BY(auto), auto:auto.id }:{}) });
   if(r) log(w.id,`will email ${r.names} that they were added`);
 }
@@ -2669,14 +2690,15 @@ function lkfRender(){ const bar=$("#lkf"); if(!bar) return; bar.hidden=S.view===
   const n={ all:L.length, blocked:L.filter(isBlocked).length, ready:L.filter(readyToStart).length, restore:L.filter(restoreDue).length };
   bar.innerHTML=`<button data-f="all">All</button><button data-f="blocked">Waiting <span class="mono">${n.blocked}</span></button><button data-f="ready">Ready to start <span class="mono">${n.ready}</span></button>${n.restore||LKF==="restore"?`<button data-f="restore">Restore due <span class="mono">${n.restore}</span></button>`:""}`;
   bar.querySelectorAll("button").forEach(b=>{ b.setAttribute("aria-selected",b.dataset.f===LKF); b.onclick=()=>{ LKF=b.dataset.f; renderViews(); }; }); }
-function linkCardBits(w){ const b=[]; const bl=blockersOf(w);
-  if(restoreDue(w)) b.push(`<span class="lkb due" title="${P(enKind(w).restore)} is due">↻ ${P(enKind(w).restore)}</span>`);
-  else if(w.enabling) b.push(`<span class="lkb en" title="Enabling work: ${P(enKind(w).name)}">${w.enabling.ready?"✓ ":""}${P(enKind(w).name)}</span>`);
-  if(isOpen(w)&&bl.length) b.push(`<span class="lkb wait" title="Waiting on ${P(bl.map(x=>x.id+" "+(x.title||"")).join(", "))}">‖ waits on ${bl.map(x=>shortId(x.id)).join(", ")}</span>`);
-  else if(readyToStart(w)) b.push(`<span class="lkb go">✓ ready to start</span>`);
-  if(onHold(w)&&w.holdReason&&!bl.length&&!readyToStart(w)) b.push(`<span class="lkb wait" title="${P(w.holdReason)}">‖ ${P(w.holdReason.length>34?w.holdReason.slice(0,32)+"…":w.holdReason)}</span>`);
-  const nb=blocksOf(w).filter(d=>isOpen(d)).length; if(nb&&!w.enabling) b.push(`<span class="hint" title="Jobs waiting on this one">blocks ${nb}</span>`);
-  return b; }
+/* the board card's one attention line (most urgent first), and its tooltip lines */
+function linkCardFlag(w){ const bl=isOpen(w)?blockersOf(w):[];
+  if(bl.length) return { cls:"wait", icon:"‖", text:`Waiting on ${bl.map(x=>x.id).join(", ")}`, title:bl.map(x=>`${x.id} ${x.title||""}`).join("\n") };
+  if(restoreDue(w)) return { cls:"wait", icon:"↻", text:`${enKind(w).restore} due`, title:"Every job it enabled is complete" };
+  if(onHold(w)&&w.holdReason) return { cls:"wait", icon:"‖", text:w.holdReason.length>40?w.holdReason.slice(0,38)+"…":w.holdReason, title:w.holdReason };
+  if(readyToStart(w)) return { cls:"go", icon:"✓", text:"Ready to start", title:"" };
+  return null; }
+function linkCardInfo(w){ const out=[]; if(w.enabling) out.push(`Enabling work: ${enKind(w).name}${w.enabling.ready?" (done)":""}`);
+  const nb=blocksOf(w).filter(isOpen); if(nb.length) out.push(`Holding up: ${nb.map(d=>d.id).join(", ")}`); return out; }
 
 /* ---------- map: badge on the pin, connectors in the job view ---------- */
 function linkPinDecorate(pin,w){ const st=linkPinState(w); if(!st) return; const s=pin.tpl.content.querySelector("svg"); if(!s) return; const NS="http://www.w3.org/2000/svg";
@@ -2719,9 +2741,6 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
 .lkacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lkok{color:var(--ok);font-size:12.5px}
 .lkstrip.blocked{border-color:rgba(232,169,58,.6)}.lkstrip.ready{border-color:rgba(47,201,138,.6)}.lkstrip.en.due{border-color:rgba(213,194,255,.7)}
 .lkdir.wait{color:var(--warn);font-weight:600}.lkreason{font-size:12.5px;color:var(--ink-2)}.lkdue{font-size:12.5px;color:var(--ink-2)}
-.lkb{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.lkb.wait{background:rgba(232,169,58,.18);color:var(--warn)}.lkb.go{background:rgba(47,201,138,.18);color:var(--ok)}
-.lkb.en{background:rgba(213,194,255,.16);color:var(--ink-2)}.lkb.due{background:rgba(213,194,255,.3);color:var(--ink)}
 .pop .lkseg{display:flex;margin:2px 4px 6px}.pop .lkseg button{flex:1;font-size:12px}.pop .mi.dis{opacity:.45;cursor:not-allowed}
 #lkf button .mono{opacity:.7;margin-left:2px}`; document.head.append(st); })();
 
@@ -2945,8 +2964,7 @@ function autoStripHTML(w){ if(!w||w.trashed||w.draft) return ""; let h="";
   if(rs.length) h+=`<div class="strip austrip"><span class="lab">Rules</span><div class="val" style="display:flex;flex-direction:column;gap:3px">${rs.map(r=>`<div><b>${P(whenPhrase(r.rule.trigger))}:</b> ${P((r.rule.actions||[]).map(actPhrase).join(", "))} <button class="link" data-au-open="${r.id}">${P(r.name)}</button></div>`).join("")}</div></div>`;
   return h; }
 const BOLT=`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"></path></svg>`;
-function autoCardBits(w){ const b=[]; const a=w.series?AUX(w.series.auto):null; if(a) b.push(`<span class="aub rep" title="${P(a.name)}">↻ ${P(rhythm(a))}</span>`);
-  const rs=rulesFor(w).filter(r=>(r.rule.conds||[]).length); if(rs.length) b.push(`<span class="aub rule" title="${P(rs.map(r=>r.name).join(", "))}">${BOLT}${rs.length} rule${rs.length===1?"":"s"}</span>`); return b; }   // rules that apply to every job (reminders) are left off the card; the panel lists them
+function autoCardInfo(w){ const a=w.series?AUX(w.series.auto):null; return { repeat:a?rhythm(a):"", rules:rulesFor(w).filter(r=>(r.rule.conds||[]).length).map(r=>r.name) }; }   // rules that apply to every job (reminders) are left off the card; the panel lists them   // rules that apply to every job (reminders) are left off the card; the panel lists them
 function openAuto(id){ const a=AUX(id); if(a) AUV.f=a.kind; AUV.sel=id; if(S.woView) exitWOView(); else if(S.open) closePeek(); setTab("auto"); }
 function openAutoPage(kind){ AUV.f=kind; const cur=AUX(AUV.sel); if(!cur||cur.kind!==kind) AUV.sel=null; setTab("auto"); }
 /* the top-bar "Automations ▾" button is a menu: Schedules and Rules are separate pages */
@@ -3200,7 +3218,7 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 .au-savebar{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px}.au-savebar .hint{flex:1}
 .pop.au-slash{max-height:320px;overflow:auto}.pop.au-slash .mi .au-tok{font-size:12.5px}
 .au-pl{max-height:300px;overflow:auto}
-.aub{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}.aub.rep{background:#CFE1FB;color:#0D3A73;font-weight:500}.aub.rule{border:1px solid var(--line);color:var(--ink-2)}
+
 .austrip .val b{font-weight:600;color:var(--ink)}
 .act .aubadge{display:inline-flex;align-items:center;gap:3px;background:#E3D6FA;color:#331466;border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:600}
 
