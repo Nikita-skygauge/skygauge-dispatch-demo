@@ -1710,7 +1710,7 @@ function syncJobLabels(){ if(!map) return; Object.entries(OV.wo).forEach(([id,o]
 function minGround(P){ const g=P.map(p=>p.ground).filter(x=>x!=null); return g.length?Math.min(...g):GROUND_FALLBACK; }
 function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(o.hidden){ if(w.trashed) delete OV.wo[w.id]; else applyLegendTo(w); return; } if(w.trashed||force||o.sig!==woSig(w)){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
 /* a hidden job keeps only a stub: its elements went back to the pool and may already belong to another job */
-const linkedToOpen = w => { if(!S.woView||!S.open||S.note||typeof waitsOnIds!=="function") return false; const o=W(S.open); return !!o&&(waitsOnIds(o).includes(w.id)||blocksOf(o).some(d=>d.id===w.id)); };
+const linkedToOpen = w => { if(!S.woView||!S.open||S.note||typeof relOf!=="function") return false; return !!W(S.open)&&!!relOf(S.open,w.id); };
 function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId)&&S.open!==w.id&&!linkedToOpen(w);   /* the job you have open, and the jobs linked to it, always show */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); OV.wo[w.id]={ hidden:true, labels:[] }; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
 /* Status toggles on the model (1 Oct 2026): switches, not a key. Default view = jobs that need attention now —
    In progress and On hold; Requested and Completed start switched off. Tests on ?mock=1 start with everything on. */
@@ -2529,14 +2529,28 @@ function renderNotices(){ const w=S.open&&!S.note?W(S.open):null; const el=$("#n
 if(MOCK) window.__t={ createWO, W, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, notify, cancelNotice, notifyStatus, get NTF(){ return NTF; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
 
 /* =====================================================================
-   LINKS — "waits on" between jobs, and hold reasons
-   A job stores only what it waits on (w.links.waitsOn); "blocks" is worked out from the other side. A job releases the
-   jobs waiting on it when it is complete. Enabling work (scaffold, insulation… with "ready" and "restore" steps) was
-   folded into plain links on 14 Oct 2026 (Nikita): erecting and striking a scaffold are two linked jobs.
+   LINKS — how two jobs are linked, and hold reasons
+   Each link has one kind, picked on the link itself (14 Oct 2026, Nikita): waits on / holds up (the job can't start until
+   the other is complete), follow-up to / led to (one job came out of the other), related to (no effect). A pair is stored
+   once, on one side: a.links.waitsOn ∋ b, a.links.followUpOf ∋ b, or a.links.related ∋ b. "Holds up" and "led to" are
+   worked out from the other side. A job releases the jobs waiting on it when it is complete. Enabling work (scaffold,
+   insulation… with "ready" and "restore" steps) was folded into plain links on 14 Oct: erecting and striking a scaffold
+   are two linked jobs.
    ===================================================================== */
 const HOLD_REASONS=["Waiting on scaffold","Waiting on insulation removal","Waiting on parts / materials","Waiting on a shutdown window","Waiting on a permit","Waiting on engineering"];
-const waitsOnIds = w => (w?.links?.waitsOn||[]).filter(id=>{ const b=W(id); return b&&!b.trashed&&!b.draft; });
-const blocksOf = w => live().filter(x=>!x.draft&&(x.links?.waitsOn||[]).includes(w.id));
+const LK_F=["waitsOn","followUpOf","related"];
+const LK_KINDS=[
+  { k:"waits", label:"Waits on", help:(a,b)=>`${a} can't start until ${b} is complete` },
+  { k:"holds", label:"Holds up", help:(a,b)=>`${b} can't start until ${a} is complete` },
+  { k:"follow", label:"Follow-up to", help:(a,b)=>`${a} came out of ${b}, like a repair an inspection found` },
+  { k:"led", label:"Led to", help:(a,b)=>`${b} came out of ${a}` },
+  { k:"related", label:"Related to", help:()=>`Shown on both jobs; no effect on either` }];
+const LK_INV={ waits:"holds", holds:"waits", follow:"led", led:"follow", related:"related" };
+const LK_SAY={ waits:["now waits on","no longer waits on"], holds:["now holds up","no longer holds up"], follow:["is now a follow-up to","is no longer a follow-up to"], led:["now has a follow-up:","no longer has a follow-up:"], related:["is now related to","is no longer related to"] };
+const lkLabel = k => LK_KINDS.find(K=>K.k===k)?.label||"";
+const lkAlive = id => { const b=W(id); return !!b&&!b.trashed&&!b.draft; };
+const waitsOnIds = w => (w?.links?.waitsOn||[]).filter(lkAlive);
+const blocksOf = w => live().filter(x=>(x.links?.waitsOn||[]).includes(w.id));
 const released = b => isDone(b);
 const blockersOf = w => waitsOnIds(w).map(W).filter(b=>!released(b));
 const isBlocked = w => isOpen(w)&&blockersOf(w).length>0;
@@ -2544,25 +2558,43 @@ const readyToStart = w => isOpen(w)&&waitsOnIds(w).length>0&&!blockersOf(w).leng
 const onHold = w => /hold/i.test(status(w.statusId)?.name||"");
 const shortId = id => String(id).slice(-3);
 function linkPinState(w){ return isBlocked(w)?"b":readyToStart(w)?"r":""; }
-/* would "a waits on b" close a loop? true if b already (directly or through others) waits on a */
-function wouldCycle(a,b){ const seen=new Set(); const st=[b]; while(st.length){ const x=st.pop(); if(x===a) return true; if(seen.has(x)) continue; seen.add(x); (W(x)?.links?.waitsOn||[]).forEach(y=>st.push(y)); } return false; }
+/* how b is linked to a, from a's side: "waits" | "holds" | "follow" | "led" | "related" | null */
+function relOf(aId,bId){ const a=W(aId), b=W(bId); const has=(x,f,id)=>(x?.links?.[f]||[]).includes(id);
+  if(has(a,"waitsOn",bId)) return "waits"; if(has(b,"waitsOn",aId)) return "holds";
+  if(has(a,"followUpOf",bId)) return "follow"; if(has(b,"followUpOf",aId)) return "led";
+  if(has(a,"related",bId)||has(b,"related",aId)) return "related"; return null; }
+/* every live job linked to w, in job order (stable while a link's kind is changed) */
+function linksOf(w){ if(!w) return []; const ids=new Set();
+  LK_F.forEach(f=>(w.links?.[f]||[]).forEach(id=>{ if(id!==w.id&&lkAlive(id)) ids.add(id); }));
+  live().forEach(x=>{ if(x.id!==w.id&&LK_F.some(f=>(x.links?.[f]||[]).includes(w.id))) ids.add(x.id); });
+  return [...ids].sort().map(id=>({ o:W(id), kind:relOf(w.id,id) })).filter(x=>x.kind); }
+/* would "a waits on b" close a loop? true if b already (directly or through others) waits on a. skip = a [from,to] wait to
+   ignore: the one this link is about to replace (turning "holds up" into "waits on" flips it, which is not a loop) */
+function wouldCycle(a,b,skip){ const seen=new Set(); const st=[b]; while(st.length){ const x=st.pop(); if(x===a) return true; if(seen.has(x)) continue; seen.add(x); (W(x)?.links?.waitsOn||[]).forEach(y=>{ if(!(skip&&skip[0]===x&&skip[1]===y)) st.push(y); }); } return false; }
+function lkLoop(aId,bId,k){ return k==="waits"?wouldCycle(aId,bId,[bId,aId]):k==="holds"?wouldCycle(bId,aId,[aId,bId]):false; }
 
 /* ---------- writes ---------- */
-async function saveLinks(w){ const links={ waitsOn:[...new Set(w.links?.waitsOn||[])] }; w.links=links; syncOverlays(); renderAll(); await DB.update(WO_COL+"/"+w.id,{ links, ...stamp() }); }
-async function linkJobs(aId,bId){   // a waits on b
+const normLinks = L => { const o={}; LK_F.forEach(f=>{ const a=[...new Set(L?.[f]||[])]; if(a.length) o[f]=a; }); return o; };
+/* set how b is linked to a (from a's side); kind null removes the link. Returns false if nothing changed or it would loop */
+async function setLink(aId,bId,kind){
   const a=W(aId), b=W(bId); if(!a||!b||aId===bId) return false;
-  if((a.links?.waitsOn||[]).includes(bId)) return false;
-  if(wouldCycle(aId,bId)){ toast(`Can't link: ${bId} already waits on ${aId}, so this would make a loop.`,true); return false; }
-  a.links={ waitsOn:[...(a.links?.waitsOn||[]),bId] }; await saveLinks(a);
-  log(aId,`now waits on ${bId} · ${b.title||"Untitled"}`); log(bId,`now blocks ${aId} · ${a.title||"Untitled"}`);
+  const was=relOf(aId,bId); kind=kind||null; if(was===kind) return false;
+  if(lkLoop(aId,bId,kind)){ const [x,y]=kind==="waits"?[bId,aId]:[aId,bId]; toast(`Can't link: ${x} already waits on ${y}, so this would make a loop.`,true); return false; }
+  const before=[a,b].map(x=>JSON.stringify(normLinks(x.links)));
+  [a,b].forEach(x=>{ const other=x===a?bId:aId; const L={...(x.links||{})}; LK_F.forEach(f=>{ if(L[f]) L[f]=L[f].filter(y=>y!==other); }); x.links=L; });
+  if(kind){ const [own,other,f]=kind==="holds"?[b,aId,"waitsOn"]:kind==="led"?[b,aId,"followUpOf"]:[a,bId,kind==="waits"?"waitsOn":kind==="follow"?"followUpOf":"related"]; own.links[f]=[...(own.links[f]||[]),other]; }
+  const changed=[a,b].filter((x,i)=>{ x.links=normLinks(x.links); return JSON.stringify(x.links)!==before[i]; });
+  syncOverlays(); renderAll(); for(const x of changed) await DB.update(WO_COL+"/"+x.id,{ links:x.links, ...stamp() });
+  if(kind){ log(aId,`${LK_SAY[kind][0]} ${bId} · ${b.title||"Untitled"}`); log(bId,`${LK_SAY[LK_INV[kind]][0]} ${aId} · ${a.title||"Untitled"}`); }
+  else { log(aId,`${LK_SAY[was][1]} ${bId}`); log(bId,`${LK_SAY[LK_INV[was]][1]} ${aId}`); }
+  /* a wait that went away may leave its job ready to start */
+  const freed=was==="waits"?a:was==="holds"?b:null; const d=freed&&W(freed.id);
+  if(d&&isOpen(d)&&waitsOnIds(d).length&&!blockersOf(d).length){ log(d.id,"is ready to start — nothing it waits on is outstanding"); if(typeof autoEvent==="function") autoEvent("ready",d); }
   return true;
 }
-async function unlinkJobs(aId,bId){
-  const a=W(aId); if(!a||!(a.links?.waitsOn||[]).includes(bId)) return;
-  a.links={ waitsOn:a.links.waitsOn.filter(x=>x!==bId) }; await saveLinks(a);
-  log(aId,`no longer waits on ${bId}`); log(bId,`no longer blocks ${aId}`);
-  if(isOpen(a)&&waitsOnIds(a).length&&!blockersOf(a).length){ log(aId,"is ready to start — nothing it waits on is outstanding"); if(typeof autoEvent==="function") autoEvent("ready",W(aId)); }
-}
+/* a waits on b; refused if the two are already linked in any way */
+async function linkJobs(aId,bId){ if(relOf(aId,bId)) return false; return setLink(aId,bId,"waits"); }
+async function unlinkJobs(aId,bId){ if(relOf(aId,bId)) await setLink(aId,bId,null); }
 async function setHold(id,reason){ const w=W(id); if(!w) return; const r=(reason||"").trim()||null; if((w.holdReason||null)===r) return; w.holdReason=r; renderAll(); await DB.update(WO_COL+"/"+id,{ holdReason:r, ...stamp() }); if(r) log(id,`hold reason: ${r}`); }
 /* called by setStatus after the status is saved */
 function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
@@ -2576,12 +2608,16 @@ function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
   else if(msgs.length) toast(P(msgs.join(" · ")));
 }
 
+
 /* ---------- panel ---------- */
 function goJob(id){ if(S.woView) enterWOView(id); else openWO(id); }
 function stDot(w){ const o=status(w.statusId); return `<i class="lkdot" style="background:${col(o?.color).map}"></i>`; }
-function lkChip(b,unlinkAttr,showRel){
-  const o=status(b.statusId); const ok=showRel&&released(b);
-  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok?"✓ ":""}${P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
+/* one link: the kind selector, then the job (click opens it), then × to remove the link */
+function lkLinkHTML(w,{o,kind}){
+  const st=status(o.statusId), done=kind==="waits"&&released(o), wait=kind==="waits"&&isOpen(w)&&!done;
+  return `<span class="lklink k-${kind}${wait?" wait":""}${done?" ok":""}"><button class="lkkind" data-lkkind="${o.id}" title="How ${P(w.id)} is linked to ${P(o.id)}: click to change">${wait?"‖ ":done?"✓ ":""}${lkLabel(kind)}<i class="cv">▾</i></button>`+
+    `<span class="lkchip" data-go="${o.id}" title="${P(o.id+" · "+(o.title||"Untitled"))}">${stDot(o)}<span class="mono">${shortId(o.id)}</span><span class="lkt">${P(o.title||"Untitled")}</span><span class="lkst">${P(st?.name||"")}</span></span>`+
+    `<button class="x" data-unlink="${o.id}" title="Remove this link">×</button></span>`;
 }
 /* The yellow / green / purple banner under the title was removed (1 Oct 2026, Nikita: it repeated the Linked box).
    Waiting, ready-to-start and the hold reason are all shown in the Linked box. */
@@ -2589,35 +2625,41 @@ function lkChip(b,unlinkAttr,showRel){
 function holdRestatesLink(w){ const r=w.holdReason||""; return !!r&&waitsOnIds(w).some(id=>r.includes(id)); }
 function linksStripHTML(w){
   if(w.trashed||w.draft) return "";
-  const wo=waitsOnIds(w).map(W), bl=blocksOf(w);
+  const L=linksOf(w);
   const blocked=isOpen(w)&&blockersOf(w).length>0, ready=!blocked&&readyToStart(w);
   let html=`<div class="strip lkstrip${blocked?" blocked":ready?" ready":""}" id="lkstrip"><span class="lab">Linked</span><div class="val">`;
-  if(wo.length) html+=`<div class="lkrow"><span class="lkdir${blocked?" wait":""}">${blocked?"‖ Waiting on":"Waits on"}</span>${wo.map(b=>lkChip(b,`data-unlink="${b.id}"`,true)).join("")}${ready?`<span class="lkok">✓ Ready to start${onHold(w)?` · still marked ${P(status(w.statusId).name)}`:""}</span>`:""}</div>`;
+  html+=L.map(x=>lkLinkHTML(w,x)).join("");
+  if(ready) html+=`<span class="lkok">✓ Ready to start: everything it waits on is complete${onHold(w)?` · still marked ${P(status(w.statusId).name)}`:""}</span>`;
   if(onHold(w)&&!holdRestatesLink(w)&&(w.holdReason||!blocked)) html+=`<div class="lkrow"><span class="lkdir wait">‖ ${P(status(w.statusId).name)}</span><span class="lkreason">${w.holdReason?P(w.holdReason):`<i>no reason given</i>`}</span><button class="link" id="hold-edit">${w.holdReason?"Edit":"Add a reason"}</button></div>`;
-  if(bl.length) html+=`<div class="lkrow"><span class="lkdir">Blocks</span>${bl.map(d=>lkChip(d,`data-unblock="${d.id}"`,false)).join("")}</div>`;
-  if(!wo.length&&!bl.length&&!onHold(w)) html+=`<span class="hint">No linked jobs</span>`;
+  if(!L.length&&!onHold(w)) html+=`<span class="hint">No linked jobs</span>`;
   html+=`<div class="lkacts"><button class="btn sm" id="lk-add">＋ Link a job</button></div></div></div>`;
   return html;
 }
 function wireLinks(w){
   const body=$("#pbody"); if(!body) return;
-  body.querySelectorAll("[data-go]").forEach(el=>el.onclick=e=>{ if(e.target.closest("button")) return; goJob(el.dataset.go); });
-  body.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(w.id,b.dataset.unlink); });
-  body.querySelectorAll("[data-unblock]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(b.dataset.unblock,w.id); });
+  body.querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>goJob(el.dataset.go));
+  body.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); setLink(w.id,b.dataset.unlink,null); });
+  body.querySelectorAll("[data-lkkind]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); kindMenu(w.id,b.dataset.lkkind,b); });
   $("#lk-add")?.addEventListener("click",e=>linkPicker(w,e.currentTarget));
   $("#hold-edit")?.addEventListener("click",()=>holdPrompt(w));
 }
-let LKDIR="waits";
+/* the kind selector: each choice says what it means for these two jobs; one that would make a loop is shown but off */
+function kindMenu(aId,bId,anchor){ const cur=relOf(aId,bId);
+  const el=openPop(anchor,`<div class="sec">How is ${P(aId)} linked to ${P(bId)}?</div>`+LK_KINDS.map(K=>{ const loop=lkLoop(aId,bId,K.k);
+    const why=loop?(K.k==="waits"?`Not possible: ${bId} already waits on ${aId}, so this would make a loop`:`Not possible: ${aId} already waits on ${bId}, so this would make a loop`):K.help(aId,bId);
+    return `<div class="mi lkk${cur===K.k?" on":""}" data-k="${K.k}"${loop?` aria-disabled="true"`:""}><span class="ck">${cur===K.k?"✓":""}</span><span class="kt"><b>${K.label}</b><small>${P(why)}</small></span></div>`; }).join(""),{width:320});
+  el.querySelectorAll("[data-k]").forEach(m=>m.onclick=()=>{ closePop(); setLink(aId,bId,m.dataset.k); });
+}
+/* ＋ Link a job: pick the job; it is linked as "Related to" and the kind selector opens on it straight away */
 function linkPicker(w,anchor){
   const draw=()=>{ const q=(el.querySelector(".pin")?.value||"").toLowerCase();
-    const linked=new Set(LKDIR==="waits"?waitsOnIds(w):blocksOf(w).map(d=>d.id));
-    const rows=live().filter(x=>x.id!==w.id&&!x.draft&&!linked.has(x.id)&&(!q||textOf(x).includes(q)));
-    el.querySelector(".lklist").innerHTML=rows.map(x=>{ const cyc=LKDIR==="waits"?wouldCycle(w.id,x.id):wouldCycle(x.id,w.id);
-      return `<div class="mi ${cyc?"dis":""}" data-pick="${x.id}" ${cyc?`title="${P(LKDIR==="waits"?x.id+" already waits on "+w.id:w.id+" already waits on "+x.id)} — linking would make a loop"`:""}>${stDot(x)}<span class="mono">${x.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(x.title||"Untitled")}</span>${cyc?`<span class="r">loop</span>`:""}</div>`; }).join("")||`<div class="hint" style="padding:6px 8px">No other jobs match</div>`;
-    el.querySelectorAll("[data-pick]:not(.dis)").forEach(m=>m.onclick=async()=>{ closePop(); if(LKDIR==="waits") await linkJobs(w.id,m.dataset.pick); else await linkJobs(m.dataset.pick,w.id); });
-    el.querySelectorAll(".lkseg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.d===LKDIR)); };
-  const el=openPop(anchor,`<div class="lkseg tabs"><button data-d="waits">${P(w.id)} waits on…</button><button data-d="blocks">${P(w.id)} blocks…</button></div><input class="pin" placeholder="Find a job"><div class="lklist"></div>`,{width:300});
-  el.querySelector(".pin").oninput=draw; el.querySelectorAll(".lkseg button").forEach(b=>b.onclick=()=>{ LKDIR=b.dataset.d; draw(); }); draw();
+    const linked=new Set(linksOf(w).map(x=>x.o.id));
+    const rows=live().filter(x=>x.id!==w.id&&!linked.has(x.id)&&(!q||textOf(x).includes(q)));
+    el.querySelector(".lklist").innerHTML=rows.map(x=>`<div class="mi" data-pick="${x.id}">${stDot(x)}<span class="mono">${x.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(x.title||"Untitled")}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No other jobs match</div>`;
+    el.querySelectorAll("[data-pick]").forEach(m=>m.onclick=async()=>{ const id=m.dataset.pick; closePop(); await setLink(w.id,id,"related");
+      const b=$(`#pbody .lkkind[data-lkkind="${id}"]`); if(b&&S.open===w.id) kindMenu(w.id,id,b); }); };
+  const el=openPop(anchor,`<div class="sec">Link ${P(w.id)} to…</div><input class="pin" placeholder="Find a job"><div class="lklist"></div><div class="hint" style="padding:6px 8px 2px">Next you choose how they're linked.</div>`,{width:300});
+  el.querySelector(".pin").oninput=draw; draw();
 }
 function holdPrompt(w){
   const anchor=$("#pbody [data-status]")||$(`#views [data-id="${w.id}"]`); if(!anchor) return;
@@ -2643,16 +2685,19 @@ function linkCardFlag(w){ const bl=isOpen(w)?blockersOf(w):[];
   if(readyToStart(w)) return { cls:"go", icon:"✓", text:"Ready to start", title:"" };
   return null; }
 function linkCardInfo(w){ const out=[];
-  const nb=blocksOf(w).filter(isOpen); if(nb.length) out.push(`Holding up: ${nb.map(d=>d.id).join(", ")}`); return out; }
+  const nb=blocksOf(w).filter(isOpen); if(nb.length) out.push(`Holding up: ${nb.map(d=>d.id).join(", ")}`);
+  const by={}; linksOf(w).forEach(({o,kind})=>{ if(kind==="waits"||kind==="holds") return; (by[kind]=by[kind]||[]).push(o.id); });
+  ["follow","led","related"].forEach(k=>{ if(by[k]) out.push(`${lkLabel(k)}: ${by[k].join(", ")}`); }); return out; }
 
 /* The open job's linked work stands out on the board, the table and the Map register (14 Oct 2026, Nikita): what it waits
-   on in amber (green once complete) labelled "J-26-006 waits on this", what waits on it in purple labelled "Waits on J-26-005". */
-function markLinked(){ $$(".lk-mark").forEach(e=>e.remove()); $$(".lk-waits,.lk-blocks").forEach(e=>e.classList.remove("lk-waits","lk-blocks","lk-done"));
+   on in amber (green once complete) labelled "J-26-006 waits on this", what waits on it in purple labelled "Waits on
+   J-26-005", and follow-up / related jobs in grey labelled from their side ("Follow-up to J-26-006"). */
+function markLinked(){ $$(".lk-mark").forEach(e=>e.remove()); $$(".lk-waits,.lk-blocks,.lk-rel").forEach(e=>e.classList.remove("lk-waits","lk-blocks","lk-rel","lk-done"));
   const o=S.open?W(S.open):null; if(!o||o.trashed) return;
-  const mark=(b,role)=>{ const done=role==="waits"&&isDone(b);
+  linksOf(o).forEach(({o:b,kind})=>{ const role=kind==="waits"?"waits":kind==="holds"?"blocks":"rel"; const done=role==="waits"&&isDone(b);
+    const label=role==="waits"?`${done?"✓":"‖"} ${o.id} waits on this`:`${lkLabel(LK_INV[kind])} ${o.id}`;
     document.querySelectorAll(`.kcard[data-id="${b.id}"], #views tr[data-id="${b.id}"], #tree .it[data-wo="${b.id}"]`).forEach(el=>{ el.classList.add("lk-"+role); if(done) el.classList.add("lk-done");
-      if(el.classList.contains("kcard")) el.insertAdjacentHTML("afterbegin",`<div class="lk-mark">${role==="waits"?`${done?"✓":"‖"} ${P(o.id)} waits on this`:`Waits on ${P(o.id)}`}</div>`); }); };
-  waitsOnIds(o).forEach(id=>mark(W(id),"waits")); blocksOf(o).forEach(d=>mark(d,"blocks")); }
+      if(el.classList.contains("kcard")) el.insertAdjacentHTML("afterbegin",`<div class="lk-mark">${P(label)}</div>`); }); }); }
 
 /* ---------- map: badge on the pin, connectors in the job view ---------- */
 function linkPinDecorate(pin,w){ const st=linkPinState(w); if(!st) return; const s=pin.tpl.content.querySelector("svg"); if(!s) return; const NS="http://www.w3.org/2000/svg";
@@ -2667,38 +2712,43 @@ function lkTop(w){ const P0=pts(w); const a=locAnchor(w); if(!a) return null; co
 function clearLinkOverlays(){ if(LKOV.els.length) killAll(LKOV.els); LKOV.els=[]; LKOV.key=""; }
 function syncLinkOverlays(){ if(!map||!lib) return;
   const w=S.woView&&!S.note&&S.open?W(S.open):null;
-  const pairs=w&&!w.trashed?[...waitsOnIds(w).map(id=>({ o:W(id), dir:"waits" })),...blocksOf(w).map(d=>({ o:d, dir:"blocks" }))].filter(x=>x.o&&pts(x.o).length):[];
-  const key=w?w.id+"|"+JSON.stringify(w.location||{})+"|"+pairs.map(x=>x.dir+x.o.id+released(x.o)+isDone(x.o)+JSON.stringify(x.o.location||{})).join(";"):"";
+  const pairs=w&&!w.trashed?linksOf(w).filter(x=>pts(x.o).length):[];
+  const key=w?w.id+"|"+JSON.stringify(w.location||{})+"|"+pairs.map(x=>x.kind+x.o.id+released(x.o)+JSON.stringify(x.o.location||{})).join(";"):"";
   if(key===LKOV.key) return; clearLinkOverlays(); LKOV.key=key; if(S.legendOff?.size) live().forEach(applyLegendTo);   // a linked job shows while its partner is open, even if its status is switched off
   if(!w||!pairs.length) return;
   const A=lkTop(w); if(!A) return;
-  pairs.forEach(({o,dir})=>{ const B=lkTop(o); if(!B) return;
+  pairs.forEach(({o,kind})=>{ const B=lkTop(o); if(!B) return;
     const d=Math.hypot((B.lat-A.lat)*111320,(B.lng-A.lng)*111320*Math.cos(A.lat*Math.PI/180)); if(d<4) return;   // same spot: the panel says it, a zero-length line would not
     const mode=A.ground!=null&&B.ground!=null?"ABSOLUTE":"RELATIVE_TO_MESH"; const base=p=>mode==="ABSOLUTE"?p.ground:0;
     const rise=Math.min(40,Math.max(6,d*0.22)); const N=16; const path=[];
     for(let i=0;i<=N;i++){ const t=i/N; path.push({ lat:A.lat+(B.lat-A.lat)*t, lng:A.lng+(B.lng-A.lng)*t, altitude:base(A)+A.lift+(base(B)+B.lift-base(A)-A.lift)*t+Math.sin(Math.PI*t)*rise }); }
-    const rel=dir==="waits"?released(o):true; const c=dir==="waits"?(rel?"47,201,138":"232,169,58"):"213,194,255";
+    const rel=kind==="waits"&&released(o), warn=kind==="waits"&&!rel; const c=kind==="waits"?(rel?"47,201,138":"232,169,58"):kind==="holds"?"213,194,255":"185,194,224";
     LKOV.els.push(mk3("pl",{ altitudeMode:mode, strokeColor:`rgba(${c},0.95)`, strokeWidth:4, drawsOccludedSegments:true, path }));
-    const mid=path[N/2]; const txt=dir==="waits"?`${rel?"✓ ":""}waits on ${shortId(o.id)}`:`blocks ${shortId(o.id)}`;
-    const m=mk3("m",{ position:{ lat:mid.lat, lng:mid.lng, altitude:mid.altitude+1.5 }, altitudeMode:mode, tpl:distLabelTemplate(txt,dir==="waits"&&!rel) }); if(m) LKOV.els.push(m); });
+    const mid=path[N/2]; const txt=`${rel?"✓ ":""}${lkLabel(kind).toLowerCase()} ${shortId(o.id)}`;
+    const m=mk3("m",{ position:{ lat:mid.lat, lng:mid.lng, altitude:mid.altitude+1.5 }, altitudeMode:mode, tpl:distLabelTemplate(txt,warn) }); if(m) LKOV.els.push(m); });
 }
-if(MOCK) window.__links={ linkJobs, unlinkJobs, setHold, isBlocked, readyToStart, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
+if(MOCK) window.__links={ linkJobs, unlinkJobs, setLink, relOf, linksOf, setHold, isBlocked, readyToStart, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
-.lkstrip{align-items:flex-start}.lkstrip .val{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lkstrip{align-items:flex-start}.lkstrip .val{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
 .lkrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.lkdir{font-size:11.5px;color:var(--ink-3);min-width:56px}
-.lkchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 4px 3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:12px;cursor:pointer;color:var(--ink)}
-.lkchip:hover{border-color:var(--accent)}.lkchip .lkt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
-.lkchip .lkst{font-size:11px;color:var(--ink-3);white-space:nowrap}.lkchip.ok .lkst{color:var(--ok)}
-.lkchip .x{border:0;background:transparent;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}.lkchip .x:hover{color:var(--crit)}
+.lklink{display:inline-flex;align-items:stretch;max-width:100%;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:12px;overflow:hidden}
+.lkkind{display:inline-flex;align-items:center;gap:5px;flex:none;border:0;border-right:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font:inherit;font-size:11.5px;font-weight:600;padding:3px 8px 3px 10px;cursor:pointer;white-space:nowrap}
+.lkkind:hover{color:var(--ink);background:var(--line)}.lkkind .cv{font-style:normal;font-size:9px;opacity:.7}
+.lklink.wait{border-color:rgba(232,169,58,.55)}.lklink.wait .lkkind{color:var(--warn)}.lklink.ok .lkkind{color:var(--ok)}.lklink.k-holds .lkkind{color:var(--accent)}
+.lkchip{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:3px 4px 3px 8px;cursor:pointer;color:var(--ink)}
+.lkchip:hover .lkt{text-decoration:underline}.lkchip .lkt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+.lkchip .lkst{font-size:11px;color:var(--ink-3);white-space:nowrap}.lklink.ok .lkst{color:var(--ok)}
+.lklink .x{flex:none;border:0;background:transparent;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:0 9px 0 4px}.lklink .x:hover{color:var(--crit)}
 .lkdot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
-.kcard.lk-waits{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}.kcard.lk-waits.lk-done{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok)}.kcard.lk-blocks{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.kcard .lk-mark{font-size:11px;font-weight:600;color:var(--warn)}.kcard.lk-done .lk-mark{color:var(--ok)}.kcard.lk-blocks .lk-mark{color:var(--accent)}
-#views tr.lk-waits>td:first-child,#tree .it.lk-waits{box-shadow:inset 3px 0 0 var(--warn)}#views tr.lk-waits.lk-done>td:first-child,#tree .it.lk-waits.lk-done{box-shadow:inset 3px 0 0 var(--ok)}#views tr.lk-blocks>td:first-child,#tree .it.lk-blocks{box-shadow:inset 3px 0 0 var(--accent)}
+.pop .lkk{align-items:flex-start}.pop .lkk .ck{width:12px;flex:none;color:var(--ok);font-weight:700;padding-top:1px}.pop .lkk .kt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.pop .lkk small{font-size:11.5px;color:var(--ink-3);line-height:1.35}.pop .lkk.on{background:var(--panel-2)}
+.kcard.lk-waits{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}.kcard.lk-waits.lk-done{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok)}.kcard.lk-blocks{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}.kcard.lk-rel{border-color:var(--ink-2);box-shadow:0 0 0 1px var(--ink-2)}
+.kcard .lk-mark{font-size:11px;font-weight:600;color:var(--warn)}.kcard.lk-done .lk-mark{color:var(--ok)}.kcard.lk-blocks .lk-mark{color:var(--accent)}.kcard.lk-rel .lk-mark{color:var(--ink-2)}
+#views tr.lk-waits>td:first-child,#tree .it.lk-waits{box-shadow:inset 3px 0 0 var(--warn)}#views tr.lk-waits.lk-done>td:first-child,#tree .it.lk-waits.lk-done{box-shadow:inset 3px 0 0 var(--ok)}#views tr.lk-blocks>td:first-child,#tree .it.lk-blocks{box-shadow:inset 3px 0 0 var(--accent)}#views tr.lk-rel>td:first-child,#tree .it.lk-rel{box-shadow:inset 3px 0 0 var(--ink-2)}
 .lkacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lkok{color:var(--ok);font-size:12.5px}
 .lkstrip.blocked{border-color:rgba(232,169,58,.6)}.lkstrip.ready{border-color:rgba(47,201,138,.6)}
 .lkdir.wait{color:var(--warn);font-weight:600}.lkreason{font-size:12.5px;color:var(--ink-2)}
-.pop .lkseg{display:flex;margin:2px 4px 6px}.pop .lkseg button{flex:1;font-size:12px}.pop .mi.dis{opacity:.45;cursor:not-allowed}
 #lkf button .mono{opacity:.7;margin-left:2px}`; document.head.append(st); })();
 
 /* =====================================================================
@@ -3251,7 +3301,7 @@ async function demoSeed(DB){
       values:{ jobtype:jt("Inspection"), asset:["C-2"], worktype:[WK("Visual")], access:[AC("Grade / platform")], permits:[PM("Confined space")], people:[marco], deadline:{ start:ahead(16) }, reference:"Squeegees, rake arms, seals, coating touch-up" } },
     { n:5, title:"Pipe bridge PR-3 insulation removal", st:"in_progress", pts:PR3, created:ago(8), 
       values:{ jobtype:jt("Enabling"), asset:["PR-3"], worktype:[WK("Insulation / CUI")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[priya], reference:"Strip 12 windows and fit inspection ports so J-26-006 can start" } },
-    { n:6, title:"Pipe bridge PR-3 CUI inspection", st:"on_hold", pts:PR3, created:ago(8), waitsOn:[5], holdReason:"Waiting on insulation removal (J-26-005)",
+    { n:6, title:"Pipe bridge PR-3 CUI inspection", st:"on_hold", pts:PR3, created:ago(8), waitsOn:[5], related:[7], holdReason:"Waiting on insulation removal (J-26-005)",
       values:{ jobtype:jt("Inspection"), asset:["PR-3"], worktype:[WK("Insulation / CUI"),WK("UT thickness")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[dave], reference:"Visual + UT at 12 windows: low elbows, tee bottoms, hanger penetrations" } },
     { n:7, title:"Pipe bridge PR-3 baseplate repair", st:"completed", pts:polyU([1010,861],[1160,889],[1280,912],[1400,938]), created:ago(21), completedAt:ago(11),
       values:{ jobtype:jt("Corrective"), asset:["PR-3"], worktype:[WK("Other")], access:[AC("Grade / platform")], permits:[PM("Hot work")], reference:"Clean + recoat 4 corroded baseplates, replace 2 anchor nuts" } },
@@ -3276,7 +3326,7 @@ async function demoSeed(DB){
   const SER={ 1:["s1",4], 2:["s3",3], 4:["s2",3], 6:["s6",2], 9:["s4",2], 11:["s5",2] };
   for(const j of J){ const id=ID(j.n);
     const doc={ seq:j.n, title:j.title, statusId:j.st, values:j.values, location:{ points:j.pts, height:j.height||0, closed:!!j.closed }, created:j.created, createdBy:me, edited:j.created, editedBy:me, trashed:false, draft:false, completedAt:j.completedAt||null, noteCount:0 };
-    if(j.waitsOn) doc.links={ waitsOn:j.waitsOn.map(ID) }; if(j.holdReason) doc.holdReason=j.holdReason;
+    if(j.waitsOn||j.related) doc.links={ ...(j.waitsOn?{ waitsOn:j.waitsOn.map(ID) }:{}), ...(j.related?{ related:j.related.map(ID) }:{}) }; if(j.holdReason) doc.holdReason=j.holdReason;
     if(SER[j.n]) doc.series={ auto:SER[j.n][0], n:SER[j.n][1] }; if(j.n===8) doc.autoDone={ ["r6_"+j.values.deadline.start.replace(/-/g,"")]:true };
     await DB.set(WO_COL+"/"+id,doc);
     await DB.add(WO_COL+"/"+id+"/activity",{ t:j.created, by:me, text:"created the job" }); }
