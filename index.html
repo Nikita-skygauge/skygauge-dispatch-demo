@@ -820,7 +820,7 @@ async function createWO(init={}){
   const id=`J-${yy}-${String(seq).padStart(3,"0")}`;
   const st=init.statusId||defaultStatus("todo")?.id;
   const w={ seq, title:init.title||"", statusId:st, values:init.values||{}, location:init.location||{points:[],height:0,closed:false}, created:now(), createdBy:userRef(), edited:now(), editedBy:userRef(), trashed:false, draft:!!init.draft, completedAt:status(st)?.group==="complete"?now():null };
-  if(init.links) w.links=init.links; if(init.enabling) w.enabling=init.enabling; if(init.holdReason) w.holdReason=init.holdReason; if(init.series) w.series=init.series;
+  if(init.links) w.links=init.links; if(init.holdReason) w.holdReason=init.holdReason; if(init.series) w.series=init.series;
   await DB.set(WO_COL+"/"+id,w);
   if(!init.draft&&!init.quiet) log(id,"created the job");
   if(!init.draft&&!init.series&&typeof autoEvent==="function") autoEvent("created",{ ...w, id });
@@ -1237,7 +1237,7 @@ function openWO(id,fly){
 function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leaveJobScene(); stopPhotos(); stopNotes(); editLoc=null; S.note=null; document.body.classList.remove("note-view"); S.open=null; if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo); document.body.classList.remove("peek-open"); $("#peek").classList.remove("on"); actUnsub?.(); actUnsub=null; closePop(); highlightCard(null);
   if(S.woView){ S.woView=false; LOCK=null; document.body.classList.remove("wo-view"); if(typeof resetMode==="function") resetMode(); if(typeof orbitSync==="function") orbitSync(); }   // closing the panel from any tab also leaves the job view
   if(typeof syncJobLabels==="function") syncJobLabels(); }
-function highlightCard(id){ $$(".kcard.hl").forEach(c=>c.classList.remove("hl")); if(id){ const c=document.querySelector(`.kcard[data-id="${id}"]`); if(c){ c.classList.add("hl"); c.scrollIntoView({block:"nearest"}); } } }
+function highlightCard(id){ $$(".kcard.hl").forEach(c=>c.classList.remove("hl")); if(id){ const c=document.querySelector(`.kcard[data-id="${id}"]`); if(c){ c.classList.add("hl"); c.scrollIntoView({block:"nearest"}); } } if(typeof markLinked==="function") markLinked(); }
 let lastRendered=null, editLoc=null;   // editLoc: the record whose job area is expanded for editing
 let PTR_DOWN=false, RR_PENDING=false;
 window.addEventListener("pointerdown",()=>{ PTR_DOWN=true; },{ capture:true }); ["pointerup","pointercancel"].forEach(ev=>window.addEventListener(ev,()=>{ PTR_DOWN=false; },{ capture:true })); window.addEventListener("blur",()=>{ PTR_DOWN=false; });
@@ -1354,12 +1354,14 @@ function renderAll(){
   renderTree(); renderLegend(); regSummary();
   if(S.tab==="wo") renderViews();
   if(S.open) renderRecord();
+  if(typeof markLinked==="function") markLinked();   // the open job's linked work, on whatever was just redrawn
 }
 function renderViews(){
   const rows=filtered(); $("#vcount").textContent=S.view==="trash"?`${trashed().length} in Trash`:`${rows.length} job${rows.length===1?"":"s"}`;
   $$("#viewsw button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===S.view));
   $("#b-props").hidden=S.view==="trash"; if(typeof lkfRender==="function") lkfRender();
   if(S.view==="board") renderBoard(rows); else if(S.view==="table") renderTable(rows); else renderTrash();
+  if(typeof markLinked==="function") markLinked();
 }
 /* Board card (14 Oct 2026, Nikita: the row of chips was hard to read). The same rows on every card: title · what it is (the
    card's properties as plain text) · one line only when something needs attention · people (lead first), due date, number.
@@ -1438,6 +1440,7 @@ function renderTree(){
     const areas=[...new Set(as.map(a=>a.area||"Other"))];
     $("#tree").innerHTML=areas.map(ar=>`<div class="eyebrow" style="padding:8px 8px 2px">${P(ar)}</div>${as.filter(a=>(a.area||"Other")===ar).map(a=>{ const n=live().filter(w=>(w.values?.asset||[]).includes(a.tag)&&isOpen(w)).length; return `<div class="it" data-asset="${P(a.tag)}"><span class="tag">${P(a.tag)}</span><span class="n" title="${P(a.name)}">${P(a.name)}</span><span class="c">${n?n+" open":""}</span></div>`; }).join("")}`).join("")||`<div class="kempty">No assets</div>`;
   }
+  if(typeof markLinked==="function") markLinked();
 }
 $("#tree").addEventListener("click",e=>{ const it=e.target.closest(".it"); if(!it) return; if(it.dataset.wo) enterWOView(it.dataset.wo); else if(it.dataset.asset) assetEditor(asset(it.dataset.asset),it); });
 
@@ -2526,30 +2529,21 @@ function renderNotices(){ const w=S.open&&!S.note?W(S.open):null; const el=$("#n
 if(MOCK) window.__t={ createWO, W, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, notify, cancelNotice, notifyStatus, get NTF(){ return NTF; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
 
 /* =====================================================================
-   LINKS — "waits on" between jobs, enabling work (scaffold, insulation, isolation…), hold reasons
-   A job stores only what it waits on (w.links.waitsOn); "blocks" is worked out from the other side.
-   A blocker releases its dependents when it is complete, or — for enabling work — as soon as it is marked ready
-   (scaffold up and tagged); the enabling job itself stays open until its restore step (strip, reinstate) is done.
+   LINKS — "waits on" between jobs, and hold reasons
+   A job stores only what it waits on (w.links.waitsOn); "blocks" is worked out from the other side. A job releases the
+   jobs waiting on it when it is complete. Enabling work (scaffold, insulation… with "ready" and "restore" steps) was
+   folded into plain links on 14 Oct 2026 (Nikita): erecting and striking a scaffold are two linked jobs.
    ===================================================================== */
-const EN_KINDS={
-  scaffold:   { name:"Scaffold",               title:"Erect scaffold",        ready:"Scaffold erected & tagged", restore:"Strip scaffold" },
-  insulation: { name:"Insulation removal",     title:"Remove insulation",     ready:"Insulation removed",        restore:"Reinstate insulation" },
-  isolation:  { name:"Isolation / lockout",    title:"Isolate & lock out",    ready:"Isolated & locked out",     restore:"Remove isolation" },
-  excavation: { name:"Excavation",             title:"Excavate & shore",      ready:"Excavated & shored",        restore:"Backfill" },
-  cleaning:   { name:"Surface prep / cleaning",title:"Clean & prep surface",  ready:"Surface prepared",          restore:null },
-};
 const HOLD_REASONS=["Waiting on scaffold","Waiting on insulation removal","Waiting on parts / materials","Waiting on a shutdown window","Waiting on a permit","Waiting on engineering"];
-const enKind = w => w?.enabling?EN_KINDS[w.enabling.kind]||{ name:"Enabling work", title:"Enabling work", ready:"Ready", restore:null }:null;
 const waitsOnIds = w => (w?.links?.waitsOn||[]).filter(id=>{ const b=W(id); return b&&!b.trashed&&!b.draft; });
 const blocksOf = w => live().filter(x=>!x.draft&&(x.links?.waitsOn||[]).includes(w.id));
-const released = b => isDone(b)||!!b?.enabling?.ready;
+const released = b => isDone(b);
 const blockersOf = w => waitsOnIds(w).map(W).filter(b=>!released(b));
 const isBlocked = w => isOpen(w)&&blockersOf(w).length>0;
 const readyToStart = w => isOpen(w)&&waitsOnIds(w).length>0&&!blockersOf(w).length&&status(w.statusId)?.group==="todo";
-const restoreDue = e => !!(e?.enabling?.ready&&!e.enabling.restored&&!isDone(e)&&enKind(e).restore&&blocksOf(e).length&&blocksOf(e).every(isDone));
 const onHold = w => /hold/i.test(status(w.statusId)?.name||"");
 const shortId = id => String(id).slice(-3);
-function linkPinState(w){ return restoreDue(w)?"d":isBlocked(w)?"b":readyToStart(w)?"r":""; }
+function linkPinState(w){ return isBlocked(w)?"b":readyToStart(w)?"r":""; }
 /* would "a waits on b" close a loop? true if b already (directly or through others) waits on a */
 function wouldCycle(a,b){ const seen=new Set(); const st=[b]; while(st.length){ const x=st.pop(); if(x===a) return true; if(seen.has(x)) continue; seen.add(x); (W(x)?.links?.waitsOn||[]).forEach(y=>st.push(y)); } return false; }
 
@@ -2569,45 +2563,13 @@ async function unlinkJobs(aId,bId){
   log(aId,`no longer waits on ${bId}`); log(bId,`no longer blocks ${aId}`);
   if(isOpen(a)&&waitsOnIds(a).length&&!blockersOf(a).length){ log(aId,"is ready to start — nothing it waits on is outstanding"); if(typeof autoEvent==="function") autoEvent("ready",W(aId)); }
 }
-async function addEnabling(forId,kind){
-  const w=W(forId), k=EN_KINDS[kind]; if(!w||!k) return null;
-  const values={}; if(w.values?.asset?.length) values.asset=structuredClone(w.values.asset);
-  const id=await createWO({ title:`${k.title} · ${w.title||w.id}`, values, location:structuredClone(w.location||{points:[],height:0,closed:false}), enabling:{ kind, ready:false } });
-  log(id,`created as enabling work (${k.name}) for ${forId}`);
-  const cur=W(forId); cur.links={ waitsOn:[...(cur.links?.waitsOn||[]),id] }; await saveLinks(cur);
-  log(forId,`added enabling work ${id} · ${k.title}`);
-  toast(`${id} · ${P(k.title)} created and linked · <button class="link" id="en-open">Open it</button>`); $("#en-open")?.addEventListener("click",()=>goJob(id));
-  return id;
-}
-async function markReady(id,ready=true){
-  const e=W(id); if(!e?.enabling) return; const k=enKind(e); const before=blocksOf(e).filter(isBlocked).map(d=>d.id);
-  e.enabling={ ...e.enabling, ready, readyAt:ready?now():null, readyBy:ready?userRef():null }; syncOverlays(); renderAll();
-  await DB.update(WO_COL+"/"+id,{ enabling:e.enabling, ...stamp() });
-  log(id,ready?`marked ${k.ready}`:`un-marked ${k.ready}`);
-  if(ready&&!k.restore){ await setStatus(id,defaultStatus("complete")?.id); }
-  else if(ready&&status(e.statusId)?.group==="todo"){ await setStatus(id,defaultStatus("progress")?.id); }
-  const freed=before.filter(d=>!isBlocked(W(d)));
-  freed.forEach(d=>{ log(d,`is ready to start — ${id} ${k.ready.toLowerCase()}`); if(typeof autoEvent==="function") autoEvent("ready",W(d)); });
-  const again=blocksOf(e).filter(isBlocked).map(d=>d.id).filter(d=>!before.includes(d)); again.forEach(d=>{ log(d,`is waiting again — ${id} is no longer ${k.ready.toLowerCase()}`); NTF.filter(n=>n.jobId===d&&n.status==="scheduled"&&n.kind==="auto"&&AUX(n.auto)?.rule?.trigger?.type==="ready").forEach(n=>cancelNotice(n.id)); });
-  if(freed.length) toast(`${freed.join(", ")} ${freed.length===1?"is":"are"} ready to start`);
-}
-async function markRestored(id){
-  const e=W(id); if(!e?.enabling) return; const k=enKind(e);
-  e.enabling={ ...e.enabling, restored:true, restoredAt:now(), restoredBy:userRef() };
-  await DB.update(WO_COL+"/"+id,{ enabling:e.enabling, ...stamp() }); log(id,`marked ${k.restore||"restore"} done`);
-  if(!isDone(e)) await setStatus(id,defaultStatus("complete")?.id); else renderAll();
-}
 async function setHold(id,reason){ const w=W(id); if(!w) return; const r=(reason||"").trim()||null; if((w.holdReason||null)===r) return; w.holdReason=r; renderAll(); await DB.update(WO_COL+"/"+id,{ holdReason:r, ...stamp() }); if(r) log(id,`hold reason: ${r}`); }
 /* called by setStatus after the status is saved */
 function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
   const prevName=status(prevSid)?.name||"", grp=status(sid)?.group;
-  const relBefore=wasDone||!!w.enabling?.ready, relNow=nowDone||!!w.enabling?.ready; const msgs=[];
+  const relBefore=wasDone, relNow=nowDone; const msgs=[];
   if(!relBefore&&relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&!blockersOf(d).length){ log(d.id,`is ready to start — ${w.id} is complete`); msgs.push(`${d.id} is ready to start`); if(typeof autoEvent==="function") autoEvent("ready",d); } });
   if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1){ log(d.id,`is waiting again — ${w.id} was reopened`); NTF.filter(n=>n.jobId===d.id&&n.status==="scheduled"&&n.kind==="auto"&&AUX(n.auto)?.rule?.trigger?.type==="ready").forEach(n=>cancelNotice(n.id)); } });
-  if(nowDone&&!wasDone){
-    waitsOnIds(w).map(W).forEach(e=>{ if(restoreDue(e)){ log(e.id,`restore due: ${enKind(e).restore} — every job it enabled is complete`); msgs.push(`${e.id}: ${enKind(e).restore} is due`); if(typeof autoEvent==="function") autoEvent("restore",e); } });
-    if(w.enabling?.ready&&!w.enabling.restored&&enKind(w).restore){ w.enabling={ ...w.enabling, restored:true, restoredAt:now(), restoredBy:userRef() }; DB.update(WO_COL+"/"+w.id,{ enabling:w.enabling }).catch(console.error); }
-  }
   if(!nowDone&&(grp==="progress"||grp==="complete")&&blockersOf(w).length) msgs.push(`Heads up: ${w.id} still waits on ${blockersOf(w).map(b=>b.id).join(", ")}`);
   if(/hold/i.test(prevName)&&!onHold(w)&&w.holdReason) setHold(w.id,null);
   if(onHold(w)&&!/hold/i.test(prevName)) holdPrompt(w);
@@ -2619,10 +2581,10 @@ function goJob(id){ if(S.woView) enterWOView(id); else openWO(id); }
 function stDot(w){ const o=status(w.statusId); return `<i class="lkdot" style="background:${col(o?.color).map}"></i>`; }
 function lkChip(b,unlinkAttr,showRel){
   const o=status(b.statusId); const ok=showRel&&released(b);
-  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok&&!isDone(b)?"✓ "+P(enKind(b)?.ready||"ready"):P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
+  return `<span class="lkchip ${ok?"ok":""}" data-go="${b.id}" title="${P(b.id+" · "+(b.title||"Untitled"))}">${stDot(b)}<span class="mono">${shortId(b.id)}</span><span class="lkt">${P(b.title||"Untitled")}</span><span class="lkst">${ok?"✓ ":""}${P(o?.name||"")}</span>${unlinkAttr?`<button class="x" ${unlinkAttr} title="Remove this link">×</button>`:""}</span>`;
 }
 /* The yellow / green / purple banner under the title was removed (1 Oct 2026, Nikita: it repeated the Linked box).
-   Waiting, ready-to-start, restore-due and the hold reason are all shown in the Linked / Enabling boxes. */
+   Waiting, ready-to-start and the hold reason are all shown in the Linked box. */
 /* a hold reason that only names a job this one already waits on adds nothing — the Linked box shows that job */
 function holdRestatesLink(w){ const r=w.holdReason||""; return !!r&&waitsOnIds(w).some(id=>r.includes(id)); }
 function linksStripHTML(w){
@@ -2634,15 +2596,7 @@ function linksStripHTML(w){
   if(onHold(w)&&!holdRestatesLink(w)&&(w.holdReason||!blocked)) html+=`<div class="lkrow"><span class="lkdir wait">‖ ${P(status(w.statusId).name)}</span><span class="lkreason">${w.holdReason?P(w.holdReason):`<i>no reason given</i>`}</span><button class="link" id="hold-edit">${w.holdReason?"Edit":"Add a reason"}</button></div>`;
   if(bl.length) html+=`<div class="lkrow"><span class="lkdir">Blocks</span>${bl.map(d=>lkChip(d,`data-unblock="${d.id}"`,false)).join("")}</div>`;
   if(!wo.length&&!bl.length&&!onHold(w)) html+=`<span class="hint">No linked jobs</span>`;
-  html+=`<div class="lkacts"><button class="btn sm" id="lk-add">＋ Link a job</button>${w.enabling?"":`<button class="btn sm" id="lk-en">＋ Enabling work</button>`}</div></div></div>`;
-  if(w.enabling){ const k=enKind(w), e=w.enabling, dn=bl.map(d=>d.id);
-    html+=`<div class="strip lkstrip en${restoreDue(w)?" due":""}"><span class="lab">Enabling</span><div class="val"><div><b>${P(k.name)}</b>${dn.length?` · for ${dn.map(P).join(", ")}`:` · <span class="hint">not linked to a job yet</span>`}</div>`;
-    if(!e.ready) html+=`<div class="lkacts"><button class="btn sm teal" id="en-ready">Mark “${P(k.ready)}”</button><span class="hint">Releases the jobs it blocks</span></div>`;
-    else { html+=`<div class="lkok">✓ ${P(k.ready)} · ${P(fmtDate(e.readyAt,true))}${e.readyBy?.name?" · "+P(e.readyBy.name):""} ${isDone(w)?"":`<button class="link" id="en-undo">Undo</button>`}</div>`;
-      if(k.restore){ if(e.restored||isDone(w)) html+=`<div class="lkok">✓ ${P(k.restore)}${e.restoredAt?" · "+P(fmtDate(e.restoredAt,true)):""}</div>`;
-        else if(restoreDue(w)) html+=`<div class="lkacts"><button class="btn sm teal" id="en-restore">Mark “${P(k.restore)}” done</button><span class="lkdue">↻ Restore due — every job it enabled is complete</span></div>`;
-        else html+=`<div class="hint">Next: ${P(k.restore)}, once ${dn.filter(d=>!isDone(W(d))).map(P).join(", ")||"the linked jobs"} ${dn.filter(d=>!isDone(W(d))).length===1?"is":"are"} complete</div>`; } }
-    html+=`</div></div>`; }
+  html+=`<div class="lkacts"><button class="btn sm" id="lk-add">＋ Link a job</button></div></div></div>`;
   return html;
 }
 function wireLinks(w){
@@ -2651,10 +2605,6 @@ function wireLinks(w){
   body.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(w.id,b.dataset.unlink); });
   body.querySelectorAll("[data-unblock]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); unlinkJobs(b.dataset.unblock,w.id); });
   $("#lk-add")?.addEventListener("click",e=>linkPicker(w,e.currentTarget));
-  $("#lk-en")?.addEventListener("click",e=>enablingMenu(w,e.currentTarget));
-  $("#en-ready")?.addEventListener("click",()=>markReady(w.id,true));
-  $("#en-undo")?.addEventListener("click",()=>markReady(w.id,false));
-  $("#en-restore")?.addEventListener("click",()=>markRestored(w.id)); $("#en-restore2")?.addEventListener("click",()=>markRestored(w.id));
   $("#hold-edit")?.addEventListener("click",()=>holdPrompt(w));
 }
 let LKDIR="waits";
@@ -2663,15 +2613,11 @@ function linkPicker(w,anchor){
     const linked=new Set(LKDIR==="waits"?waitsOnIds(w):blocksOf(w).map(d=>d.id));
     const rows=live().filter(x=>x.id!==w.id&&!x.draft&&!linked.has(x.id)&&(!q||textOf(x).includes(q)));
     el.querySelector(".lklist").innerHTML=rows.map(x=>{ const cyc=LKDIR==="waits"?wouldCycle(w.id,x.id):wouldCycle(x.id,w.id);
-      return `<div class="mi ${cyc?"dis":""}" data-pick="${x.id}" ${cyc?`title="${P(LKDIR==="waits"?x.id+" already waits on "+w.id:w.id+" already waits on "+x.id)} — linking would make a loop"`:""}>${stDot(x)}<span class="mono">${x.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(x.title||"Untitled")}</span>${cyc?`<span class="r">loop</span>`:x.enabling?`<span class="r">enabling</span>`:""}</div>`; }).join("")||`<div class="hint" style="padding:6px 8px">No other jobs match</div>`;
+      return `<div class="mi ${cyc?"dis":""}" data-pick="${x.id}" ${cyc?`title="${P(LKDIR==="waits"?x.id+" already waits on "+w.id:w.id+" already waits on "+x.id)} — linking would make a loop"`:""}>${stDot(x)}<span class="mono">${x.id}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${P(x.title||"Untitled")}</span>${cyc?`<span class="r">loop</span>`:""}</div>`; }).join("")||`<div class="hint" style="padding:6px 8px">No other jobs match</div>`;
     el.querySelectorAll("[data-pick]:not(.dis)").forEach(m=>m.onclick=async()=>{ closePop(); if(LKDIR==="waits") await linkJobs(w.id,m.dataset.pick); else await linkJobs(m.dataset.pick,w.id); });
     el.querySelectorAll(".lkseg button").forEach(b=>b.setAttribute("aria-selected",b.dataset.d===LKDIR)); };
   const el=openPop(anchor,`<div class="lkseg tabs"><button data-d="waits">${P(w.id)} waits on…</button><button data-d="blocks">${P(w.id)} blocks…</button></div><input class="pin" placeholder="Find a job"><div class="lklist"></div>`,{width:300});
   el.querySelector(".pin").oninput=draw; el.querySelectorAll(".lkseg button").forEach(b=>b.onclick=()=>{ LKDIR=b.dataset.d; draw(); }); draw();
-}
-function enablingMenu(w,anchor){
-  const el=openPop(anchor,`<div class="sec">Add enabling work for ${P(w.id)}</div>${Object.entries(EN_KINDS).map(([k,v])=>`<div class="mi" data-k="${k}"><span style="flex:1">${P(v.title)}</span><span class="r">${v.restore?P(v.restore):"no restore step"}</span></div>`).join("")}<div class="hint" style="padding:4px 8px 6px">Creates a job at the same location that ${P(w.id)} waits on.</div>`,{width:300,noFocus:true});
-  el.querySelectorAll("[data-k]").forEach(m=>m.onclick=()=>{ closePop(); addEnabling(w.id,m.dataset.k); });
 }
 function holdPrompt(w){
   const anchor=$("#pbody [data-status]")||$(`#views [data-id="${w.id}"]`); if(!anchor) return;
@@ -2685,26 +2631,34 @@ function holdPrompt(w){
 
 /* ---------- board + table ---------- */
 let LKF="all";
-function lkPass(w){ return LKF==="blocked"?isBlocked(w):LKF==="ready"?readyToStart(w):LKF==="restore"?restoreDue(w):true; }
+function lkPass(w){ return LKF==="blocked"?isBlocked(w):LKF==="ready"?readyToStart(w):true; }
 function lkfRender(){ const bar=$("#lkf"); if(!bar) return; bar.hidden=S.view==="trash"; const L=live();
-  const n={ all:L.length, blocked:L.filter(isBlocked).length, ready:L.filter(readyToStart).length, restore:L.filter(restoreDue).length };
-  bar.innerHTML=`<button data-f="all">All</button><button data-f="blocked">Waiting <span class="mono">${n.blocked}</span></button><button data-f="ready">Ready to start <span class="mono">${n.ready}</span></button>${n.restore||LKF==="restore"?`<button data-f="restore">Restore due <span class="mono">${n.restore}</span></button>`:""}`;
+  const n={ all:L.length, blocked:L.filter(isBlocked).length, ready:L.filter(readyToStart).length };
+  bar.innerHTML=`<button data-f="all">All</button><button data-f="blocked">Waiting <span class="mono">${n.blocked}</span></button><button data-f="ready">Ready to start <span class="mono">${n.ready}</span></button>`;
   bar.querySelectorAll("button").forEach(b=>{ b.setAttribute("aria-selected",b.dataset.f===LKF); b.onclick=()=>{ LKF=b.dataset.f; renderViews(); }; }); }
 /* the board card's one attention line (most urgent first), and its tooltip lines */
 function linkCardFlag(w){ const bl=isOpen(w)?blockersOf(w):[];
   if(bl.length) return { cls:"wait", icon:"‖", text:`Waiting on ${bl.map(x=>x.id).join(", ")}`, title:bl.map(x=>`${x.id} ${x.title||""}`).join("\n") };
-  if(restoreDue(w)) return { cls:"wait", icon:"↻", text:`${enKind(w).restore} due`, title:"Every job it enabled is complete" };
   if(onHold(w)&&w.holdReason) return { cls:"wait", icon:"‖", text:w.holdReason.length>40?w.holdReason.slice(0,38)+"…":w.holdReason, title:w.holdReason };
   if(readyToStart(w)) return { cls:"go", icon:"✓", text:"Ready to start", title:"" };
   return null; }
-function linkCardInfo(w){ const out=[]; if(w.enabling) out.push(`Enabling work: ${enKind(w).name}${w.enabling.ready?" (done)":""}`);
+function linkCardInfo(w){ const out=[];
   const nb=blocksOf(w).filter(isOpen); if(nb.length) out.push(`Holding up: ${nb.map(d=>d.id).join(", ")}`); return out; }
+
+/* The open job's linked work stands out on the board, the table and the Map register (14 Oct 2026, Nikita): what it waits
+   on in amber (green once complete) labelled "J-26-006 waits on this", what waits on it in purple labelled "Waits on J-26-005". */
+function markLinked(){ $$(".lk-mark").forEach(e=>e.remove()); $$(".lk-waits,.lk-blocks").forEach(e=>e.classList.remove("lk-waits","lk-blocks","lk-done"));
+  const o=S.open?W(S.open):null; if(!o||o.trashed) return;
+  const mark=(b,role)=>{ const done=role==="waits"&&isDone(b);
+    document.querySelectorAll(`.kcard[data-id="${b.id}"], #views tr[data-id="${b.id}"], #tree .it[data-wo="${b.id}"]`).forEach(el=>{ el.classList.add("lk-"+role); if(done) el.classList.add("lk-done");
+      if(el.classList.contains("kcard")) el.insertAdjacentHTML("afterbegin",`<div class="lk-mark">${role==="waits"?`${done?"✓":"‖"} ${P(o.id)} waits on this`:`Waits on ${P(o.id)}`}</div>`); }); };
+  waitsOnIds(o).forEach(id=>mark(W(id),"waits")); blocksOf(o).forEach(d=>mark(d,"blocks")); }
 
 /* ---------- map: badge on the pin, connectors in the job view ---------- */
 function linkPinDecorate(pin,w){ const st=linkPinState(w); if(!st) return; const s=pin.tpl.content.querySelector("svg"); if(!s) return; const NS="http://www.w3.org/2000/svg";
   const sc=+s.getAttribute("width")/26; s.setAttribute("viewBox","-5 -7 36 43"); s.setAttribute("width",Math.round(36*sc)); s.setAttribute("height",Math.round(43*sc));
-  const g=document.createElementNS(NS,"g"); const fill=st==="r"?"#2FC98A":st==="d"?"#D5C2FF":"#E8A93A";
-  g.innerHTML=`<circle cx="23" cy="1" r="6.6" fill="${fill}" stroke="#0B0F1F" stroke-width="1.4"/>`+(st==="b"?`<rect x="20.2" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/><rect x="23.8" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/>`:st==="r"?`<path d="M19.8 1.2l2.2 2.2 4.2-4.6" fill="none" stroke="#0B0F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`:`<path d="M26 1a3 3 0 1 1-1-2.2M26 -2.6v2h-2" fill="none" stroke="#0B0F1F" stroke-width="1.5" stroke-linecap="round"/>`);
+  const g=document.createElementNS(NS,"g"); const fill=st==="r"?"#2FC98A":"#E8A93A";
+  g.innerHTML=`<circle cx="23" cy="1" r="6.6" fill="${fill}" stroke="#0B0F1F" stroke-width="1.4"/>`+(st==="b"?`<rect x="20.2" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/><rect x="23.8" y="-2.4" width="2" height="6.8" rx=".6" fill="#0B0F1F"/>`:`<path d="M19.8 1.2l2.2 2.2 4.2-4.6" fill="none" stroke="#0B0F1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`);
   s.append(g); pin.state=st; }
 var LKOV={ key:"", els:[] };
 function lkTop(w){ const P0=pts(w); const a=locAnchor(w); if(!a) return null; const kind=locKindW(w); const h=locHeight(w);
@@ -2719,7 +2673,7 @@ function syncLinkOverlays(){ if(!map||!lib) return;
   if(!w||!pairs.length) return;
   const A=lkTop(w); if(!A) return;
   pairs.forEach(({o,dir})=>{ const B=lkTop(o); if(!B) return;
-    const d=Math.hypot((B.lat-A.lat)*111320,(B.lng-A.lng)*111320*Math.cos(A.lat*Math.PI/180)); if(d<4) return;   // same spot (enabling work made from this job): the panel says it, a zero-length line would not
+    const d=Math.hypot((B.lat-A.lat)*111320,(B.lng-A.lng)*111320*Math.cos(A.lat*Math.PI/180)); if(d<4) return;   // same spot: the panel says it, a zero-length line would not
     const mode=A.ground!=null&&B.ground!=null?"ABSOLUTE":"RELATIVE_TO_MESH"; const base=p=>mode==="ABSOLUTE"?p.ground:0;
     const rise=Math.min(40,Math.max(6,d*0.22)); const N=16; const path=[];
     for(let i=0;i<=N;i++){ const t=i/N; path.push({ lat:A.lat+(B.lat-A.lat)*t, lng:A.lng+(B.lng-A.lng)*t, altitude:base(A)+A.lift+(base(B)+B.lift-base(A)-A.lift)*t+Math.sin(Math.PI*t)*rise }); }
@@ -2728,7 +2682,7 @@ function syncLinkOverlays(){ if(!map||!lib) return;
     const mid=path[N/2]; const txt=dir==="waits"?`${rel?"✓ ":""}waits on ${shortId(o.id)}`:`blocks ${shortId(o.id)}`;
     const m=mk3("m",{ position:{ lat:mid.lat, lng:mid.lng, altitude:mid.altitude+1.5 }, altitudeMode:mode, tpl:distLabelTemplate(txt,dir==="waits"&&!rel) }); if(m) LKOV.els.push(m); });
 }
-if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRestored, setHold, isBlocked, readyToStart, restoreDue, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
+if(MOCK) window.__links={ linkJobs, unlinkJobs, setHold, isBlocked, readyToStart, blockersOf, blocksOf, wouldCycle, linkPinState, get LKOV(){ return LKOV; }, setFilter:f=>{ LKF=f; renderViews(); } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
 .lkstrip{align-items:flex-start}.lkstrip .val{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -2738,9 +2692,12 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
 .lkchip .lkst{font-size:11px;color:var(--ink-3);white-space:nowrap}.lkchip.ok .lkst{color:var(--ok)}
 .lkchip .x{border:0;background:transparent;color:var(--ink-3);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}.lkchip .x:hover{color:var(--crit)}
 .lkdot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.kcard.lk-waits{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}.kcard.lk-waits.lk-done{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok)}.kcard.lk-blocks{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.kcard .lk-mark{font-size:11px;font-weight:600;color:var(--warn)}.kcard.lk-done .lk-mark{color:var(--ok)}.kcard.lk-blocks .lk-mark{color:var(--accent)}
+#views tr.lk-waits>td:first-child,#tree .it.lk-waits{box-shadow:inset 3px 0 0 var(--warn)}#views tr.lk-waits.lk-done>td:first-child,#tree .it.lk-waits.lk-done{box-shadow:inset 3px 0 0 var(--ok)}#views tr.lk-blocks>td:first-child,#tree .it.lk-blocks{box-shadow:inset 3px 0 0 var(--accent)}
 .lkacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lkok{color:var(--ok);font-size:12.5px}
-.lkstrip.blocked{border-color:rgba(232,169,58,.6)}.lkstrip.ready{border-color:rgba(47,201,138,.6)}.lkstrip.en.due{border-color:rgba(213,194,255,.7)}
-.lkdir.wait{color:var(--warn);font-weight:600}.lkreason{font-size:12.5px;color:var(--ink-2)}.lkdue{font-size:12.5px;color:var(--ink-2)}
+.lkstrip.blocked{border-color:rgba(232,169,58,.6)}.lkstrip.ready{border-color:rgba(47,201,138,.6)}
+.lkdir.wait{color:var(--warn);font-weight:600}.lkreason{font-size:12.5px;color:var(--ink-2)}
 .pop .lkseg{display:flex;margin:2px 4px 6px}.pop .lkseg button{flex:1;font-size:12px}.pop .mi.dis{opacity:.45;cursor:not-allowed}
 #lkf button .mono{opacity:.7;margin-left:2px}`; document.head.append(st); })();
 
@@ -2749,7 +2706,7 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
    Map zones were taken out on 1 Oct 2026 (parked for later: docs/parked/zones-2026-10-01).
    workspace/main/automations/{id}: { kind:"schedule"|"rule", name, on, order, created, createdBy, lastRun, runCount,
        schedule:{ mode:"calendar"|"after", unit:"month"|"week"|"year", every, dates:[{m,d}..], months, leadDays, dueDays,
-                  ifOpen:"create"|"skip", last (ISO occurrence last created), lastDone (ISO, before the app), enabling,
+                  ifOpen:"create"|"skip", last (ISO occurrence last created), lastDone (ISO, before the app),
                   template:{ from, title, values, location }, history:[{when,state,label}] },
        rule:{ trigger:{type,to?,days?}, conds:[{type:"prop",pid,value}], actions:[{type,...}] } }
    workspace/main/automations/{id}/runs/{rid}: { t, job, did, result }
@@ -2774,7 +2731,7 @@ const personLabel=p=>p?.name||p?.email||"";
 function startAuto(){
   auUnsub.forEach(f=>{ try{ f(); }catch{} });
   auUnsub=[
-    DB.watchCol(AU_COL,rows=>{ rows.forEach(a=>{ if(a.rule?.actions) a.rule.actions=a.rule.actions.filter(x=>x.type!=="cc"); });   /* "add to the job's email threads" left with the threads (13 Oct 2026) */ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
+    DB.watchCol(AU_COL,rows=>{ rows=rows.filter(a=>a.rule?.trigger?.type!=="restore"); rows.forEach(a=>{ if(a.rule?.actions) a.rule.actions=a.rule.actions.filter(x=>x.type!=="cc"); });   /* "add to the job's email threads" left with the threads (13 Oct 2026); "restore due" rules with enabling work (14 Oct) */ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
   ];
   S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); AU_LOADED=false; auRunsUnsub?.(); auRunsUnsub=null; });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
@@ -2802,14 +2759,13 @@ const TRIG={
   status:{ label:"Status changes to" },
   before:{ label:"Before status changes to" },
   ready:{ label:"A waiting job becomes ready to start" },
-  restore:{ label:"Enabling work becomes restore due" },
   deadline:{ label:"days before the deadline" },
 };
 const statusLive=to=>!!GROUPS[to]||statuses().some(o=>o.id===to);
 const statusWord=to=>GROUPS[to]||(statusLive(to)?status(to)?.name:"a status that no longer exists");
 function trigText(t){ if(t.type==="status"||t.type==="before") return `${TRIG[t.type].label} ${statusWord(t.to)}`; if(t.type==="deadline") return `${t.days} ${TRIG.deadline.label}`; return TRIG[t.type]?.label||t.type; }
-function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusWord(t.to)}`; if(t.type==="before") return `Before it moves to ${statusWord(t.to)}`; if(t.type==="ready") return "When it becomes ready to start"; if(t.type==="restore") return "When its restore step is due"; if(t.type==="deadline") return `${t.days} days before the deadline`; return "When it changes"; }
-const WHAT={ results:"the results, photos and files", ready:"a ready-to-start notice", restore:"a restore request", reminder:"a deadline reminder", note:"a note" };
+function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusWord(t.to)}`; if(t.type==="before") return `Before it moves to ${statusWord(t.to)}`; if(t.type==="ready") return "When it becomes ready to start"; if(t.type==="deadline") return `${t.days} days before the deadline`; return "When it changes"; }
+const WHAT={ results:"the results, photos and files", ready:"a ready-to-start notice", reminder:"a deadline reminder", note:"a note" };
 function actText(x){ switch(x.type){
   case "tag": return `Tag ${personLabel(x.person)}`;
   case "email": return `Email ${x.to==="people"?"the people on the job":personLabel(x.person)} ${WHAT[x.what]||""}${x.hold?` · wait ${x.hold} min so it can be cancelled`:""}`;
@@ -2884,8 +2840,7 @@ async function doAction(a,x,w){
   return null; }
 function emailBody(what,w,x,a,files=[]){ const st=status(w.statusId)?.name||""; const nPh=w.photoCount??(w.values?.photos||[]).length;
   if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${files.length} · Notes: ${w.noteCount||0}\n\n${files.length?"The files are attached. ":""}Open the job for the marked-up model, notes and activity.`, attachments:files.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
-  if(what==="ready") return { subject:`${w.id} is ready to start`, text:`Everything ${w.id} · ${w.title||"Untitled"} was waiting on is done or in place:\n${waitsOnIds(w).map(id=>{ const b=W(id); return `• ${id} ${b?.title||""} — ${isDone(b)?"completed":enKind(b)?.ready||"ready"}`; }).join("\n")}\n\nIt is still marked ${st}. Plan the crew and permits.`, attachments:[] };
-  if(what==="restore"){ const k=enKind(w); return { subject:`${k?.restore||"Restore"} due · ${w.id}`, text:`${w.title||"Untitled"} (${w.id}): every job it enabled is complete (${blocksOf(w).map(d=>d.id).join(", ")}).\n\nPlease book: ${k?.restore||"the restore step"}.`, attachments:[] }; }
+  if(what==="ready") return { subject:`${w.id} is ready to start`, text:`Everything ${w.id} · ${w.title||"Untitled"} was waiting on is complete:\n${waitsOnIds(w).map(id=>{ const b=W(id); return `• ${id} ${b?.title||""} — completed`; }).join("\n")}\n\nIt is still marked ${st}. Plan the crew and permits.`, attachments:[] };
   if(what==="reminder"){ const d=w.values?.deadline?.start; return { subject:`Due ${fmtDate(d)} · ${w.id} · ${w.title||"Untitled"}`, text:`${w.id} · ${w.title||"Untitled"} is due ${fmtDate(d)} (${daysUntil(d)<=0?"today or overdue":"in "+daysUntil(d)+" day"+(daysUntil(d)===1?"":"s")}) and is ${st}.`, attachments:[] }; }
   return { subject:`${w.id} · ${w.title||"Untitled"}`, text:x.text||`${w.title||"Untitled"} (${w.id}) is now ${st}.\n\nOpen the job for the details, notes and activity.`, attachments:[] }; }
 /* every file attached to a note of the job */
@@ -2932,7 +2887,6 @@ async function fireClaimed(a,s,tpl,occ,manual,missed,missTxt,open,st){
   const w=await waitW(id);
   if(w){ auLog(w,a,`created this job from “${a.name}” (${ordinal(n)} in the series)${missTxt}`); open.forEach(o=>auLog(o,a,`a newer one, ${id}, was created while this one is still open`)); }
   if(s.mode!=="after") await DB.update(AU_COL+"/"+a.id,{ "schedule.last":occ.toISOString(), ...(s.unit==="month"&&!s.day&&s.last?{ "schedule.day":new Date(s.last).getDate() }:{}) });   // older monthly schedules: pin the day before `last` moves into a shorter month
-  if(s.enabling&&typeof addEnabling==="function"&&w) await addEnabling(id,s.enabling);
   await recordRun(a,w||{id},`created ${id}, due ${fmtDate(ymd(due))}${missTxt}`);
   if(w) autoEvent("created",w);
   return id; }
@@ -2953,7 +2907,6 @@ function rulesFor(w){ if(!w||w.trashed||w.draft) return [];
   return AU.filter(a=>a.on&&a.kind==="rule"&&a.rule&&condsMatch(a,w)&&(()=>{ const t=a.rule.trigger;
     if(t.type==="status"||t.type==="before") return statusLive(t.to)&&status(w.statusId)?.group!==t.to&&w.statusId!==t.to;
     if(t.type==="ready") return waitsOnIds(w).length>0&&isOpen(w);
-    if(t.type==="restore") return !!w.enabling&&!w.enabling.restored&&!!enKind(w)?.restore&&isOpen(w);
     if(t.type==="deadline") return !!w.values?.deadline?.start&&isOpen(w);
     if(t.type==="change") return (a.rule.actions||[]).some(x=>(x.type==="tag"&&!(w.untagged||[]).includes((x.person?.email||"").toLowerCase())&&!(w.values?.people||[]).some(p=>(p.email||"").toLowerCase()===(x.person?.email||"").toLowerCase()))||(x.type==="permit"&&!hasOpt(w,"permits",x.value))||(x.type==="addopt"&&!hasOpt(w,x.pid,x.value)));
     return false; })()); }
@@ -3010,13 +2963,12 @@ function compileRule(segs){
   if(/\bbefore\b/.test(s)&&(statusToks.length||/\b(in progress|starts?|starting|begins?|work begins|goes live)\b/.test(s))){ const st=statusToks[0]?.t; trigger={ type:"before", to:st?st.id:"progress" }; }
   else if((m=s.match(/(\d+|an?|the|one|two|three|four|five|six|seven|ten|fourteen)\s*(?:working\s*|business\s*)?(days?|weeks?)\s*(?:before|ahead of|prior to|out from)\s*[^,.;]{0,80}?(?:deadline|due date|due)\b/))){ const N={ a:1, an:1, the:1, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, ten:10, fourteen:14 }; trigger={ type:"deadline", days:(N[m[1]]??+m[1])*(/week/.test(m[2])?7:1) }; }
   else if(/\b(ready to start|released|unblocked|free to start)\b/.test(s)) trigger={ type:"ready" };
-  else if(/\b(restore|strip(?:ped)?[- ]down|reinstate(?:ment)?|come down)\b/.test(s)&&/\bdue\b/.test(s)) trigger={ type:"restore" };
   else if(statusToks.length) trigger={ type:"status", to:statusToks[0].t.id };
   else if(/\b(completed|complete|done|finished|closed|signed off)\b/.test(s)) trigger={ type:"status", to:"complete" };
   else if(/\b(in progress|started|starts|begins|kicks off|gets going)\b/.test(s)) trigger={ type:"status", to:"progress" };
   else if((m=statuses().find(o=>new RegExp("\\b"+o.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(s)))) trigger={ type:"status", to:m.id };
   else trigger={ type:"change" };
-  const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="restore"?"restore":trigger.type==="deadline"?"reminder":"note";
+  const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="deadline"?"reminder":"note";
   const hold=/\b(right away|immediately|straight away|at once|without waiting|instantly)\b/.test(s)?0:(m=s.match(/wait(?:ing)?\s*(\d+)\s*min/))?+m[1]:trigger.type==="deadline"?0:5;
   toks.forEach((t,i)=>{ const v=lastVerb(before(i));
     if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); }
@@ -3041,7 +2993,6 @@ function compileSchedule(segs,prev={}){
   const { s, toks }=segFlat(segs); const err=[], note=[]; let m;
   const job=toks.find(t=>t.k==="job"); if(!job) err.push("Type / and pick the job to repeat.");
   const sch={ ...(prev||{}) }; sch.ifOpen=/\bskip\b/.test(s)?"skip":"create"; { const ng=s.match(/\b(don't|dont|do not|never|not|unless|except)\b/); if(ng) err.push(`Schedules can't say “${ng[1]}” yet. Write what should happen: “skip it if the last one is still open”, or leave that out to always create one.`); }
-  const en=s.match(/\bwith (?:its |the |an? )?(insulation|scaffold|isolation|lockout|excavation|surface prep|cleaning)/); sch.enabling=en?({ insulation:"insulation", scaffold:"scaffold", isolation:"isolation", lockout:"isolation", excavation:"excavation", "surface prep":"cleaning", cleaning:"cleaning" })[en[1]]:null;
   const lead=(m=s.match(/(\d+)\s*(days?|weeks?)\s*(?:ahead|early|in advance|before (?:it'?s|it is) due|before the due date)/))?(+m[1])*(/week/.test(m[2])?7:1):null;
   if((m=s.match(/(\d+|a|one|two|three|five|ten)\s*(months?|years?)\s*after\b/))&&/\b(complet|done|finish|clos|last one)/.test(s)){ const n={ a:1, one:1, two:2, three:3, five:5, ten:10 }[m[1]]??+m[1]; sch.mode="after"; sch.months=/year/.test(m[2])?n*12:n; sch.leadDays=lead??30; delete sch.unit; delete sch.every; delete sch.dates; }
   else { sch.mode="calendar"; sch.leadDays=lead??0;
@@ -3062,7 +3013,7 @@ function compileSchedule(segs,prev={}){
 /* plain-words reading of a compiled automation */
 function readbackHTML(a,c){ const L=(l,v)=>`<div class="au-rl">${l}</div><div class="au-rv">${v}</div>`; let h="";
   if(a.kind==="rule"){ const r=c.rule; h=L("When",P(trigText(r.trigger)))+L("Only if",r.conds.length?r.conds.map(x=>P(condText(x))).join("<br>"):`<span class="hint">any job</span>`)+L("Then",r.actions.length?r.actions.map(x=>P(actText(x))).join("<br>"):`<span class="hint">nothing yet</span>`); }
-  else { const x={ ...a, schedule:c.schedule }; const sc=c.schedule; h=L("Repeat",P(rhythmLong(x)))+L(sc.mode==="after"?"Created":"Due",P(sc.mode==="after"?`${sc.leadDays||0} days before it's due`:`${sc.dueDays??7} days after it's created${sc.leadDays?`, created ${sc.leadDays} days ahead`:""}`))+L("Copies",sc.template?.from?`${P(sc.template.from)} · ${P(sc.template.title||"")}`:`<span class="hint">no job yet</span>`)+L("If open",P(sc.mode==="after"?"waits until the current one is completed":sc.ifOpen==="skip"?"skips that time":"creates it anyway"))+(sc.enabling?L("Also",P(`creates its enabling work (${EN_KINDS[sc.enabling]?.name||sc.enabling}), linked`)):""); }
+  else { const x={ ...a, schedule:c.schedule }; const sc=c.schedule; h=L("Repeat",P(rhythmLong(x)))+L(sc.mode==="after"?"Created":"Due",P(sc.mode==="after"?`${sc.leadDays||0} days before it's due`:`${sc.dueDays??7} days after it's created${sc.leadDays?`, created ${sc.leadDays} days ahead`:""}`))+L("Copies",sc.template?.from?`${P(sc.template.from)} · ${P(sc.template.title||"")}`:`<span class="hint">no job yet</span>`)+L("If open",P(sc.mode==="after"?"waits until the current one is completed":sc.ifOpen==="skip"?"skips that time":"creates it anyway")); }
   return `<div class="au-read">${h}</div>${c.err.slice(0,1).map(e=>`<div class="au-issue bad">${P(e)}</div>`).join("")}${c.note.map(e=>`<div class="au-issue">${P(e)}</div>`).join("")}`; }
 const compileFor=(a,segs)=>a.kind==="rule"?compileRule(segs):compileSchedule(segs,a.schedule);
 /* token markup (list rows and the composer) */
@@ -3154,7 +3105,7 @@ async function saveWriting(a){ const segs=AUD.id===a.id&&AUD.segs?AUD.segs:(a.te
   if(a.kind==="schedule"&&c.schedule.template?.from){ const w=W(c.schedule.template.from); if(w&&!w.series) await DB.update(WO_COL+"/"+w.id,{ series:{ auto:a.id, n:Math.max(1,(a.schedule?.history||[]).length+1) } }); }
   AUD.id=null; AUD.segs=null; AUD.dirty=false; await DB.update(AU_COL+"/"+a.id,patch); toast(first?`Saved — “${P(patch.name||a.name)}” is on.`:"Saved."); }
 function autoName(a,segs){ if(a.kind==="schedule"){ const j=(segs||[]).find(g=>g.tok?.k==="job"); const w=j&&W(j.tok.id); if(w) return w.title||w.id; } const t=segText(segs).replace(/^(i want|we want|please|make sure)\s+/i,"").trim(); return (t.length>52?t.slice(0,50).replace(/\s+\S*$/,"")+"…":t)||"Untitled"; }
-async function newAuto(kind){ const doc={ kind, name:kind==="schedule"?"New schedule":"New rule", on:false, fresh:true, order:AU.length, created:now(), createdBy:userRef(), runCount:0, lastRun:null, text:kind==="schedule"?[{ t:"Repeat " }]:[{ t:"" }] };
+async function newAuto(kind){ const doc={ kind, name:kind==="schedule"?"New schedule":"New rule", on:false, fresh:true, order:Math.max(-1,...AU.map(a=>a.order??0))+1, created:now(), createdBy:userRef(), runCount:0, lastRun:null, text:kind==="schedule"?[{ t:"Repeat " }]:[{ t:"" }] };
   if(kind==="rule") doc.rule={ trigger:{ type:"change" }, conds:[], actions:[] }; else doc.schedule={ mode:"calendar", unit:"month", every:1, dueDays:7, leadDays:0, ifOpen:"create", history:[] };
   const id=await DB.add(AU_COL,doc); AUV.sel=id; AUV.f=kind; AUD.id=id; AUD.segs=null; AUD.dirty=false; AUD.focus=true; renderAuto(); }
 function jobPicker(anchor,title,onPick){ const el=openPop(anchor,`<div class="sec">${P(title)}</div><input class="pin" placeholder="Find a job"><div class="au-pl"></div>`,{width:320});
@@ -3298,8 +3249,8 @@ async function demoSeed(DB){
       values:{ jobtype:jt("Corrective"), asset:["T-1"], worktype:[WK("Other")], access:[AC("Lift")], permits:[PM("Hot work"),PM("Electrical isolation")], people:[karen], reference:"Replace gasket + 4 corroded studs found in J-26-002. Needs ops to drop the tank level." } },
     { n:4, title:"Clarifier C-2 annual mechanism inspection (drained)", st:"outstanding", pts:ringU(1082,1001,104,12), closed:true, created:ago(6),
       values:{ jobtype:jt("Inspection"), asset:["C-2"], worktype:[WK("Visual")], access:[AC("Grade / platform")], permits:[PM("Confined space")], people:[marco], deadline:{ start:ahead(16) }, reference:"Squeegees, rake arms, seals, coating touch-up" } },
-    { n:5, title:"Pipe bridge PR-3 insulation removal + reinstatement", st:"in_progress", pts:PR3, created:ago(8), enabling:{ kind:"insulation", ready:false },
-      values:{ jobtype:jt("Enabling"), asset:["PR-3"], worktype:[WK("Insulation / CUI")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[priya], reference:"Strip 12 windows, fit inspection ports; reinstate after J-26-006" } },
+    { n:5, title:"Pipe bridge PR-3 insulation removal", st:"in_progress", pts:PR3, created:ago(8), 
+      values:{ jobtype:jt("Enabling"), asset:["PR-3"], worktype:[WK("Insulation / CUI")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[priya], reference:"Strip 12 windows and fit inspection ports so J-26-006 can start" } },
     { n:6, title:"Pipe bridge PR-3 CUI inspection", st:"on_hold", pts:PR3, created:ago(8), waitsOn:[5], holdReason:"Waiting on insulation removal (J-26-005)",
       values:{ jobtype:jt("Inspection"), asset:["PR-3"], worktype:[WK("Insulation / CUI"),WK("UT thickness")], access:[AC("Scaffold")], permits:[PM("Working at height")], people:[dave], reference:"Visual + UT at 12 windows: low elbows, tee bottoms, hanger penetrations" } },
     { n:7, title:"Pipe bridge PR-3 baseplate repair", st:"completed", pts:polyU([1010,861],[1160,889],[1280,912],[1400,938]), created:ago(21), completedAt:ago(11),
@@ -3314,7 +3265,7 @@ async function demoSeed(DB){
       values:{ jobtype:jt("Preventive"), asset:["FH"], worktype:[WK("Visual")], access:[AC("Grade / platform")], reference:"Open and flow each hydrant, lubricate stems and caps" } },
     { n:12, title:"Rail spur RS-8 tie replacement + crossing drainage", st:"outstanding", pts:polyU([1330,840],[1325,930],[1310,1040],[1290,1120],[1260,1200],[1230,1280]), created:ago(3),
       values:{ jobtype:jt("Corrective"), asset:["RS-8"], worktype:[WK("Other")], access:[AC("Grade / platform")], people:[priya], reference:"Replace decayed ties, clear fouled ballast, restore drainage at the road crossing. Needs a rail operations outage." } },
-    { n:13, title:"Erect scaffold · treatment building TB-5 east wall", st:"outstanding", pts:TBE, closed:true, height:9, created:ago(12), enabling:{ kind:"scaffold", ready:false },
+    { n:13, title:"Erect scaffold · treatment building TB-5 east wall", st:"outstanding", pts:TBE, closed:true, height:9, created:ago(12), 
       values:{ jobtype:jt("Enabling"), asset:["TB-5"], worktype:[WK("Access build")], access:[AC("Scaffold")], permits:[PM("Working at height")], deadline:{ start:ahead(5) }, reference:"Independent scaffold along the east wall, 9 m, tagged before J-26-010 starts" } },
   ];
   const ID=n=>"J-26-"+String(n).padStart(3,"0");
@@ -3325,15 +3276,15 @@ async function demoSeed(DB){
   const SER={ 1:["s1",4], 2:["s3",3], 4:["s2",3], 6:["s6",2], 9:["s4",2], 11:["s5",2] };
   for(const j of J){ const id=ID(j.n);
     const doc={ seq:j.n, title:j.title, statusId:j.st, values:j.values, location:{ points:j.pts, height:j.height||0, closed:!!j.closed }, created:j.created, createdBy:me, edited:j.created, editedBy:me, trashed:false, draft:false, completedAt:j.completedAt||null, noteCount:0 };
-    if(j.waitsOn) doc.links={ waitsOn:j.waitsOn.map(ID) }; if(j.enabling) doc.enabling=j.enabling; if(j.holdReason) doc.holdReason=j.holdReason;
+    if(j.waitsOn) doc.links={ waitsOn:j.waitsOn.map(ID) }; if(j.holdReason) doc.holdReason=j.holdReason;
     if(SER[j.n]) doc.series={ auto:SER[j.n][0], n:SER[j.n][1] }; if(j.n===8) doc.autoDone={ ["r6_"+j.values.deadline.start.replace(/-/g,"")]:true };
     await DB.set(WO_COL+"/"+id,doc);
     await DB.add(WO_COL+"/"+id+"/activity",{ t:j.created, by:me, text:"created the job" }); }
   const act=(n,d,text,by=me)=>DB.add(WO_COL+"/"+ID(n)+"/activity",{ t:d, by, text });
   await act(2,ago(4,1),"raised J-26-003 from a finding at nozzle N3",karen); await act(3,ago(4),"now waits on J-26-002 · Tank T-1 5-yearly external inspection + shell UT",karen); await act(2,ago(4),"now blocks J-26-003 · Tank T-1 nozzle N3 flange repair",karen);
-  await act(6,ago(8),"now waits on J-26-005 · Pipe bridge PR-3 insulation removal + reinstatement"); await act(6,ago(7),"changed Status from Requested to On hold"); await act(6,ago(7),"hold reason: Waiting on insulation removal (J-26-005)");
+  await act(6,ago(8),"now waits on J-26-005 · Pipe bridge PR-3 insulation removal"); await act(6,ago(7),"changed Status from Requested to On hold"); await act(6,ago(7),"hold reason: Waiting on insulation removal (J-26-005)");
   await act(5,ago(3),"changed Status from Requested to In progress",priya);
-  await act(10,ago(12),"added enabling work J-26-013 · Erect scaffold"); await act(13,ago(12),"created as enabling work (Scaffold) for J-26-010"); await act(10,ago(11),"changed Status from Requested to On hold"); await act(10,ago(11),"hold reason: Waiting on scaffold (J-26-013)");
+  await act(10,ago(12),"now waits on J-26-013 · Erect scaffold · treatment building TB-5 east wall"); await act(13,ago(12),"now blocks J-26-010 · Treatment building TB-5 wall sheeting + girt repair"); await act(10,ago(11),"changed Status from Requested to On hold"); await act(10,ago(11),"hold reason: Waiting on scaffold (J-26-013)");
   await DB.set("workspace/counters",{ wo:J.length });
 
   const nc={}; const n=(jid,nid,d)=>{ nc[jid]=(nc[jid]||0)+(d.parent?0:1); return DB.set(WO_COL+"/"+jid+"/notes/"+nid,{ parent:null, title:"", text:"", files:[], by:"Demo user", ...d }); };
@@ -3365,13 +3316,12 @@ async function demoSeed(DB){
       history:[{ when:"spring", state:"done", label:"completed on time" }] }, runs:[[5,"J-26-009","created J-26-009, 20 days ahead"]] },
     { id:"s5", kind:"schedule", text:[T("Repeat "),JO(11),T(" every year on Jun 1, due 30 days later.")], name:"Fire hydrant annual flow + lubrication", on:true, schedule:{ mode:"calendar", unit:"year", every:1, dates:[{m:6,d:1}], dueDays:30, leadDays:0, ifOpen:"create", last:new Date(new Date().getFullYear()-(new Date().getMonth()<5?1:0),5,1,6).toISOString(), template:tplOf(11),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[[30,"J-26-011","created J-26-011"]] },
-    { id:"s6", kind:"schedule", text:[T("Repeat "),JO(6),T(" 12 months after the last one is completed, created 45 days ahead, with its insulation removal.")], name:"Pipe bridge PR-3 CUI inspection", on:false, schedule:{ mode:"after", months:12, leadDays:45, ifOpen:"create", enabling:"insulation", lastDone:new Date(Date.now()-380*86400000).toISOString(), template:tplOf(6),
+    { id:"s6", kind:"schedule", text:[T("Repeat "),JO(6),T(" 12 months after the last one is completed, created 45 days ahead, with its insulation removal.")], name:"Pipe bridge PR-3 CUI inspection", on:false, schedule:{ mode:"after", months:12, leadDays:45, ifOpen:"create", lastDone:new Date(Date.now()-380*86400000).toISOString(), template:tplOf(6),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[] },
     { id:"r1", kind:"rule", name:"Scaffold requests include Priya Nair", on:true, text:[T("Every "),OP("access","Scaffold"),T(" job includes "),PE(priya),T(".")],
       runs:[[12,"J-26-013","tagged Priya Nair"],[12,"J-26-010","tagged Priya Nair"],[8,"J-26-006","tagged Priya Nair"]] },
     { id:"r2", kind:"rule", name:"UT results go to Karen Liu", on:true, text:[T("I want every "),OP("worktype","UT thickness"),T(" job to notify "),PE(karen),T(" when it's completed for her review.")], runs:[] },
     { id:"r3", kind:"rule", name:"Tell the crew when a job is ready to start", on:true, text:[T("When a job is ready to start, email the people on it.")], runs:[] },
-    { id:"r4", kind:"rule", name:"Book the strip-down when restore is due", on:true, text:[T("When a restore is due, email "),PE(priya),T(" to book it and set the deadline 7 days out.")], runs:[] },
     { id:"r6", kind:"rule", name:"Deadline reminders", on:true, text:[T("3 days before the deadline, remind the people on it.")], runs:[[0.2,"J-26-008","emailed Marco Bellini"]] },
     { id:"r7", kind:"rule", name:"Hot work check before starting", on:true, text:[T("Before a "),OP("permits","Hot work"),T(" job goes "),ST("in_progress","In progress"),T(", ask “Is the hot work permit issued and posted?”")], runs:[] },
   ];
