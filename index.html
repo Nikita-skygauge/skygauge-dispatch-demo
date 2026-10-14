@@ -114,6 +114,7 @@ body.pivot #pivot-hint{background:#00FFE5;color:#0B0F1F;border-color:#00FFE5}bod
 #legend .lgt .kn{position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 #legend .lgt.on{color:var(--ink);border-color:var(--c)}#legend .lgt.on .sw{background:var(--c)}#legend .lgt.on .kn{left:13px}
 @media (min-width:861px){ body.peek-open:not(.wo-view) #legend{right:292px} }
+body.wo-view #legend{display:none}   /* the job view shows only the open job and its linked work */
 @media (min-width:861px) and (max-width:1320px){ body.peek-open #legend,body.wo-view #legend{bottom:54px;left:12px} }
 #legend .lgt:hover{border-color:var(--c)}#legend .lgt:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
 #mapgate{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--canvas);z-index:7;padding:16px;overflow:auto}
@@ -1234,7 +1235,7 @@ function openWO(id,fly){
   const fresh=S.open!==id; if(fresh){ selPt=null; editLoc=null; S.note=null; document.body.classList.remove("note-view"); if(isMobile()) setSheet("half"); } S.open=id; document.body.classList.add("peek-open"); watchPhotos(id); watchNotes(id); $("#peek").classList.add("on"); $("#reg").classList.remove("open"); renderRecord(); if(fresh) $("#pbody").scrollTop=0; highlightCard(id); syncPointHandles(); if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo);
   if(fly&&map) flyWO(w);
 }
-function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leaveJobScene(); stopPhotos(); stopNotes(); editLoc=null; S.note=null; document.body.classList.remove("note-view"); S.open=null; if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo); document.body.classList.remove("peek-open"); $("#peek").classList.remove("on"); actUnsub?.(); actUnsub=null; closePop(); highlightCard(null);
+function closePeek(){ closeViewer(); if(typeof leaveJobScene==="function") leaveJobScene(); stopPhotos(); stopNotes(); editLoc=null; S.note=null; document.body.classList.remove("note-view"); S.open=null; if(typeof syncMapFocus==="function") syncMapFocus(); if(typeof applyLegendTo==="function"&&S.legendOff.size) live().forEach(applyLegendTo); document.body.classList.remove("peek-open"); $("#peek").classList.remove("on"); actUnsub?.(); actUnsub=null; closePop(); highlightCard(null);
   if(S.woView){ S.woView=false; LOCK=null; document.body.classList.remove("wo-view"); if(typeof resetMode==="function") resetMode(); if(typeof orbitSync==="function") orbitSync(); }   // closing the panel from any tab also leaves the job view
   if(typeof syncJobLabels==="function") syncJobLabels(); }
 function highlightCard(id){ $$(".kcard.hl").forEach(c=>c.classList.remove("hl")); if(id){ const c=document.querySelector(`.kcard[data-id="${id}"]`); if(c){ c.classList.add("hl"); c.scrollIntoView({block:"nearest"}); } } if(typeof markLinked==="function") markLinked(); }
@@ -1684,7 +1685,7 @@ function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const
 function syncAssetOverlays(){ /* assets carry no location (register only) */ }
 const rgb = hex => { const n=parseInt(hex.slice(1),16); return `${n>>16},${(n>>8)&255},${n&255}`; };
 function woColor(w){ return col(status(w.statusId)?.color).map; }
-function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
+function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); syncMapFocus(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 /* Points stay where they were clicked on the model (roof, platform, shell) instead of dropping to the ground: each point
    stores the surface altitude `ground` from the click, and overlays use ABSOLUTE altitude from it. Legacy points without
    it fall back to RELATIVE_TO_MESH, which also sits on the surface. */
@@ -1705,13 +1706,20 @@ function addWOOverlay(w){
   OV.wo[w.id]=o; applyLegendTo(w); syncJobLabels();   // lengths / pin visibility follow the open state
 }
 /* segment lengths belong to the open job only: strip them from every other job, add them to the open one */
-function syncJobLabels(){ if(!map) return; Object.entries(OV.wo).forEach(([id,o])=>{ if(o.hidden) return; const open=S.woView&&S.open===id, on=open&&!S.note; const w=W(id); if(!on&&o.labels?.length){ killAll(o.labels); o.labels=[]; mapRedraw(); } if(on&&!(o.labels?.length)){ if(w&&locKindW(w)!=="point") o.labels=segmentLabels(pts(w),locKindW(w)==="area"); }
+function syncJobLabels(){ if(!map) return; syncMapFocus(); Object.entries(OV.wo).forEach(([id,o])=>{ if(o.hidden) return; const open=S.woView&&S.open===id, on=open&&!S.note; const w=W(id); if(!on&&o.labels?.length){ killAll(o.labels); o.labels=[]; mapRedraw(); } if(on&&!(o.labels?.length)){ if(w&&locKindW(w)!=="point") o.labels=segmentLabels(pts(w),locKindW(w)==="area"); }
   const hidePin=open&&w&&locKindW(w)!=="point"; if(hidePin&&!o.pinHidden&&o.m){ poolPut(o.m); o.m=null; o.pinHidden=true; } else if(!hidePin&&o.pinHidden){ o.pinHidden=false; if(w&&!w.trashed) refreshWOOverlay(w,true); } }); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 function minGround(P){ const g=P.map(p=>p.ground).filter(x=>x!=null); return g.length?Math.min(...g):GROUND_FALLBACK; }
 function refreshWOOverlay(w,force){ if(!map) return; const o=OV.wo[w.id]; if(!o){ if(!w.trashed) addWOOverlay(w); return; } if(o.hidden){ if(w.trashed) delete OV.wo[w.id]; else applyLegendTo(w); return; } if(w.trashed||force||o.sig!==woSig(w)){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[w.id]; mapRedraw(); if(!w.trashed) addWOOverlay(w); return; } const c=woColor(w); if(o.m) o.pin.setFill(c); if(o.area){ o.area.fillColor=`rgba(${rgb(c)},0.28)`; o.area.strokeColor=`rgba(${rgb(c)},0.95)`; } if(o.line) o.line.strokeColor=`rgba(${rgb(c)},0.95)`; applyLegendTo(w); }
 /* a hidden job keeps only a stub: its elements went back to the pool and may already belong to another job */
-const linkedToOpen = w => { if(!S.woView||!S.open||S.note||typeof relOf!=="function") return false; return !!W(S.open)&&!!relOf(S.open,w.id); };
-function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const hide=S.legendOff.has(w.statusId)&&S.open!==w.id&&!linkedToOpen(w);   /* the job you have open, and the jobs linked to it, always show */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); OV.wo[w.id]={ hidden:true, labels:[] }; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
+/* The job view shows only the open job and its linked work (14 Oct 2026, Nikita: "Don't show the other scopes on the
+   map"). The status switches apply to the site view; they are hidden in the job view. Hiding reuses the legend's park-and-
+   rebuild below, so nothing is ever remove()d. */
+const mapFocus = () => { if(!S.woView||!S.open) return null; const o=W(S.open); return o&&!o.trashed?o:null; };
+let FOCUSKEY="";
+function syncMapFocus(){ if(!map) return; const f=mapFocus(); const k=f?f.id+"|"+(typeof linksOf==="function"?linksOf(f).map(x=>x.o.id).join(","):""):"";
+  if(k===FOCUSKEY) return; FOCUSKEY=k; live().forEach(applyLegendTo); }
+function applyLegendTo(w){ const o=OV.wo[w.id]; if(!o) return; const f=mapFocus();
+  const hide=f?w.id!==f.id&&!(typeof relOf==="function"&&relOf(f.id,w.id)):S.legendOff.has(w.statusId)&&S.open!==w.id;   /* job view: the open job + its linked work; site view: the status switches, and the job you have open always shows */ if(hide&&!o.hidden){ killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); OV.wo[w.id]={ hidden:true, labels:[] }; mapRedraw(); } else if(!hide&&o.hidden){ delete OV.wo[w.id]; addWOOverlay(w); syncJobLabels(); } }   // legend off: parts are buried and dropped; back on: rebuilt
 /* Status toggles on the model (1 Oct 2026): switches, not a key. Default view = jobs that need attention now —
    In progress and On hold; Requested and Completed start switched off. Tests on ?mock=1 start with everything on. */
 const legendDefaultOff = () => new Set(statuses().filter(o=>!(o.group==="progress"||/hold/i.test(o.name||""))).map(o=>o.id));
@@ -2714,7 +2722,7 @@ function syncLinkOverlays(){ if(!map||!lib) return;
   const w=S.woView&&!S.note&&S.open?W(S.open):null;
   const pairs=w&&!w.trashed?linksOf(w).filter(x=>pts(x.o).length):[];
   const key=w?w.id+"|"+JSON.stringify(w.location||{})+"|"+pairs.map(x=>x.kind+x.o.id+released(x.o)+JSON.stringify(x.o.location||{})).join(";"):"";
-  if(key===LKOV.key) return; clearLinkOverlays(); LKOV.key=key; if(S.legendOff?.size) live().forEach(applyLegendTo);   // a linked job shows while its partner is open, even if its status is switched off
+  if(key===LKOV.key) return; clearLinkOverlays(); LKOV.key=key;
   if(!w||!pairs.length) return;
   const A=lkTop(w); if(!A) return;
   pairs.forEach(({o,kind})=>{ const B=lkTop(o); if(!B) return;
