@@ -452,6 +452,45 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   .toast{bottom:calc(var(--sheet-peek) + 80px);max-width:92vw;text-align:center}
 }
 @media (prefers-reduced-motion: reduce){ #loading .bar i{animation:none;width:100%} #peek{transition:none} }
+/* Inbox: email in (14 Oct 2026, src/p17inbox.js) */
+body[data-tab="inbox"] #peek{display:none}
+#view-inbox{display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr);background:var(--ground)}
+.ib-list{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;min-width:0}
+.ib-addr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}.ib-addr b{color:var(--ink);font-weight:500;word-break:break-all}
+.ib-filters{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}.ib-filters .sp{flex:1}.ib-filters b{font-family:var(--mono);margin-left:2px}
+#ib-rows{overflow:auto;flex:1;min-height:0}
+.ib-row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.ib-row:hover{background:var(--panel-2)}.ib-row.sel{background:var(--panel-2);box-shadow:inset 3px 0 0 var(--accent)}
+.ib-row .u{width:8px;height:8px;border-radius:50%;margin-top:6px}.ib-row.due .u{background:var(--accent)}
+.ib-row .s{min-width:0}.ib-row .s>b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib-row .sj,.ib-row .sn{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ib-row .sj{color:var(--ink)}.ib-row .sn{color:var(--ink-3)}
+.ib-row .w{color:var(--ink-3);font-size:11px;font-family:var(--mono);white-space:nowrap}
+.ib-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:11.5px;align-items:center}
+.ib-job{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:1px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.ib-guess{color:var(--ink-2);font-weight:600}.ib-pend{color:var(--warn);font-weight:600}
+.ib-out{font-size:11px;font-weight:600;color:var(--warn);border:1px solid currentColor;border-radius:999px;padding:0 6px;white-space:nowrap}
+.ib-busy{color:var(--ink-3);font-style:italic}
+.ib-empty{padding:26px 16px;color:var(--ink-3);font-size:13px;line-height:1.6}.ib-empty b{color:var(--ink)}
+.ib-read{overflow:auto;min-width:0;min-height:0;padding-bottom:30px}
+.ib-blank{display:grid;place-items:center;height:100%;color:var(--ink-3);text-align:center;padding:40px;line-height:1.7;max-width:520px;margin:0 auto}.ib-blank b{color:var(--ink)}
+.ib-head{padding:16px 18px 4px;display:flex;align-items:center;gap:10px}.ib-head h3{margin:0;font-size:18px;font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}.ib-back{display:none}
+.ib-from{padding:0 18px;font-size:12.5px;color:var(--ink-2);display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ib-from .mono{color:var(--ink-3);font-size:12px}
+.ib-to{padding:2px 18px 0;font-size:12px;color:var(--ink-3)}
+.ib-box{margin:12px 18px 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.ib-box .t{font-weight:600}
+.ib-box.unsorted{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}.ib-box .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.ib-g{margin-top:6px}
+.ib-rs{margin:10px 18px 0;font-size:12.5px}.ib-rs.bad{color:var(--crit)}.ib-sum{margin:12px 18px 0;font-size:13.5px;color:var(--ink)}
+.ib-chg{margin:10px 18px 0;display:flex;flex-direction:column;gap:6px}
+.chg{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.chg.pending{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 7%,var(--panel))}.chg.rejected,.chg.undone{opacity:.6}
+.chg .cw{flex:1;min-width:0}.chg .cl{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}.chg .cv{font-size:13px;overflow-wrap:anywhere}.chg .cv s{color:var(--ink-3)}
+.chg .cvn{white-space:pre-wrap}.chg .ce{font-size:11.5px;color:var(--ink-3);margin-top:2px;overflow-wrap:anywhere}.chg .ca{display:flex;gap:6px;align-items:center;flex:none}
+.ib-atts{margin:14px 18px 0}.ib-atts .lab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.ib-body{margin:14px 18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+#mailbox .appr{border:1px solid var(--warn);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}#mailbox .appr .ah{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:0 2px}
+#mailbox .dets{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}.det{display:grid;grid-template-columns:minmax(90px,34%) minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px dashed var(--line)}
+.det .dl{color:var(--ink-3);font-size:12.5px}.det .dv{font-size:13px;overflow-wrap:anywhere}.det .btn{padding:0 8px}
+.mrow{display:flex;flex-direction:column;padding:6px 8px;border-radius:8px;cursor:pointer}.mrow:hover{background:var(--panel-2)}.mrow b{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mrow span{font-size:12px;color:var(--ink-3)}
+@media (max-width:860px){ #view-inbox{grid-template-columns:minmax(0,1fr)} body.ib-open .ib-list{display:none} body:not(.ib-open) .ib-read{display:none} .ib-back{display:inline-block} .chg{flex-direction:column} .chg .ca{align-self:flex-end} }
 #author-bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;padding:8px 10px 8px 14px;border-radius:12px;background:rgba(11,15,31,.94);border:1px solid rgba(213,194,255,.5);box-shadow:0 8px 28px rgba(0,0,0,.4);font-size:13px;color:#E9EFFF}#author-bar b{font-weight:600;color:#fff}#author-status{color:#B9C2E0}#author-status.bad{color:#FF8A7A}#demo-badge.author{background:rgba(213,194,255,.16);border-color:rgba(213,194,255,.6)}
 #demo-badge{font:600 11px/1 inherit;letter-spacing:.04em;padding:5px 9px;border-radius:999px;background:rgba(0,255,229,.14);color:var(--ink);border:1px solid rgba(0,255,229,.45);white-space:nowrap;cursor:help}
 @media (max-width:860px){ #demo-badge{display:none} }
@@ -472,6 +511,7 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   <div class="tabs" role="tablist">
     <button role="tab" aria-selected="true" data-tab="wo">Jobs<b id="tab-open"></b></button>
     <button role="tab" aria-selected="false" data-tab="map">Map</button>
+    <button role="tab" aria-selected="false" data-tab="inbox">Inbox<b id="tab-inbox" style="color:var(--accent)"></b></button>
     <button role="tab" aria-selected="false" data-tab="auto" aria-haspopup="menu">Automations<b id="tab-auto" style="color:var(--accent)"></b> <span aria-hidden="true" style="font-size:10px;opacity:.7">▾</span></button>
   </div>
   <div id="search"><input id="q" type="search" placeholder="Search jobs…" autocomplete="off" aria-label="Search"></div>
@@ -527,6 +567,8 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   </div>
 
   <div class="screen" id="view-auto" hidden><div id="auto-root"></div></div>
+
+  <div class="screen" id="view-inbox" hidden></div>
 
   <aside id="peek" aria-label="Job">
     <div class="handle" id="pk-handle"><i></i></div>
@@ -786,7 +828,7 @@ function startApp(){
     if(!shared && S.admin){ let local=""; try{ local=localStorage.getItem(LSK.key)||""; }catch{} if(local){ DB.set("config/maps",{ key:local, updated:now(), updatedBy:S.user.email }).catch(console.error); return; } }
     if(shared!==S.mapsKey){ S.mapsKey=shared; if(S.site && !map) initMap(); }
   }));
-  watchMail();
+  watchMail(); if(typeof watchInbox==="function") watchInbox();
   if(typeof startAuto==="function") try{ startAuto(); }catch(e){ console.error("automations did not start",e); }
   if(!booted){ booted=true; wireUI(); const id=(PARAMS.get("wo")||PARAMS.get("job")||"").replace(/^WO-/,"J-"); if(id) setTimeout(()=>openWO(id),600); }
 }
@@ -850,7 +892,6 @@ async function setStatus(id,sid,opts={}){
   if(nowDone&&!wasDone) patch.completedAt=now(); if(!nowDone&&wasDone) patch.completedAt=null;
   Object.assign(w,patch); refreshWOOverlay(w); renderAll();
   await flashSaved($("#pbody [data-status]")||$(`#views tr[data-id="${id}"] [data-pid="status"]`),()=>DB.update(WO_COL+"/"+id,patch)); log(id,`changed Status from ${from} to ${to}`);
-  if((w.values?.people||[]).some(p=>p.email&&p.email.toLowerCase()!==meEmail())) { toast(`Status → ${P(to)} · <button class="link" id="st-mail">Notify the people on this job</button>`); $("#st-mail")?.addEventListener("click",()=>notifyStatus(id)); }
   if(typeof linksAfterStatus==="function") linksAfterStatus(w,prevSid,sid,wasDone,nowDone);
   if(typeof autoEvent==="function") autoEvent("status",w,{ sid, prevSid, wasDone, nowDone });
 }
@@ -1267,12 +1308,13 @@ function renderRecord(){
       <button class="btn sm teal" id="l-done" style="margin-left:auto">Done</button></div></div></section>`}
     ${propsHTML(w)}
     ${descHTML(w)}
+    ${typeof mailBoxHTML==="function"?mailBoxHTML(w):""}
     ${typeof linksStripHTML==="function"?linksStripHTML(w):""}
     ${typeof autoStripHTML==="function"?autoStripHTML(w):""}
     ${notesHTML()}
     ${noticesHTML(w)}
     <section class="ps"><h3 id="act-h">${showAct?"▾":"▸"} Activity <span class="mono" style="font-weight:400" id="act-n">${ACT.length}</span></h3><div id="act" ${showAct?"":"hidden"}></div></section>`;
-  renderActivity(); wireNotes(); wireNotices(); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
+  renderActivity(); wireNotes(); wireNotices(); if(typeof wireLinks==="function") wireLinks(w); if(typeof wireMailBox==="function") wireMailBox(w); syncPinOverlays();
   const t=$("#ptitle"); const fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
   t.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); t.blur(); } if(e.key==="Escape"){ t.value=w.title||""; fit(); t.blur(); e.stopPropagation(); } };
   t.onblur=()=>setTitle(w.id,t.value.trim());
@@ -1354,6 +1396,7 @@ function renderAll(){
   $("#m-records").textContent=`${S.assets.length} assets · ${live().length} jobs · ${open.length} open`;
   renderTree(); renderLegend(); regSummary();
   if(S.tab==="wo") renderViews();
+  if(S.tab==="inbox"&&typeof renderInbox==="function") renderInbox();
   if(S.open) renderRecord();
   if(typeof markLinked==="function") markLinked();   // the open job's linked work, on whatever was just redrawn
 }
@@ -1446,7 +1489,7 @@ function renderTree(){
 $("#tree").addEventListener("click",e=>{ const it=e.target.closest(".it"); if(!it) return; if(it.dataset.wo) enterWOView(it.dataset.wo); else if(it.dataset.asset) assetEditor(asset(it.dataset.asset),it); });
 
 /* ---------- tabs, search, user menu, admin, export ---------- */
-function setTab(t){ S.tab=t; document.body.dataset.tab=t; $$("#bar [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t)); $("#view-map").hidden=t!=="map"; $("#view-wo").hidden=t!=="wo"; const va=$("#view-auto"); if(va) va.hidden=t!=="auto"; renderAll(); if(t==="auto"&&typeof renderAuto==="function") renderAuto(); }
+function setTab(t){ S.tab=t; document.body.dataset.tab=t; $$("#bar [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t)); $("#view-map").hidden=t!=="map"; $("#view-wo").hidden=t!=="wo"; const va=$("#view-auto"); if(va) va.hidden=t!=="auto"; const vi=$("#view-inbox"); if(vi) vi.hidden=t!=="inbox"; if(t!=="inbox") document.body.classList.remove("ib-open"); renderAll(); if(t==="auto"&&typeof renderAuto==="function") renderAuto(); }
 const isMobile=()=>matchMedia("(max-width:860px)").matches;
 let dragMoved=false;
 function dragSheet(handle,sheet,onRelease){
@@ -2467,9 +2510,11 @@ if(MOCK) window.__notes={ get NT(){ return NT; }, canPlace, moveNote, tree:()=>t
   pins:()=>Object.entries(PINOV).map(([id,parts])=>{ const m=parts[0]; const t=(m?.children||[]).find(c=>c instanceof HTMLTemplateElement); return { id, title:m?.title||"", text:t?.content.querySelector("text")?.textContent||"" }; }) };   // test harness only
 
 /* =====================================================================
-   NOTIFICATIONS — Dispatch emails people when something needs them; it does not receive email. Per-job addresses, email
-   threads and the Inbox were taken out on 13 Oct 2026 (Nikita). Replies go to a person (the job's lead), never into Dispatch.
-   workspace/main/notifications/{nid}: { jobId, kind:"assigned"|"status"|"auto", subject, text, to:[{email,name}], fromName,
+   NOTIFICATIONS — short emails to team members when something needs them (Nikita, 14 Oct 2026: "basic outgoing" only):
+   added to a job, an automation's notice, and (written by the mail service) an email of theirs that needs them. The mail
+   service sends only to people with a Dispatch account. The "Notify the people on this job" button after a status change
+   was taken out on 14 Oct. Email coming in is the Inbox (src/p17inbox.js).
+   workspace/main/notifications/{nid}: { jobId, kind:"assigned"|"auto"|"inbox", subject, text, to:[{email,name}], fromName,
        replyTo:{email,name}|null, attachments:[{id,name,size,type,url}], link, t, by, auto?,
        status:"scheduled"|"queued"|"sending"|"sent"|"failed"|"cancelled", sendAt?,  — the mail service adds sentAt, error, notSentTo, notAttached }
    The app writes "scheduled" (a hold, cancellable until sendAt) or "queued"; the mail service (mail-service/) sends what is queued.
@@ -2515,11 +2560,6 @@ async function notifyAdded(w,p,auto){
   const r=await notify(w,{ kind:"assigned", subject:`You're on ${w.id} · ${w.title||"Untitled"}`, text, to:[p], hold:ASSIGN_HOLD, ...(auto?{ fromName:"Dispatch automation", by:AUTO_BY(auto), auto:auto.id }:{}) });
   if(r) log(w.id,`will email ${r.names} that they were added`);
 }
-/* After a status change, one click tells everyone else on the job. */
-async function notifyStatus(id){ const w=W(id); if(!w) return; const st=status(w.statusId)?.name||"";
-  const r=await notify(w,{ kind:"status", subject:`${w.id} · ${w.title||"Untitled"} is now ${st}`, text:`${S.user.name||meEmail()} changed ${w.id} · ${w.title||"Untitled"} to ${st}.`, to:(w.values?.people||[]).filter(p=>p.email&&p.email.toLowerCase()!==meEmail()) });
-  if(!r){ toast("Nobody else on this job has an email address."); return; }
-  log(id,`emailed ${r.names} · “${r.subject}”`); toast(`Emailed ${P(r.names)}${MAILCFG?.enabled?"":window.DEMO?" · the demo does not send email":" · it goes out when email sending is on"}`); }
 
 /* ---------- job panel: Emails ---------- */
 function noticeState(n){ const at=s=>new Date(s).toLocaleTimeString([],{ hour:"numeric", minute:"2-digit" });
@@ -2527,14 +2567,15 @@ function noticeState(n){ const at=s=>new Date(s).toLocaleTimeString([],{ hour:"n
     :n.status==="sending"?"sending":n.status==="sent"?`sent ${fmtDate(n.sentAt||n.t,true)}`:n.status==="cancelled"?"cancelled, not sent":n.status==="failed"?`not sent${n.error?` · ${n.error}`:""}`:n.status; }
 let showAllNotices=null;   // the job whose full list is open
 function noticesHTML(w){ const ns=jobNotices(w.id), list=showAllNotices===w.id?ns:ns.slice(0,4);
+  if(!ns.length) return `<section class="ps" id="notices" hidden></section>`;
   return `<section class="ps" id="notices"><h3 style="cursor:default">Emails sent <span class="mono" style="font-weight:400">${ns.length||""}</span></h3>
     ${ns.length?list.map(n=>`<div class="ntf"><div class="t"><b>${P(n.subject)}</b><span>to ${P(n.to.map(nameOf).join(", "))} · <span class="st ${P(n.status)}">${P(noticeState(n))}</span>${n.notSentTo?.length?` · not sent to ${P(n.notSentTo.join(", "))}`:""}</span></div>${n.status==="scheduled"?`<button class="btn sm" data-ncancel="${P(n.id)}">Cancel</button>`:""}</div>`).join("")
       +(ns.length>list.length?`<button class="link" id="ntf-all">Show all ${ns.length}</button>`:"")
-      :`<div class="hint">Dispatch emails people when they are added to this job, when you tell them about a status change, and when an automation says so. Replies go to the job's lead.</div>`}</section>`; }
+      :""}<div class="hint">Dispatch emails team members only: when they are added to this job, and when an automation says so.</div></section>`; }
 function wireNotices(){ $$("#notices [data-ncancel]").forEach(b=>b.onclick=()=>cancelNotice(b.dataset.ncancel)); $("#ntf-all")?.addEventListener("click",()=>{ showAllNotices=S.open; renderNotices(); }); }
 function renderNotices(){ const w=S.open&&!S.note?W(S.open):null; const el=$("#notices"); if(!w||!el) return; const tmp=document.createElement("div"); tmp.innerHTML=noticesHTML(w); el.replaceWith(tmp.firstElementChild); wireNotices(); }
 
-if(MOCK) window.__t={ createWO, W, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, notify, cancelNotice, notifyStatus, get NTF(){ return NTF; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
+if(MOCK) window.__t={ createWO, W, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, notify, cancelNotice, get NTF(){ return NTF; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
 
 /* =====================================================================
    LINKS — how two jobs are linked, and hold reasons
@@ -2897,7 +2938,7 @@ async function doAction(a,x,w){
   if(x.type==="email"){ const m=await queueEmail(a,w,x); if(!m) return null; auLog(w,a,`will email ${m.names} ${WHAT[x.what]||""} at ${new Date(m.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})} (${a.name})`); return { text:`emailed ${m.names}`, mail:{ ...m, what:x.what } }; }
   return null; }
 function emailBody(what,w,x,a,files=[]){ const st=status(w.statusId)?.name||""; const nPh=w.photoCount??(w.values?.photos||[]).length;
-  if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${files.length} · Notes: ${w.noteCount||0}\n\n${files.length?"The files are attached. ":""}Open the job for the marked-up model, notes and activity.`, attachments:files.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
+  if(what==="results") return { subject:`${w.id} · ${w.title||"Untitled"} — completed`, text:`${w.title||"Untitled"} (${w.id}) was completed ${fmtDate(w.completedAt||now(),true)}.\n\nScope: ${w.values?.reference||"—"}\nPhotos: ${nPh} · Files: ${files.length} · Notes: ${w.noteCount||0}\n\nOpen the job for the files, the marked-up model, notes and activity.`, attachments:files.map(f=>({ id:f.id||uid(), name:f.name, size:f.size||0, type:f.type||"", url:f.url||"" })) };
   if(what==="ready") return { subject:`${w.id} is ready to start`, text:`Everything ${w.id} · ${w.title||"Untitled"} was waiting on is complete:\n${waitsOnIds(w).map(id=>{ const b=W(id); return `• ${id} ${b?.title||""} — completed`; }).join("\n")}\n\nIt is still marked ${st}. Plan the crew and permits.`, attachments:[] };
   if(what==="reminder"){ const d=w.values?.deadline?.start; return { subject:`Due ${fmtDate(d)} · ${w.id} · ${w.title||"Untitled"}`, text:`${w.id} · ${w.title||"Untitled"} is due ${fmtDate(d)} (${daysUntil(d)<=0?"today or overdue":"in "+daysUntil(d)+" day"+(daysUntil(d)===1?"":"s")}) and is ${st}.`, attachments:[] }; }
   return { subject:`${w.id} · ${w.title||"Untitled"}`, text:x.text||`${w.title||"Untitled"} (${w.id}) is now ${st}.\n\nOpen the job for the details, notes and activity.`, attachments:[] }; }
@@ -2906,9 +2947,9 @@ async function jobFiles(id){ try{ const ns=(ntJob===id&&NT.length)?NT:await DB.l
 async function queueEmail(a,w,x){
   const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email);
   if(!to.length) return null;
-  const files=x.what==="results"?await jobFiles(w.id):[];
+  const files=x.what==="results"?await jobFiles(w.id):[];   // counted in the text; never attached (14 Oct 2026: short notices only)
   const b=emailBody(x.what,w,x,a,files); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5;
-  const r=await notify(w,{ kind:"auto", subject:b.subject, text:b.text, to, hold, attachments:b.attachments, fromName:"Dispatch automation", by:AUTO_BY(a), auto:a.id });
+  const r=await notify(w,{ kind:"auto", subject:b.subject, text:b.text, to, hold, attachments:[], fromName:"Dispatch automation", by:AUTO_BY(a), auto:a.id });
   return r&&{ nid:r.nid, at:r.sendAt||r.t, hold, names:to.map(personLabel).join(", ") }; }
 
 /* the rule that asks before a status change (hot work check): resolves true to go ahead */
@@ -3262,6 +3303,213 @@ async function openCreated(id){
   toast(`${P(id)} created`); }
 
 /* =====================================================================
+   INBOX — email in (Nikita, 14 Oct 2026). Anyone on the team forwards, CCs or BCCs mail to the jobs address. The mail
+   service (mail-service/functions/inbox.js) keeps each email in workspace/main/inbox, works out which job it is about
+   (its job number, a PO / work order number on one job, else the AI) and reads it into that job: empty properties filled,
+   details and written updates added, everything else proposed for a person to accept. Here:
+     • the Inbox tab: Unsorted (needs a person) · Filed · Archived, and the email itself;
+     • filing by hand, moving, creating a job from an email, archiving;
+     • on the job page: changes waiting for approval (Accept / Reject), details from email, the emails filed there.
+   Mail from outside the team never changes a job by itself. Nothing here sends email. The demo has no mail service:
+   p12demo.js plays its part with sample emails (demoReadMail, the "Simulate an email" button).
+   ===================================================================== */
+const IN_COL="workspace/main/inbox", JOBS_ADDR=window.SG_JOBS_ADDR||"jobs@dispatch.skygauge.com";
+let INB=[], INB_DENIED=false, INB_FIRST=true, showAllMails=null; const IBX={ f:"unsorted", sel:null, full:null };
+const IM=id=>INB.find(m=>m.id===id);
+const needsPerson=m=>m.state==="unsorted"||m.state==="new"||m.state==="sorting";
+const mailsOf=id=>INB.filter(m=>m.state==="filed"&&m.jobId===id);
+const pendingOf=m=>(m.changes||[]).filter(c=>c.state==="pending");
+const fromName=m=>m?.from?.name||m?.from?.email||"Someone";
+const cleanSubj=s=>String(s||"").replace(/^\s*((re|fw|fwd|aw|tr)\s*:\s*)+/i,"").trim();
+const HOW={ number:"by its job number", reference:"by its PO / work order number", ai:"by Dispatch's AI", person:"by hand", new:"as a new job" };
+const mailDate=m=>{ const d=Date.parse(m.sent||""); return isNaN(d)?m.t:new Date(d).toISOString(); };
+
+function watchInbox(){ S.unsub.push(DB.watchCol(IN_COL,rows=>{ INB=rows.sort((a,b)=>String(b.t||"").localeCompare(String(a.t||""))); INB_DENIED=false;
+  if(INB_FIRST){ INB_FIRST=false; const mid=PARAMS.get("inbox"); if(mid&&IM(mid)){ openMail(mid); return; } }   // the link in a "Not filed yet" email
+  renderInboxBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note) renderMailBox(); },e=>{ console.warn("inbox",e); INB_DENIED=true; INB=[]; if(S.tab==="inbox") renderInbox(); })); }
+function renderInboxBadge(){ const n=INB.filter(needsPerson).length; const b=$("#tab-inbox"); if(b) b.textContent=n||""; }
+
+/* ---------- the tab ---------- */
+function renderInbox(){ const root=$("#view-inbox"); if(!root||S.tab!=="inbox") return; renderInboxBadge();
+  const keep={ rows:$("#ib-rows")?.scrollTop||0, read:$("#ib-read")?.scrollTop||0, same:root.dataset.sel===(IBX.sel||"") };
+  if(IBX.sel&&!IM(IBX.sel)) IBX.sel=null;
+  const q=S.q.trim().toLowerCase(), sel=IBX.sel&&IM(IBX.sel);
+  const inF=m=>IBX.f==="unsorted"?needsPerson(m):IBX.f==="filed"?m.state==="filed":m.state==="archived";
+  const rows=INB.filter(m=>inF(m)&&(!q||[m.subject,m.from?.name,m.from?.email,m.text,m.jobId,m.summary,W(m.jobId)?.title].join(" ").toLowerCase().includes(q)));
+  const n={ unsorted:INB.filter(needsPerson).length, filed:INB.filter(m=>m.state==="filed").length, archived:INB.filter(m=>m.state==="archived").length };
+  const sim=window.DEMO&&typeof demoSimulateMail==="function";
+  root.innerHTML=`<div class="ib-list">
+      <div class="ib-addr"><span>Forward, CC or BCC email to</span> <b class="mono">${P(JOBS_ADDR)}</b> <button class="btn sm" id="ib-copy">Copy</button></div>
+      <div class="ib-filters" role="tablist">${["unsorted","filed","archived"].map(f=>`<button class="chipbtn" role="tab" data-f="${f}" aria-selected="${IBX.f===f}">${{ unsorted:"Unsorted", filed:"Filed", archived:"Archived" }[f]}${n[f]?` <b>${n[f]}</b>`:""}</button>`).join("")}<span class="sp"></span>${sim?`<button class="btn sm" id="ib-sim" title="The demo has no real mailbox: this plays a sample email arriving">＋ Simulate an email</button>`:""}</div>
+      <div id="ib-rows">${INB_DENIED?`<div class="ib-empty">You can't read the Inbox. Ask the admin to check your access.</div>`:rows.map(rowHTML).join("")||emptyHTML(q)}</div></div>
+    <div class="ib-read" id="ib-read">${sel?readerHTML(sel):blankHTML()}</div>`;
+  root.dataset.sel=IBX.sel||""; document.body.classList.toggle("ib-open",!!sel);
+  $("#ib-rows").scrollTop=keep.rows; if(keep.same) $("#ib-read").scrollTop=keep.read;
+  $("#ib-copy").onclick=async()=>{ try{ await navigator.clipboard.writeText(JOBS_ADDR); toast("Address copied"); }catch{ prompt("Copy this address",JOBS_ADDR); } };
+  $$("#view-inbox .ib-filters [data-f]").forEach(b=>b.onclick=()=>{ IBX.f=b.dataset.f; IBX.sel=null; renderInbox(); });
+  $("#ib-sim")?.addEventListener("click",()=>demoSimulateMail());
+  $$("#ib-rows [data-mid]").forEach(r=>r.onclick=()=>{ IBX.sel=r.dataset.mid; IBX.full=null; renderInbox(); });
+  if(sel) wireReader(sel);
+}
+function emptyHTML(q){ if(q) return `<div class="ib-empty">No emails match “${P(S.q.trim())}”.</div>`;
+  if(IBX.f==="unsorted") return `<div class="ib-empty"><b>Nothing to sort.</b><br>Email that Dispatch can't place on a job by itself waits here for you: choose the job, or create one from it.</div>`;
+  if(IBX.f==="filed") return `<div class="ib-empty"><b>No email filed yet.</b><br>Forward, CC or BCC <span class="mono">${P(JOBS_ADDR)}</span>. Put the job number (like J-26-006) in the subject to file it straight onto that job; otherwise Dispatch works out which job it is about.</div>`;
+  return `<div class="ib-empty">Nothing archived.</div>`; }
+function blankHTML(){ return `<div class="ib-blank"><div><b>Email that comes into Dispatch</b><br>Dispatch files each email onto its job and reads it in: it fills in empty properties, adds details and updates, and asks you before it changes anything else.</div></div>`; }
+function rowHTML(m){ const w=m.jobId&&W(m.jobId), pend=pendingOf(m).length;
+  const tag=m.state==="filed"?`<span class="ib-job"><span class="mono">${P(m.jobId)}</span> ${P(w?.title||"")}</span>`
+    :m.state==="archived"?`<span class="hint">Archived</span>`
+    :m.state==="new"||m.state==="sorting"?`<span class="ib-busy">Sorting…</span>`
+    :m.guess?`<span class="ib-guess">Looks like <span class="mono">${P(m.guess.jobId)}</span></span>`:m.newJob?`<span class="ib-guess">New work?</span>`:`<span class="ib-guess">Choose a job</span>`;
+  return `<div class="ib-row${IBX.sel===m.id?" sel":""}${needsPerson(m)||pend?" due":""}" data-mid="${P(m.id)}"><span class="u"></span>
+    <div class="s"><b>${P(fromName(m))}${m.member?"":` <span class="ib-out">outside</span>`}</b><span class="sj">${P(m.subject)}</span><span class="sn">${P(m.summary||snippet(m.text,120))}</span>
+      <span class="ib-tags">${tag}${pend?`<span class="ib-pend">${pend} to approve</span>`:""}${m.attachments?.length?`<span class="hint">📎 ${m.attachments.length}</span>`:""}</span></div>
+    <span class="w" title="${P(fmtDate(m.t,true))}">${P(rel(m.t))}</span></div>`; }
+
+/* ---------- one email ---------- */
+function readerHTML(m){ const people=[...(m.to||[]),...(m.cc||[])].filter(x=>x.email!==JOBS_ADDR.toLowerCase());
+  const long=String(m.text||"").length>2400&&IBX.full!==m.id;
+  const atts=m.attachments||[];
+  return `<div class="ib-head"><button class="btn sm ib-back" id="ib-back">← Inbox</button><h3>${P(m.subject)}</h3></div>
+    <div class="ib-from"><b>${P(fromName(m))}</b> <span class="mono">${P(m.from?.email||"")}</span> · <span title="${P(fmtDate(mailDate(m),true))}">${P(fmtDate(mailDate(m),true))}</span>${m.member?(m.auth&&m.auth!=="pass"?` · <span class="ib-out" title="This email did not pass the check that it really came from this address, so it is treated like email from outside the team.">Sender not verified</span>`:""):` · <span class="ib-out" title="Not a member of this Dispatch. Nothing in it changes a job until a person files it, and then every change waits for approval.">Outside the team</span>`}</div>
+    ${people.length?`<div class="ib-to">to ${P(people.map(x=>x.name||x.email).join(", "))}</div>`:""}
+    ${jobBoxHTML(m)}
+    ${readStateHTML(m)}
+    ${(m.changes||[]).length?`<div class="ib-chg">${["pending","applied","accepted","rejected","undone"].flatMap(s=>(m.changes||[]).filter(c=>c.state===s)).map(c=>changeRowHTML(m,c)).join("")}</div>`:""}
+    ${atts.length||m.dropped?.length?`<div class="ib-atts"><div class="lab">Attached</div>${atts.map(attRowHTML).join("")}${(m.dropped||[]).map(d=>`<div class="hint">Not kept: ${P(d.name)} — ${P(d.why)}</div>`).join("")}</div>`:""}
+    <div class="ib-body">${P(long?String(m.text).slice(0,2400)+"…":m.text||"(no text)")}</div>${long?`<button class="link" id="ib-more" style="margin:0 18px 18px">Show the whole email</button>`:""}`; }
+function attRowHTML(a){ const ok=/^(https?:\/\/|data:)/i.test(a.url||""); return `<div class="frow"><span class="fico">${/^image\//.test(a.type)?"🖼":/pdf/.test(a.type)?"📄":"📎"}</span>${ok?`<a class="fname" href="${P(a.url)}" target="_blank" rel="noopener">${P(a.name)}</a>`:`<span class="fname">${P(a.name)}</span>`}<span class="hint">${a.label?P(a.label)+" · ":""}${fmtBytes(a.size||0)}</span></div>`; }
+function jobBoxHTML(m){ const w=m.jobId&&W(m.jobId);
+  if(m.state==="filed") return `<div class="ib-box filed"><div class="t">Filed to <button class="link mono" data-open="${P(m.jobId)}">${P(m.jobId)}</button> · ${P(w?.title||"(this job is not here any more)")}</div>
+    <div class="hint">${P(HOW[m.filed?.how]||"")}${m.filed?.how==="person"&&m.filed?.by?.name?" · "+P(m.filed.by.name):""}${m.filed?.why?" — "+P(m.filed.why):""}</div>
+    <div class="acts"><button class="btn sm" data-open="${P(m.jobId)}">Open job</button><button class="btn sm" id="ib-move">Move to another job…</button></div></div>`;
+  if(m.state==="new"||m.state==="sorting") return `<div class="ib-box"><span class="ib-busy">Sorting…</span> Dispatch is working out which job this is about.</div>`;
+  if(m.state==="archived") return `<div class="ib-box"><div class="t">Archived</div><div class="acts"><button class="btn sm" id="ib-unarch">Back to Unsorted</button></div></div>`;
+  const g=m.guess&&W(m.guess.jobId);
+  return `<div class="ib-box unsorted"><div class="t">${m.member&&m.auth!=="fail"?"Not filed yet — which job is it about?":"From outside the team — a person files it"}</div>
+    ${g?`<div class="ib-g">Looks like <b class="mono">${P(g.id)}</b> · ${P(g.title||"Untitled")}<div class="hint">${P(m.guess.why||"")}${m.guess.confidence<1?` · ${Math.round(m.guess.confidence*100)}% sure`:""}</div></div>`:""}
+    ${m.newJob?`<div class="ib-g">Looks like new work: <b>${P(m.newJob.title)}</b></div>`:""}
+    ${m.sortError?`<div class="hint">The AI could not sort it (${P(m.sortError)}).</div>`:""}
+    <div class="acts">${g?`<button class="btn sm primary" data-file="${P(g.id)}">File to ${P(g.id)}</button>`:""}<button class="btn sm${g?"":" primary"}" id="ib-pick">Choose a job…</button><button class="btn sm" id="ib-new">Create a job from this email</button><button class="btn sm" id="ib-arch">Archive</button></div></div>`; }
+function readStateHTML(m){ if(m.state!=="filed") return ""; const r=m.read||{};
+  if(r.state==="queued"||r.state==="reading"||r.state==="waiting") return `<div class="ib-rs"><span class="ib-busy">Reading…</span> Dispatch is reading the email into ${P(m.jobId)}.</div>`;
+  if(r.state==="off") return `<div class="ib-rs hint">The AI is switched off, so nothing was read into the job. Its files are on the job.</div>`;
+  if(r.state==="failed") return `<div class="ib-rs bad">Could not read it into the job: ${P(r.error||"")} <button class="btn sm" id="ib-retry">Try again</button></div>`;
+  return m.summary?`<div class="ib-sum">${P(m.summary)}</div>`:`<div class="ib-rs hint">Read: nothing in it changes the job.</div>`; }
+function changeRowHTML(m,c,o={}){ const key=`${P(m.id)}|${P(c.id)}`;
+  const what=c.kind==="status"?"Status":c.kind==="note"?"Add an update":c.kind==="detail"?`${P(c.label)} <span class="hint">· detail</span>`:P(c.label);
+  const val=c.kind==="note"?`<span class="cvn">${P(c.value)}</span>`:`${c.beforeShow?`<s>${P(c.beforeShow)}</s> → `:""}<b>${P(c.show)}</b>`;
+  const acts=c.state==="pending"?`<button class="btn sm primary" data-acc="${key}">Accept</button><button class="btn sm" data-rej="${key}">Reject</button>`
+    :c.state==="applied"||c.state==="accepted"?`<span class="hint">${c.state==="accepted"?"Accepted":c.kind==="prop"?"Filled in":"Added"}</span><button class="btn sm" data-undo="${key}">Undo</button>`
+    :`<span class="hint">${c.state==="rejected"?"Rejected":"Undone"}</span>`;
+  return `<div class="chg ${P(c.state)}" data-chg="${key}"><div class="cw"><div class="cl">${what}</div><div class="cv">${val}</div>${c.evidence?`<div class="ce">“${P(c.evidence)}”</div>`:""}${o.source?`<div class="ce">From ${P(fromName(m))} · <button class="link" data-mail="${P(m.id)}">${P(snippet(m.subject,60))}</button></div>`:""}</div><div class="ca">${acts}</div></div>`; }
+function wireReader(m){ const root=$("#ib-read");
+  $("#ib-back").onclick=()=>{ IBX.sel=null; renderInbox(); };
+  $$("#ib-read [data-open]").forEach(b=>b.onclick=()=>openJobFromInbox(b.dataset.open));
+  $$("#ib-read [data-file]").forEach(b=>b.onclick=()=>fileMail(m.id,b.dataset.file));
+  $("#ib-pick")?.addEventListener("click",e=>jobPicker(e.currentTarget,"File this email to…",w=>w&&fileMail(m.id,w.id)));
+  $("#ib-move")?.addEventListener("click",e=>jobPicker(e.currentTarget,"Move this email to…",w=>w&&w.id!==m.jobId&&fileMail(m.id,w.id)));
+  $("#ib-new")?.addEventListener("click",e=>createFromMail(m.id,e.currentTarget));
+  $("#ib-arch")?.addEventListener("click",()=>setMailState(m.id,"archived"));
+  $("#ib-unarch")?.addEventListener("click",()=>setMailState(m.id,"unsorted"));
+  $("#ib-retry")?.addEventListener("click",()=>rereadMail(m.id));
+  $("#ib-more")?.addEventListener("click",()=>{ IBX.full=m.id; renderInbox(); });
+  wireChanges(root); }
+function wireChanges(root){ const k=s=>s.split("|");
+  root.querySelectorAll("[data-acc]").forEach(b=>b.onclick=()=>{ b.disabled=true; acceptChange(...k(b.dataset.acc)); });
+  root.querySelectorAll("[data-rej]").forEach(b=>b.onclick=()=>{ b.disabled=true; rejectChange(...k(b.dataset.rej)); });
+  root.querySelectorAll("[data-undo]").forEach(b=>b.onclick=()=>{ b.disabled=true; undoChange(...k(b.dataset.undo)); });
+  root.querySelectorAll("[data-mail]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); openMail(b.dataset.mail); }); }
+function openMail(mid){ const m=IM(mid); if(!m) return; IBX.f=needsPerson(m)?"unsorted":m.state; IBX.sel=mid; IBX.full=null; if(S.tab!=="inbox") setTab("inbox"); else renderInbox(); }
+function openJobFromInbox(id){ if(!W(id)){ toast("That job is not here any more.",true); return; } setTab("wo"); openWO(id); }
+
+/* ---------- filing ---------- */
+async function fileMail(mid,jobId,how="person"){ const m=IM(mid), w=W(jobId); if(!m||!w) return;
+  if(m.state==="filed"&&m.jobId===jobId) return;
+  if(m.state==="filed"&&m.jobId) await unfileMail(m);
+  const patch={ state:"filed", jobId, filed:{ how, at:now(), by:userRef() }, guess:null, newJob:null, changes:[], summary:"", read:{ state:"queued" } };
+  Object.assign(m,patch); await DB.update(IN_COL+"/"+mid,patch);
+  log(jobId,`filed the email “${snippet(m.subject,60)}” from ${fromName(m)} here`);
+  toast(`Filed to ${P(jobId)} · reading it into the job…`);
+  if(window.DEMO&&typeof demoReadMail==="function") demoReadMail(mid);   // the demo plays the mail service
+  if(S.tab==="inbox") renderInbox(); }
+// a filed email moves away: what Dispatch filled in by itself goes with it (what a person accepted stays), and its files
+async function unfileMail(m){ const w=W(m.jobId); if(!w) return;
+  for(const c of (m.changes||[]).filter(c=>c.state==="applied")) await undoChange(m.id,c.id,true).catch(console.error);
+  await DB.del(WO_COL+"/"+w.id+"/notes/mail-"+m.id).catch(()=>{});
+  log(w.id,`moved the email “${snippet(m.subject,60)}” to another job`); }
+async function setMailState(mid,state){ const m=IM(mid); if(!m) return; m.state=state; await DB.update(IN_COL+"/"+mid,{ state }); if(state==="archived") toast("Archived"); renderInbox(); }
+async function rereadMail(mid){ const m=IM(mid); if(!m) return; m.read={ state:"queued" }; await DB.update(IN_COL+"/"+mid,{ read:{ state:"queued" } }); if(window.DEMO&&typeof demoReadMail==="function") demoReadMail(mid); renderInbox(); }
+function createFromMail(mid,anchor){ const m=IM(mid); if(!m) return; const title=m.newJob?.title||cleanSubj(m.subject)||"";
+  const el=openPop(anchor,`<div class="sec">New job from this email</div><form class="nj" id="nj-m"><input class="in" id="nj-mt" value="${P(title)}" aria-label="Job name" maxlength="200" autocomplete="off"><button class="btn primary sm">Create</button></form>
+    <div class="hint nj-hint">The email is filed on the new job and read into it.</div>`,{ width:360 });
+  const inp=el.querySelector("#nj-mt"); inp.focus(); inp.select();
+  el.querySelector("#nj-m").onsubmit=async e=>{ e.preventDefault(); const t=inp.value.trim(); if(!t) return; closePop();
+    const dp=typeof descProp==="function"?descProp():null, d=m.newJob?.description;
+    const id=await createWO({ title:t, values:dp&&d?{ [dp.id]:d }:{} });
+    for(let i=0;i<40&&!W(id);i++) await new Promise(r=>setTimeout(r,25));
+    await fileMail(mid,id,"new"); }; }
+
+/* ---------- changes: accept, reject, undo ---------- */
+async function setChange(mid,cid,patch){ const m=IM(mid); if(!m) return; const cs=(m.changes||[]).map(c=>c.id===cid?{ ...c, ...patch }:c); m.changes=cs; await DB.update(IN_COL+"/"+mid,{ changes:cs }); }
+async function acceptChange(mid,cid,quiet){ const m=IM(mid), c=m?.changes?.find(x=>x.id===cid); if(!m||!c||c.state!=="pending") return false;
+  const w=W(m.jobId); if(!w){ toast("That job is not here any more.",true); return false; }
+  let done; try{ done=await applyChange(m,c,w); }catch(e){ toast("Could not apply it: "+P(e.message||e),true); renderMailViews(); return false; }
+  if(!done){ renderMailViews(); return false; }   // e.g. the status change was stopped by its "ask first" rule
+  await setChange(mid,cid,{ state:"accepted", at:now(), by:userRef() });
+  if(!quiet) toast(`${P(c.kind==="note"?"Update added":c.label+" updated")} on ${P(w.id)}`); return true; }
+async function applyChange(m,c,w){
+  if(c.kind==="prop"){ if(!prop(c.pid)) throw new Error("that property was deleted"); await setValue(w.id,c.pid,c.value); return true; }
+  if(c.kind==="status"){ if(!status(c.value)) throw new Error("that status was deleted"); await setStatus(w.id,c.value); return W(w.id)?.statusId===c.value; }
+  if(c.kind==="detail"){ const ds=(w.details||[]).filter(d=>d.label.toLowerCase()!==c.label.toLowerCase()); ds.push({ id:m.id+"-"+c.id, label:c.label, value:c.value, mid:m.id, t:now() }); w.details=ds;
+    await DB.update(WO_COL+"/"+w.id,{ details:ds, ...stamp() }); log(w.id,`added the detail ${c.label}: “${snippet(c.value,60)}” from ${fromName(m)}'s email`); return true; }
+  if(c.kind==="note"){ await DB.set(WO_COL+"/"+w.id+"/notes/mail-"+m.id+"-"+c.id,{ kind:"text", parent:null, title:`Update from ${fromName(m)}`, text:c.value, files:[], t:now(), by:fromName(m), mid:m.id });
+    log(w.id,`added the update from ${fromName(m)}'s email`); return true; }
+  return false; }
+async function rejectChange(mid,cid){ const m=IM(mid), c=m?.changes?.find(x=>x.id===cid); if(!c||c.state!=="pending") return; await setChange(mid,cid,{ state:"rejected", at:now(), by:userRef() }); }
+async function undoChange(mid,cid,quiet){ const m=IM(mid), c=m?.changes?.find(x=>x.id===cid); if(!m||!c||!["applied","accepted"].includes(c.state)) return; const w=W(m.jobId);
+  if(w){
+    if(c.kind==="prop"){ const p=prop(c.pid); if(p&&JSON.stringify(w.values?.[c.pid])===JSON.stringify(c.value)) await setValue(w.id,c.pid,c.before??(p.type==="multi"||p.type==="person"?[]:null)); else if(!quiet) toast(`${P(c.label)} has changed since, so it was left as it is.`); }
+    else if(c.kind==="status"){ if(w.statusId===c.value&&c.before&&status(c.before)) await setStatus(w.id,c.before,{ skipAsk:true }); }
+    else if(c.kind==="detail"){ const ds=w.details||[], d=ds.find(x=>x.label.toLowerCase()===c.label.toLowerCase());
+      if(d&&d.value===c.value){ const next=c.before!=null?ds.map(x=>x===d?{ ...x, value:c.before }:x):ds.filter(x=>x!==d); w.details=next; await DB.update(WO_COL+"/"+w.id,{ details:next, ...stamp() }); log(w.id,`took back the detail ${c.label} from ${fromName(m)}'s email`); } }
+    else if(c.kind==="note"){ await DB.del(WO_COL+"/"+w.id+"/notes/mail-"+m.id+"-"+c.id).catch(()=>{}); log(w.id,`took back the update from ${fromName(m)}'s email`); } }
+  await setChange(mid,cid,{ state:"undone", at:now(), by:userRef() }); }
+function renderMailViews(){ if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note) renderMailBox(); }
+
+/* ---------- the job page: approvals, details from email, emails ---------- */
+function mailBoxHTML(w){ const ms=mailsOf(w.id), pend=ms.flatMap(m=>pendingOf(m).map(c=>({ m, c }))), det=w.details||[];
+  const hint=`Forward, CC or BCC <span class="mono">${P(JOBS_ADDR)}</span> with <b class="mono">${P(w.id)}</b> in the subject: the email is filed here and read into this job.`;
+  if(!ms.length&&!det.length) return `<section class="ps" id="mailbox"><h3 style="cursor:default">Email</h3><div class="hint">${hint}</div></section>`;
+  const list=showAllMails===w.id?ms:ms.slice(0,4);
+  return `<section class="ps" id="mailbox">
+    ${pend.length?`<div class="appr"><div class="ah"><b>${pend.length} change${pend.length===1?"":"s"} from email to approve</b>${pend.length>1?`<button class="btn sm" id="mb-accall">Accept all</button>`:""}</div>${pend.map(({ m, c })=>changeRowHTML(m,c,{ source:true })).join("")}</div>`:""}
+    ${det.length?`<h3 style="cursor:default">Details from email <span class="mono" style="font-weight:400">${det.length}</span></h3><div class="dets">${det.map(d=>`<div class="det"><span class="dl">${P(d.label)}</span><span class="dv">${P(d.value)}</span><button class="btn sm ghost" data-dmenu="${P(d.label)}" aria-label="More for ${P(d.label)}">⋯</button></div>`).join("")}</div>`:""}
+    <h3 style="cursor:default">Emails <span class="mono" style="font-weight:400">${ms.length||""}</span></h3>
+    ${list.map(m=>`<div class="mrow" data-mail="${P(m.id)}"><b>${P(m.subject)}</b><span>${P(fromName(m))} · ${P(rel(m.t))}${m.attachments?.length?` · 📎 ${m.attachments.length}`:""}${pendingOf(m).length?` · <span class="ib-pend">${pendingOf(m).length} to approve</span>`:""}</span></div>`).join("")||`<div class="hint">${hint}</div>`}
+    ${ms.length>list.length?`<button class="link" id="mb-all">Show all ${ms.length}</button>`:""}</section>`; }
+function wireMailBox(w){ const el=$("#mailbox"); if(!el) return; wireChanges(el);
+  el.querySelectorAll(".mrow[data-mail]").forEach(r=>r.onclick=()=>openMail(r.dataset.mail));
+  $("#mb-all")?.addEventListener("click",()=>{ showAllMails=w.id; renderMailBox(); });
+  $("#mb-accall")?.addEventListener("click",async e=>{ e.currentTarget.disabled=true; const todo=mailsOf(w.id).flatMap(m=>pendingOf(m).map(c=>[m.id,c.id])); let n=0; for(const [mid,cid] of todo) if(await acceptChange(mid,cid,true)) n++; toast(`${n} change${n===1?"":"s"} accepted on ${P(w.id)}`); });
+  el.querySelectorAll("[data-dmenu]").forEach(b=>b.onclick=()=>detailMenu(w,b.dataset.dmenu,b)); }
+function renderMailBox(){ const w=S.open&&!S.note?W(S.open):null; const el=$("#mailbox"); if(!w||!el) return; const tmp=document.createElement("div"); tmp.innerHTML=mailBoxHTML(w); el.replaceWith(tmp.firstElementChild); wireMailBox(w); }
+function detailMenu(w,label,anchor){ const n=live().filter(j=>(j.details||[]).some(d=>d.label.toLowerCase()===label.toLowerCase())).length;
+  const el=openPop(anchor,`<div class="sec">${P(label)}</div><div class="mi" data-a="prop">Make it a property${n>1?`<span class="r">${n} jobs</span>`:""}</div><div class="mi danger" data-a="del">Remove from this job</div>`,{ width:240, noFocus:true });
+  el.onclick=async e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return; closePop(); if(a==="prop") promoteDetail(label); if(a==="del") removeDetail(w.id,label); }; }
+async function removeDetail(id,label){ const w=W(id); if(!w) return; const next=(w.details||[]).filter(d=>d.label.toLowerCase()!==label.toLowerCase()); w.details=next; await DB.update(WO_COL+"/"+id,{ details:next, ...stamp() }); log(id,`removed the detail ${label}`); renderRecord(); }
+// a detail that keeps coming up becomes a real property (a board column, a filter): every job's detail of that name moves into it
+async function promoteDetail(label){ const nm=label.trim(); let p=props().find(x=>x.name.toLowerCase()===nm.toLowerCase());
+  if(p&&p.type!=="text"){ toast(`There is already a property called ${P(p.name)}, and it is not text.`,true); return; }
+  if(!p){ p={ id:uid(), name:nm, type:"text" }; S.schema.props.push(p); await saveSchema(); }
+  let n=0; for(const j of live()){ const ds=j.details||[], d=ds.find(x=>x.label.toLowerCase()===nm.toLowerCase()); if(!d) continue;
+    const rest=ds.filter(x=>x!==d), patch={ details:rest, ...stamp() }; if(isEmpty(j.values?.[p.id])){ patch["values."+p.id]=d.value; j.values={ ...(j.values||{}), [p.id]:d.value }; } j.details=rest;
+    await DB.update(WO_COL+"/"+j.id,patch); log(j.id,`made the detail “${nm}” a property`); n++; }
+  renderAll(); toast(`${P(nm)} is now a property${n>1?` · filled on ${n} jobs`:""}`); }
+
+if(MOCK) window.__inbox={ get INB(){ return INB; }, IBX, setTab, renderInbox, fileMail, acceptChange, rejectChange, undoChange, promoteDetail, setMailState, createFromMail, openMail };   // test harness only
+
+/* =====================================================================
    DEMO — public sandbox build. Every visitor gets the same sample site in their own browser (in-memory store, no
    Firebase, no sign-in). Anything they create, edit or delete lives only until they reload.
    Site: an industrial yard in Thorold, ON. Positions are estimated from aerial imagery; points carry no surface
@@ -3405,7 +3653,7 @@ async function demoSeed(DB){
    • The Maps key is never part of the base file; it always comes from config.js.
    ===================================================================== */
 const AUTHOR = DEMO && PARAMS.has("author");
-const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/") || k.startsWith("workspace/main/threads/");   // threads: email before 13 Oct 2026
+const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/") || k.startsWith("workspace/main/threads/") || k.startsWith("workspace/main/inbox/");   // threads: email before 13 Oct 2026; the Inbox samples are made fresh on every load
 function baseOf(DB){ const all=DB.dump(); const store={}; for(const [k,v] of Object.entries(all)) if(!BASE_DROP(k)) store[k]=v; return { v:1, savedAt:new Date().toISOString(), baseDay:localDay(new Date()), store }; }
 /* Times move by the time since the base was saved; due dates (plain days) move by whole calendar days, so a job due
    "tomorrow" when the base was saved is due tomorrow for every visitor, whatever the time of day or time zone. */
@@ -3435,7 +3683,7 @@ async function demoBoot(DB){
     let t=null, busy=false; const save=async()=>{ if(busy){ t=setTimeout(save,400); return; } busy=true; try{ await IDB.set("base",baseOf(DB)); authorStatus("Saved in this browser · "+new Date().toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })); }catch(e){ authorStatus("Could not save: "+(e.message||e),true); } busy=false; };
     DB.onChange(()=>{ clearTimeout(t); authorStatus("Saving…"); t=setTimeout(save,700); });
     authorBar();
-  } else { const b=await shippedBase(); if(b) loadBase(DB,b); else await demoSeed(DB); }
+  } else { const b=await shippedBase(); if(b) loadBase(DB,b); else await demoSeed(DB); await demoInboxSeed().catch(e=>console.error("demo inbox",e)); }
   if(window.DEMO_MAPS_KEY&&!/PASTE/i.test(window.DEMO_MAPS_KEY)) await DB.set("config/maps",{ key:window.DEMO_MAPS_KEY });
 }
 function authorStatus(txt,bad){ const s=document.querySelector("#author-status"); if(s){ s.textContent=txt; s.classList.toggle("bad",!!bad); } }
@@ -3448,6 +3696,119 @@ function authorBar(){
   bar.querySelector("#author-reset").onclick=async()=>{ if(!confirm("Throw away the edits saved in this browser and start again from the shipped base file?")) return; await IDB.del("base"); location.reload(); };
   window.__author={ base:()=>baseOf(DB), json:()=>JSON.stringify(baseOf(DB)) };
 }
+
+/* =====================================================================
+   THE INBOX IN THE DEMO (14 Oct 2026). The demo has no mail service, so the browser plays it: sample emails arrive, are
+   sorted (job number, a PO number on one job, else the "AI" answer written for each sample) and read into the job with
+   the rules of mail-service/functions/inbox.js — from a team member, an empty property is filled when the answer is sure
+   and new details and written updates are added; status changes, overwrites and anything from outside the team wait for
+   a person. Six samples are there on load (not in author mode, so they never reach the base file); "＋ Simulate an email"
+   plays three more. Nothing leaves the browser.
+   ===================================================================== */
+const DM_REF=/(^|[^a-z])(p\.?\s?o\.?|purchase\s*order|work\s*order|w\.?\s?o\.?)(#|[^a-z]|$)/i;
+function demoMailSamples(){
+  const day=n=>new Date(Date.now()+n*86400000).toLocaleDateString(undefined,{ weekday:"short", month:"short", day:"numeric" });
+  const karen={ name:"Karen Liu", email:"karen.liu@example.com" }, priya={ name:"Priya Nair", email:"priya.nair@example.com" }, marco={ name:"Marco Bellini", email:"marco.bellini@example.com" },
+    dave={ name:"Dave Moreau", email:"dave.moreau@example.com" }, lee={ name:"Lee Wong", email:"lee.wong@example.com" };
+  return [
+  { key:"dm-n3", preload:true, ago:190, from:karen, member:true, subject:"Fwd: J-26-003 N3 flange — Acuren quote", files:[{ name:"Acuren Q-2231 N3 flange.pdf", type:"application/pdf", size:188416 }],
+    text:`Quote for the N3 job attached. PO to follow from purchasing.\n\n---------- Forwarded message ---------\nFrom: Mike Chen <mike.chen@acuren.example.com>\nSubject: N3 flange gasket + studs\n\nHi Karen,\n\nQuote Q-2231 attached for the nozzle N3 flange on tank T-1: new spiral-wound gasket and 4 studs with nuts (B7/2H), one shift, 2 fitters. $6,850 + HST.\nWe need the line isolated and drained the day before. Earliest start is the week of ${day(13)}.\n\nMike Chen\nAcuren Group · Field services`,
+    read:{ summary:"Acuren's quote Q-2231 for the N3 gasket and studs: $6,850 + HST, one shift, earliest the week of "+day(13)+".",
+      details:[{ label:"Contractor", value:"Acuren Group (Mike Chen)", evidence:"Mike Chen, Acuren Group" },{ label:"Quote", value:"Q-2231 · $6,850 + HST", evidence:"Quote Q-2231 … $6,850 + HST" },{ label:"Crew", value:"2 fitters, one shift", evidence:"one shift, 2 fitters" }],
+      note:`Acuren (Mike Chen): gasket + 4 studs in one shift; needs the line isolated and drained the day before. Earliest start the week of ${day(13)}.`, labels:{ "Acuren Q-2231 N3 flange.pdf":"Acuren quote Q-2231, $6,850 + HST" } } },
+  { key:"dm-po", preload:true, ago:60*26, from:lee, member:true, subject:"PO 4500218871 revision 1 — settlement survey added",
+    text:`Hi all,\n\nRevision 1 of PO 4500218871 adds the settlement survey to the T-1 5-yearly inspection. New total CAD 41,200. Vendor: Applus. Report due ${day(20)}.\n\nLee Wong\nPurchasing`,
+    sort:{ job:"J-26-002", confidence:0.9, reason:"PO 4500218871 is on J-26-002, the T-1 5-yearly inspection." },
+    read:{ summary:"Purchasing revised PO 4500218871: settlement survey added, total CAD 41,200, report due "+day(20)+".",
+      details:[{ label:"PO revision", value:"Rev 1 — settlement survey added", evidence:"Revision 1 of PO 4500218871 adds the settlement survey" },{ label:"PO total", value:"CAD 41,200", evidence:"New total CAD 41,200" },{ label:"Vendor", value:"Applus", evidence:"Vendor: Applus" }],
+      props:[{ pid:"deadline", value:{ start:localDay(new Date(Date.now()+20*86400000)) }, confidence:0.8, evidence:"Report due "+day(20) }] } },
+  { key:"dm-rake", preload:true, ago:40, from:marco, member:true, subject:"Rake drive noise on the clarifier",
+    text:`Heard a knocking from the rake drive gearbox on the clarifier this morning, louder when the arms pass the north side. Might be worth checking during the drained inspection, or sooner if it gets worse.\n\nMarco`,
+    sort:{ job:"J-26-004", confidence:0.62, reason:"About the clarifier's rake drive — J-26-004 is the clarifier mechanism inspection, but this may need its own repair." },
+    read:{ summary:"Marco heard a knocking from the clarifier rake drive gearbox, louder on the north side.", note:"Marco Bellini: knocking from the rake drive gearbox, louder when the arms pass the north side. Check during the drained inspection, or sooner if it gets worse." } },
+  { key:"dm-strip", preload:true, ago:20, from:priya, member:true, subject:"Insulation off at all 12 windows",
+    text:`All 12 windows on the pipe bridge are stripped and the inspection ports are in. Waste is bagged and gone. The UT crew can start whenever.\n\nPriya`,
+    sort:{ job:"J-26-005", confidence:0.93, reason:"Insulation stripped at the 12 windows on the pipe bridge — J-26-005's scope." },
+    read:{ summary:"Priya: insulation removed at all 12 windows, inspection ports fitted, waste removed.", status:{ id:"completed", evidence:"All 12 windows on the pipe bridge are stripped and the inspection ports are in." },
+      note:"Priya Nair: all 12 windows stripped, inspection ports fitted, waste bagged and removed. The UT crew can start." } },
+  { key:"dm-scaf", preload:true, ago:120, from:{ name:"Tom Becker", email:"tom.becker@northscaff.example.com" }, member:false, cc:[priya], subject:"J-26-013 scaffold handover — TB-5 east wall",
+    text:`Scaffold along the TB-5 east wall is up and inspected. Green tag 0412 is posted at the access ladder. Light duty, 2 lifts, 9 m. Please don't modify it; call us for changes.\n\nTom Becker\nNorth Scaffold Ltd.`,
+    read:{ summary:"North Scaffold handed over the TB-5 east wall scaffold: green tag 0412, light duty, 2 lifts, 9 m.", status:{ id:"completed", evidence:"Scaffold along the TB-5 east wall is up and inspected." },
+      details:[{ label:"Scaffold tag", value:"Green tag 0412, at the access ladder", evidence:"Green tag 0412 is posted at the access ladder" },{ label:"Load class", value:"Light duty, 2 lifts, 9 m", evidence:"Light duty, 2 lifts, 9 m" }],
+      note:"North Scaffold (Tom Becker): scaffold up and inspected, green tag 0412 at the access ladder. Do not modify; call them for changes." } },
+  { key:"dm-gate", preload:true, ago:300, from:dave, member:true, subject:"Gate latch broken at the rail spur crossing",
+    text:`The access gate next to the rail spur crossing won't latch any more — the keeper plate is bent. It swings open in the wind. Needs fixing before the rail crew comes back.\n\nDave`,
+    sort:{ job:"J-26-012", confidence:0.35, reason:"Near the rail spur, but J-26-012 is tie replacement, not the gate.", newJob:{ title:"Rail spur RS-8 crossing gate latch repair", description:"The access gate beside the rail spur crossing no longer latches: the keeper plate is bent and the gate swings open in the wind. Fix before the rail crew returns." } },
+    read:{ summary:"Dave: the gate by the rail spur crossing won't latch (bent keeper plate).", details:[{ label:"Defect", value:"Keeper plate bent; gate swings open", evidence:"the keeper plate is bent" }] } },
+  // played by "＋ Simulate an email", in this order
+  { key:"dm-p402", from:lee, member:true, subject:"PO for the P-402 seal job (J-26-008)",
+    text:`PO 4500233410 is issued for the P-402 mechanical seal replacement. Supplier: John Crane Canada, seal kit 5610-B, delivery ${day(3)}.\n\nLee Wong\nPurchasing`,
+    read:{ summary:"PO 4500233410 issued for the P-402 seal: John Crane kit 5610-B, delivery "+day(3)+".", props:[{ pid:"po", value:"4500233410", confidence:0.97, evidence:"PO 4500233410 is issued" }],
+      details:[{ label:"Supplier", value:"John Crane Canada", evidence:"Supplier: John Crane Canada" },{ label:"Part", value:"Seal kit 5610-B", evidence:"seal kit 5610-B" },{ label:"Delivery", value:day(3), evidence:"delivery "+day(3) }] } },
+  { key:"dm-roof", from:marco, member:true, subject:"Roof walk photos", files:[{ name:"TB-5 drain north.jpg", type:"image/jpeg", size:2411724 },{ name:"TB-5 drain south.jpg", type:"image/jpeg", size:2198001 },{ name:"PH-4 flashing NE.jpg", type:"image/jpeg", size:1873330 }],
+    text:`Did the roof walk this morning. Two drains on TB-5 were blocked with leaves — cleared one, the other needs a vac truck. Flashing on PH-4 is lifting at the north-east corner. Photos attached.\n\nMarco`,
+    sort:{ job:"J-26-009", confidence:0.9, reason:"Roof walk, drains and flashing on TB-5 and PH-4 — the fall roof inspection." },
+    read:{ summary:"Marco's roof walk: one TB-5 drain still blocked (needs a vac truck), PH-4 flashing lifting at the NE corner.", status:{ id:"in_progress", evidence:"Did the roof walk this morning." },
+      details:[{ label:"Follow-up", value:"TB-5 drain needs a vac truck; PH-4 flashing lifting at the NE corner", evidence:"the other needs a vac truck … Flashing on PH-4 is lifting" }],
+      note:"Marco Bellini: roof walk done. TB-5: two drains blocked, one cleared, the other needs a vac truck. PH-4: flashing lifting at the north-east corner. Photos attached.",
+      labels:{ "TB-5 drain north.jpg":"TB-5 north drain, blocked", "TB-5 drain south.jpg":"TB-5 south drain, cleared", "PH-4 flashing NE.jpg":"PH-4 flashing lifting, NE corner" } } },
+  { key:"dm-panels", from:{ name:"Ana Ruiz", email:"ana.ruiz@metalclad.example.com" }, member:false, cc:[dave], subject:"Re: sheeting panels for your job J-26-010",
+    text:`Hi Dave,\n\nThe replacement panels and the girt section ship ${day(2)} and arrive at 7:00. Please have a forklift at the east gate. Delivery ticket MC-88214.\n\nAna Ruiz\nMetalclad Supply`,
+    read:{ summary:"Metalclad: panels and girt arrive "+day(2)+" 7:00; forklift needed at the east gate.", details:[{ label:"Delivery", value:day(2)+", 7:00, east gate (forklift needed)", evidence:"arrive at 7:00. Please have a forklift at the east gate" },{ label:"Delivery ticket", value:"MC-88214", evidence:"Delivery ticket MC-88214" }],
+      note:"Metalclad (Ana Ruiz): panels and girt section arrive "+day(2)+" at 7:00; forklift needed at the east gate. Ticket MC-88214." } },
+  ]; }
+let DM_SAMPLES=null, DM_NEXT=0; const dmSample=k=>(DM_SAMPLES||=demoMailSamples()).find(x=>x.key===k);
+const dmWait=ms=>new Promise(r=>setTimeout(r,ms));
+async function demoInboxSeed(){ DM_SAMPLES=demoMailSamples(); for(const s of DM_SAMPLES.filter(x=>x.preload).sort((a,b)=>b.ago-a.ago)) await dmArrive(s,new Date(Date.now()-s.ago*60000).toISOString()); }
+async function demoSimulateMail(){ const s=(DM_SAMPLES||=demoMailSamples()).filter(x=>!x.preload)[DM_NEXT];
+  if(!s){ toast("That was the last sample email. Reload the page to start the demo over."); return; } DM_NEXT++;
+  const mid=await dmArrive(s,now(),true); const m=IM(mid); if(IBX.sel===mid&&m){ IBX.f=needsPerson(m)?"unsorted":m.state; renderInbox(); } }
+async function dmArrive(s,at,slow){
+  const mid="m-"+s.key; const files=(s.files||[]).map((f,i)=>({ id:mid+"f"+i, name:f.name, size:f.size, type:f.type }));
+  await DB.set(IN_COL+"/"+mid,{ sample:s.key, messageId:`<${mid}@demo>`, t:at, sent:at, from:s.from, member:!!s.member, auth:"pass", to:[{ email:DM_JOBS_ADDR(), name:"" }], cc:s.cc||[], subject:s.subject, text:s.text,
+    attachments:files, state:"new", jobId:null, guess:null, newJob:null, read:{ state:"waiting" }, changes:[] });
+  if(slow){ IBX.f="unsorted"; IBX.sel=mid; IBX.full=null; if(S.tab==="inbox") renderInbox(); await dmWait(900); }   // shown at once, "Sorting…"
+  await dmSort(mid,at,slow); return mid; }
+const DM_JOBS_ADDR=()=>JOBS_ADDR.toLowerCase();
+async function dmSort(mid,at,slow){
+  const m=await DB.get(IN_COL+"/"+mid), s=dmSample(m.sample), sch=await DB.get("workspace/schema")||{ props:[] };
+  const jobs=(await DB.list(WO_COL)).filter(j=>!j.trashed&&!j.draft), has=id=>jobs.some(j=>j.id===id);
+  const hay=[m.subject,m.text,...(m.attachments||[]).map(a=>a.name)].join("\n");
+  const ids=[...new Set([...hay.matchAll(/\bJ-(\d{2})-(\d{3,})\b/gi)].map(x=>`J-${x[1]}-${x[2]}`.toUpperCase()))].filter(has);
+  let pick=ids.length===1?{ jobId:ids[0], how:"number", why:`Its job number, ${ids[0]}, is in the email.` }:null;
+  if(!pick){ const hits=new Map(); for(const j of jobs) for(const p of (sch.props||[]).filter(p=>!p.system&&["text","number"].includes(p.type)&&DM_REF.test(p.name))){ const v=String(j.values?.[p.id]??"").trim(); if(v.length<4||!/\d/.test(v)) continue;
+      if(new RegExp(`(^|[^A-Za-z0-9])${v.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}([^A-Za-z0-9]|$)`,"i").test(hay)) hits.set(j.id,{ jobId:j.id, how:"reference", why:`Its ${p.name}, ${v}, is in the email.` }); } if(hits.size===1) pick=[...hits.values()][0]; }
+  let guess=null, newJob=null;
+  if(!pick&&s?.sort){ const ok=has(s.sort.job); if(ok&&m.member&&s.sort.confidence>=0.85) pick={ jobId:s.sort.job, how:"ai", why:s.sort.reason, confidence:s.sort.confidence }; else if(ok) guess={ jobId:s.sort.job, confidence:s.sort.confidence, why:s.sort.reason }; newJob=s.sort.newJob||null; }
+  if(pick&&m.member){ await DB.update(IN_COL+"/"+mid,{ state:"filed", jobId:pick.jobId, filed:{ how:pick.how, at, why:pick.why, ...(pick.confidence?{ confidence:pick.confidence }:{}) }, read:{ state:"queued" } });
+    await DB.add(WO_COL+"/"+pick.jobId+"/activity",{ t:at, by:{ name:m.from.name||m.from.email, email:m.from.email, via:"email" }, text:`emailed in “${snippet(m.subject,70)}” · filed ${HOW[pick.how]}` });
+    if(slow) await dmWait(1100); await dmRead(mid,at); return; }
+  if(pick) guess={ jobId:pick.jobId, confidence:1, why:pick.why };
+  await DB.update(IN_COL+"/"+mid,{ state:"unsorted", guess, newJob }); }
+async function demoReadMail(mid){ await dmWait(900); await dmRead(mid,now()); }
+async function dmRead(mid,at){
+  const m=await DB.get(IN_COL+"/"+mid); if(!m||m.state!=="filed"||!m.jobId) return;
+  const jp=WO_COL+"/"+m.jobId, j=await DB.get(jp); if(!j||j.trashed){ await DB.update(IN_COL+"/"+mid,{ read:{ state:"failed", at, error:`job ${m.jobId} is not there` } }); return; }
+  const sch=await DB.get("workspace/schema")||{ props:[] }, st=sch.status?.options||[], s=dmSample(m.sample)?.read||{ summary:"Nothing in it changes the job." };
+  const trusted=!!m.member, name=m.from.name||m.from.email, changes=[], add=c=>changes.push({ id:"c"+(changes.length+1), ...c });
+  for(const x of s.props||[]){ const p=(sch.props||[]).find(p=>p.id===x.pid); if(!p) continue; const cur=j.values?.[p.id], v=x.value;
+    if(JSON.stringify(cur)===JSON.stringify(v)) continue; const empty=isEmpty(cur);
+    add({ kind:"prop", pid:p.id, label:p.name, value:v, show:describe(p,v), ...(empty?{}:{ before:cur, beforeShow:describe(p,cur) }), evidence:x.evidence||"", confidence:x.confidence, state:trusted&&empty&&x.confidence>=0.7?"applied":"pending" }); }
+  if(s.status){ const o=st.find(o=>o.id===s.status.id); if(o&&o.id!==j.statusId) add({ kind:"status", label:"Status", value:o.id, show:o.name, before:j.statusId||null, beforeShow:st.find(x=>x.id===j.statusId)?.name||"", evidence:s.status.evidence||"", state:"pending" }); }
+  for(const d of s.details||[]){ const cur=(j.details||[]).find(x=>x.label.toLowerCase()===d.label.toLowerCase()); if(cur&&cur.value===d.value) continue;
+    add({ kind:"detail", label:d.label, value:d.value, show:d.value, ...(cur?{ before:cur.value, beforeShow:cur.value }:{}), evidence:d.evidence||"", state:trusted&&!cur?"applied":"pending" }); }
+  if(s.note) add({ kind:"note", label:"Update", value:s.note, show:s.note.slice(0,200), evidence:"", state:trusted?"applied":"pending" });
+  if(m.attachments?.length){ const files=m.attachments.map(a=>({ ...a, ...(s.labels?.[a.name]?{ label:s.labels[a.name] }:{}), t:at, by:name }));
+    await DB.set(jp+"/notes/mail-"+mid,{ kind:"file", parent:null, title:files.length===1?(files[0].label||files[0].name):`${files.length} files from email · ${snippet(m.subject,50)}`, text:`From ${name} · “${snippet(m.subject,70)}”`, files, t:at, by:name, mid }); }
+  const patch={}; let details=j.details?[...j.details]:null;
+  for(const c of changes.filter(c=>c.state==="applied")){ c.at=at;
+    if(c.kind==="prop") patch["values."+c.pid]=c.value;
+    if(c.kind==="detail") (details??=[]).push({ id:mid+"-"+c.id, label:c.label, value:c.value, mid, t:at });
+    if(c.kind==="note") await DB.set(jp+"/notes/mail-"+mid+"-"+c.id,{ kind:"text", parent:null, title:`Update from ${name}`, text:c.value, files:[], t:at, by:name, mid });
+    await DB.add(jp+"/activity",{ t:at, by:{ name, email:m.from.email, via:"email" }, text:`${c.kind==="note"?"added an update":c.kind==="detail"?`added the detail ${c.label}: “${snippet(c.show,80)}”`:`filled ${c.label} with “${snippet(c.show,80)}”`} from the email “${snippet(m.subject,60)}”` }); }
+  if(details&&JSON.stringify(details)!==JSON.stringify(j.details||[])) patch.details=details;
+  if(Object.keys(patch).length) await DB.update(jp,{ ...patch, edited:at, editedBy:{ uid:"email", name } });
+  await DB.update(IN_COL+"/"+mid,{ changes, summary:s.summary||"", read:{ state:"done", at, model:"demo" } }); }
 
 boot();
 </script>
