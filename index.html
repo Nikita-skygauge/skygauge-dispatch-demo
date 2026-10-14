@@ -163,7 +163,6 @@ body.note-view #pk-fly{display:none}
 .strip{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2,#172044);margin:8px 0}.strip .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600;min-width:64px}.strip .val{flex:1;color:var(--ink-2)}
 .props.details{margin-top:4px;margin-bottom:8px}
 /* note view: teal frame + context band; the map pill mirrors it */
-#peek.ib-hide{transform:translateX(102%)!important;pointer-events:none}
 body.note-view #peek{box-shadow:inset 0 0 0 2px #00FFE5} body.note-view #pk-exit{display:none!important}
 .nview .ctx{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:-4px -4px 10px;background:rgba(0,255,229,.12);border:1px solid rgba(0,255,229,.35);border-radius:10px;font-size:12px}
 .nview .ctx .tag{font:700 10px/1 var(--sans,system-ui);letter-spacing:.08em;text-transform:uppercase;background:#00FFE5;color:#0B0F1F;padding:4px 7px;border-radius:5px}
@@ -173,54 +172,9 @@ body.note-view #peek{box-shadow:inset 0 0 0 2px #00FFE5} body.note-view #pk-exit
 /* the job panel docks: the board and table shrink to the remaining width instead of being covered */
 @media (min-width:861px){ body.peek-open[data-tab="wo"] #view-wo{margin-right:min(560px,100%)} }
 .toolbar{display:flex;gap:8px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
-/* ---- Inbox ---- */
-#view-inbox{display:grid;grid-template-columns:380px 1fr;background:var(--ground)}
-.ib-list{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
-.ib-filters{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}.ib-filters .sp{flex:1}
 .chipbtn{border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}.chipbtn[aria-selected="true"]{background:var(--sel);color:#0B0F1F;border-color:var(--sel)}.chipbtn b{font-family:var(--mono);font-weight:500;margin-left:5px;font-size:11px}.chipbtn b:empty{display:none}
-#ib-rows{overflow:auto;flex:1;min-height:0}
-.ib-grp{padding:10px 12px 4px;font:600 11px/1 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);display:flex;gap:8px;align-items:center;cursor:pointer}.ib-grp .jid{font-family:var(--mono);color:var(--ink-2);text-transform:none;letter-spacing:0}.ib-grp .jt{font-weight:500;text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.ib-row{display:grid;grid-template-columns:8px 1fr auto;gap:10px;align-items:start;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
-.ib-row:hover{background:var(--panel-2)}.ib-row.sel{background:var(--panel-2);box-shadow:inset 3px 0 0 var(--sel)}
-.ib-row .u{width:8px;height:8px;border-radius:50%;margin-top:6px;background:transparent}.ib-row.unread .u{background:var(--sel)}
-.ib-row .s{min-width:0}.ib-row .s b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}.ib-row.unread .s b{color:var(--ink)}
-.ib-row .s span{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ib-row .s .re{color:var(--ink-2)}
-.ib-row .w{color:var(--ink-3);font-size:11px;text-align:right;font-family:var(--mono);white-space:nowrap}
-.ib-empty{padding:30px 18px;color:var(--ink-3);font-size:13px;line-height:1.6}.ib-empty b{color:var(--ink)}
-.ib-thread{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:auto}
-.ib-jobcard{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:2;flex-wrap:wrap}
-.ib-jobcard .jid{font-family:var(--mono);color:var(--ink-3);font-size:12px}.ib-jobcard .jt{font-weight:600}.ib-jobcard .last{color:var(--ink-3);font-size:12px}.ib-jobcard .sp{flex:1}
-.ib-jobcard .area{width:44px;height:30px;border-radius:6px;background:linear-gradient(170deg,#5e6a86,#2c3554);position:relative;overflow:hidden;flex:none}.ib-jobcard .area:after{content:"";position:absolute;left:10px;top:9px;width:22px;height:12px;border:1.5px solid var(--sel);background:rgba(0,255,229,.2);transform:skewX(-25deg)}
-.ib-head{padding:14px 18px 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ib-head h3{margin:0;font-size:18px;font-weight:600;flex:1;min-width:200px}
-.ib-about{padding:0 18px 8px;color:var(--ink-3);font-size:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ib-about a{color:var(--ink-2)}
-.addr{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px dashed var(--line);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel)}.addr .btn{padding:2px 8px}
-.ib-parts{padding:0 18px 12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ib-parts .lab{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
-.pchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12px}.pchip .avatar.sm{width:20px;height:20px;font-size:9px}.pchip .st{font-size:10px;color:var(--ink-3)}.pchip .st.on{color:var(--accent)}
-.ib-msgs{padding:0 18px;display:flex;flex-direction:column;gap:12px}
-.msg{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
-.msg .h{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}.msg .h b{font-weight:600}.msg .h .via{color:var(--ink-3)}.msg .h .t{margin-left:auto;color:var(--ink-3);font-family:var(--mono);font-size:11px}
-.msg .b{padding:12px 14px;color:var(--ink-2);font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
-.msg .q{color:var(--ink-3);font-size:12px;border-left:2px solid var(--line);padding-left:10px;margin:8px 14px 12px;white-space:pre-wrap;display:none}.msg.showq .q{display:block}.msg .qtog{margin:0 14px 10px;font-size:11px;color:var(--ink-3);cursor:pointer;background:none;border:0;padding:0}
-.msg.mine{border-color:rgba(0,255,229,.45)}.msg.queued{border-style:dashed}
-.msg .st{font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--panel-2);color:var(--ink-3)}.msg .st.failed{color:var(--crit)}
-.ext{display:flex;align-items:center;gap:10px;margin:10px 14px 2px;padding:8px 12px;border-radius:10px;background:rgba(0,255,229,.08);border:1px solid rgba(0,255,229,.35);font-size:12px;flex-wrap:wrap}
-.ext .k{font:700 10px/1 inherit;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}.ext .v{font-family:var(--mono);color:var(--ink);font-size:13px}.ext .why{color:var(--ink-3)}.ext .sp{flex:1}.ext.done{border-style:dashed;opacity:.8}
-.att{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 12px}
 .file{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;font-size:12px;background:var(--panel-2);color:var(--ink);text-decoration:none}.file .ic{width:18px;height:22px;border-radius:3px;background:var(--steel-2);color:var(--accent);display:grid;place-items:center;font:700 8px/1 inherit}.file .sz{color:var(--ink-3);font-family:var(--mono);font-size:11px}.file .to{color:var(--ok);font-weight:600}
-.compose{margin:12px 18px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
-.compose .from{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-3);flex-wrap:wrap}.compose .from b{color:var(--ink);font-weight:600}
-.compose .row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12px}.compose .row .lab{color:var(--ink-3);min-width:56px}.compose .row input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;padding:4px 0;min-width:0}.compose .row input:focus-visible{box-shadow:none;outline:none}
-.compose textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;padding:12px;min-height:80px;resize:vertical;display:block}.compose textarea:focus-visible{box-shadow:none}
-.compose .foot{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap}.compose .foot .sp{flex:1}.compose .foot .hint{font-size:11px}
-.compose .catt{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 8px}
-.ib-blank{display:grid;place-items:center;height:100%;color:var(--ink-3);text-align:center;padding:40px;line-height:1.7}.ib-blank b{color:var(--ink)}
-/* job panel: Email section */
-.thr{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);margin-bottom:6px;cursor:pointer}.thr:hover{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel)}
-.thr .u{width:8px;height:8px;border-radius:50%;background:var(--sel);flex:none}.thr .u.z{background:transparent}
-.thr .t{flex:1;min-width:0}.thr .t b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.thr .t span{color:var(--ink-3);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.thr .n{font-family:var(--mono);font-size:11px;color:var(--ink-3)}.thr .go{color:var(--ink-3)}
 .people{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-@media (max-width:860px){ #view-inbox{grid-template-columns:minmax(0,1fr)} body.ib-open .ib-list{display:none} body:not(.ib-open) .ib-thread{display:none} .ib-jobcard{gap:8px} }
 .toolbar .count{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 .toolbar .sp{margin-left:auto}
 #views{flex:1;min-height:0;overflow:auto;padding:14px 18px}
@@ -396,71 +350,13 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
 .nmeta{font-size:11.5px;color:var(--ink-3);margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:6px}.nmeta i{width:10px;height:10px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;flex:none}
 @media (max-width:860px){ .note{grid-template-columns:104px 1fr;gap:10px} .ntext{font-size:16px} }
 
-/* new-job dialog (6 Oct 2026): Who → What → Where → Why in one dialog; full screen on phones. Uses the app's tokens. */
-#job-wizard{width:min(1100px,calc(100vw - 64px));height:min(820px,calc(100dvh - 64px));max-width:none;max-height:none;padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel);color:var(--ink);box-shadow:0 30px 100px rgba(20,27,51,.28)}
-#job-wizard[open]{display:flex;flex-direction:column}#job-wizard::backdrop{background:rgba(20,27,51,.45);backdrop-filter:blur(4px)}
-#job-wizard :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
-#job-wizard textarea{resize:vertical;min-height:84px;line-height:1.5}#job-wizard h2:focus{outline:none}#job-wizard button{font:inherit}
-.jw-cap{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-.jw-head{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);flex:none}.jw-head h1{font-size:18px;font-weight:600;margin:2px 0 0}
-#jw-saved{margin-left:auto;font-size:12px;color:var(--ink-3)}#jw-saved button{border:0;background:none;color:var(--accent);font-weight:600;padding:0 0 0 6px;font-size:inherit;text-decoration:underline;cursor:pointer}
-.jw-x{border:0;background:none;font-size:24px;line-height:1;color:var(--ink-3);cursor:pointer;width:36px;height:36px;border-radius:8px;flex:none}.jw-x:hover{background:var(--panel-2)}
-.jw-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel-2);flex:none}
-.jw-steps button{display:flex;align-items:center;gap:10px;border:0;background:none;text-align:left;padding:4px 0;color:var(--ink-3);cursor:pointer}
-.jw-steps b{display:block;font-size:14px;font-weight:600}.jw-steps small{display:block;font-size:12px}
-.jw-n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:600}
-.jw-steps [aria-current=step]{color:var(--ink)}.jw-steps [aria-current=step] .jw-n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.jw-steps .done .jw-n{background:var(--steel-2);border-color:var(--steel-2);color:var(--accent)}
-.jw-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;flex:1;min-height:0}#jw-main{padding:28px 36px;overflow-y:auto;min-height:0}
-.jw-hero{margin-bottom:20px}.jw-hero h2{font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.4px;margin:8px 0 6px}.jw-hero p{margin:0;color:var(--ink-3);font-size:14px}
-.jw-label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin:18px 0 7px}.jw-label small,.jw-fs legend small{font-weight:400;color:var(--ink-3);font-size:12px;margin-left:6px}
-.jw-grid{display:grid;grid-template-columns:1fr 180px;gap:14px}.jw-fs{border:0;padding:0;margin:18px 0 0;min-width:0}.jw-fs legend{font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px;padding:0}
-.jw-chips{display:flex;flex-wrap:wrap;gap:7px}.jw-chip{position:relative;cursor:pointer}.jw-chip input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
-.jw-chip span{display:block;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:13px;color:var(--ink-2);background:var(--panel)}
-.jw-chip input:checked+span{background:var(--steel-2);border-color:var(--accent);color:var(--accent);font-weight:600}.jw-chip input:focus-visible+span{box-shadow:0 0 0 3px rgba(75,30,171,.35)}
-.jw-more{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}.jw-more summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2)}.jw-more summary span{font-weight:400;color:var(--ink-3);margin-left:6px;font-size:12px}
-.jw-checkrow{display:flex;gap:8px;align-items:center;margin:16px 0 0;font-size:13px}
-#jw-q{margin-bottom:6px}.jw-person{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:7px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
-.jw-person:hover{background:var(--panel-2)}.jw-person.sel{border-color:var(--accent);background:var(--panel-2)}
-.jw-pmain{all:unset;display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer}.jw-pmain::after{content:"";position:absolute;inset:0;border-radius:10px}.jw-person:has(.jw-pmain:focus-visible){box-shadow:0 0 0 3px rgba(75,30,171,.35)}
-.avatar.jw-av{width:38px;height:38px;font-size:13px;background:var(--steel-2);color:var(--accent)}
-.jw-pname{min-width:0}.jw-pname b{display:block;font-size:14px;font-weight:600}.jw-pname b small{font-size:11px;font-weight:500;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:5px;color:var(--ink-3)}
-.jw-pname span{display:block;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.jw-tick{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-3);font-size:14px}.jw-person.sel .jw-tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.jw-leadpill{position:relative;z-index:1;flex:none;cursor:pointer}.jw-leadpill input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
-.jw-leadpill span{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;font-size:12px;border:1px solid var(--line);color:var(--ink-2);background:var(--panel)}
-.jw-leadpill .on,.jw-leadpill input:checked~.off{display:none}.jw-leadpill input:checked~.on{display:inline-flex;background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}.jw-leadpill input:focus-visible~span{box-shadow:0 0 0 3px rgba(75,30,171,.35)}
-.jw-none{padding:16px;text-align:center;color:var(--ink-3);font-size:13px}
-.jw-team{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2)}.jw-team b{display:block;font-size:13px;font-weight:600}.jw-team small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px}
-.jw-stack{display:flex;padding-left:6px;flex:none}.jw-stack .jw-av{width:28px;height:28px;font-size:11px;margin-left:-6px;border:2px solid var(--panel-2)}
-.jw-mhero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:12px}.jw-mhero h2{margin-bottom:0}
-.jw-tools{display:flex;gap:6px;align-items:center}.jw-modes{display:flex;gap:4px;margin-right:6px}
-.jw-tools button{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;font-size:13px;padding:7px 12px;min-height:36px;cursor:pointer}.jw-tools button:hover:not(:disabled){background:var(--panel-2)}.jw-tools button:disabled{opacity:.45;cursor:default}
-.jw-modes [aria-pressed=true]{background:var(--steel-2);border-color:var(--accent);color:var(--accent);font-weight:600}
-#jw-map-mount{position:relative;flex:1;min-height:320px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--canvas)}
-#jw-map-mount #canvas-wrap{position:absolute!important;inset:0!important;width:100%;height:100%}#jw-map-mount :is(#mode,#hud,#orbit,#legend,#sel-hint,#act-box,#draw-preview){display:none!important}
-#jw-status{font-size:13px;color:var(--ink-3);margin:8px 0 0}#job-wizard.jw-mapstep{width:min(1400px,calc(100vw - 32px));height:calc(100dvh - 32px)}   /* the map step gets the window; the map fills it */
-#job-wizard.jw-mapstep .jw-body{grid-template-columns:minmax(0,1fr)}#job-wizard.jw-mapstep #jw-summary{display:none}#job-wizard.jw-mapstep #jw-main{display:flex;flex-direction:column;padding:18px 24px 10px}#job-wizard.jw-mapstep [data-jw-panel="2"]{display:flex;flex-direction:column;flex:1;min-height:0}
-.jw-ex{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px}.jw-ex>span{font-size:12px;color:var(--ink-3);margin-right:2px}
-.jw-ex button{border:1px dashed var(--line);background:var(--panel-2);color:var(--ink-2);border-radius:999px;padding:5px 12px;font-size:12px;min-height:30px;cursor:pointer}.jw-ex button:hover{border-style:solid;border-color:var(--accent);color:var(--accent)}
-#jw-summary{padding:26px 22px;background:var(--panel-2);border-left:1px solid var(--line);overflow-y:auto;min-height:0}#jw-summary h3{font-size:18px;line-height:1.35;font-weight:600;margin:8px 0 4px;overflow-wrap:anywhere}.jw-intro{font-size:13px;color:var(--ink-3);margin:0 0 14px}
-.jw-row{padding:12px 0;border-top:1px solid var(--line)}.jw-row>div{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-3);margin-bottom:4px}.jw-row button{border:0;background:none;color:var(--accent);font-size:12px;font-weight:500;padding:0;cursor:pointer}
-.jw-row strong{display:block;font-size:13px;font-weight:600;overflow-wrap:anywhere}.jw-row small{font-size:12px;color:var(--ink-3);margin-top:3px;line-height:1.5;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.jw-note{font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px;margin:6px 0 0}
-.jw-foot{display:flex;align-items:center;gap:10px;padding:12px 24px;border-top:1px solid var(--line);background:var(--panel);flex:none}.jw-foot>div{margin-right:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-#jw-count{font-size:12px;color:var(--ink-3)}.jw-foot>div>button{border:0;background:none;padding:4px 0;font-size:13px;color:var(--accent);cursor:pointer}.jw-foot>div>#jw-discard{color:var(--crit)}
-#jw-error{color:var(--crit);font-size:13px;margin:0;max-width:340px}#jw-error:empty{display:none}.jw-foot .btn{min-height:42px;padding:0 18px;font-size:14px}
-.btn.has-draft::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--hot);margin-right:7px;vertical-align:1px}#reg-new-mini.has-draft{position:relative}#reg-new-mini.has-draft::before{position:absolute;top:3px;right:3px;margin:0}
-@media (max-width:860px){ #job-wizard{width:100vw;height:100dvh;border:0;border-radius:0}
-  .jw-head{padding:10px 14px}.jw-head h1{font-size:16px}#jw-saved{font-size:11px;max-width:120px;text-align:right}
-  .jw-steps{padding:10px 14px;gap:6px}.jw-steps small{display:none}.jw-steps b{font-size:13px}.jw-steps button{gap:6px}.jw-n{width:26px;height:26px;font-size:12px}
-  .jw-body{display:block;overflow-y:auto}#jw-main{padding:20px 16px;overflow:visible}#jw-summary{display:none}
-  #job-wizard:has([data-jw-panel="3"]:not([hidden])) #jw-summary{display:block;border:1px solid var(--line);border-radius:12px;margin:0 16px 20px;padding:18px}
-  .jw-hero h2{font-size:23px}.jw-grid{grid-template-columns:1fr 150px;gap:10px}#job-wizard :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
-  .jw-mhero{display:block}.jw-mhero .jw-tools{margin-top:12px}#job-wizard.jw-mapstep{width:100vw;height:100dvh}
-  .jw-tools{display:grid;grid-template-columns:repeat(4,1fr)}.jw-modes{grid-column:span 2}.jw-modes{margin-right:0}.jw-modes button{flex:1}.jw-tools button{min-height:40px;padding:6px 8px}
-  #jw-map-mount{flex:none;height:max(260px,calc(100dvh - 370px))}#job-wizard.jw-mapstep #jw-main{padding:16px;display:block}
-  .jw-foot{padding:10px 14px calc(10px + var(--sab,0px));flex-wrap:wrap;gap:8px}.jw-foot>div{flex-direction:column;align-items:flex-start;gap:2px}#jw-count,.jw-to{display:none}
-  #jw-error{order:-1;width:100%;max-width:none}.jw-foot .btn{min-height:44px;padding:0 16px} }
+/* New job: one name in a popover (13 Oct 2026). Emails sent, on the job panel */
+.pop .nj{display:flex;gap:6px;padding:4px 10px 0}.pop .nj .in{flex:1;min-width:0;font-size:14px}.pop .nj-hint{padding:6px 10px 8px}
+.kadd.top{margin:0 0 8px}
+#notices .ntf{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);margin:6px 0}
+#notices .ntf .t{flex:1;min-width:0}#notices .ntf .t b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#notices .ntf .t>span{display:block;color:var(--ink-3);font-size:12px}
+#notices .st.scheduled{color:var(--accent)}#notices .st.failed{color:var(--crit)}#notices .st.sent{color:var(--ink-2)}
+@media (max-width:860px){ .pop .nj .in{font-size:16px} }
 /* Job brief on the panel; Lead in the People list */
 .brief .bf{display:block;margin:0 0 6px}.brief .bfl{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:2px}
 .brief .bft{width:100%;font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 7px;margin-left:-7px;resize:none;overflow:hidden;min-height:30px;display:block}
@@ -522,7 +418,7 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   body.wo-view #reg{display:none}
   /* record = bottom sheet with three heights */
   #peek{width:100%;top:auto;left:0;right:0;bottom:0;height:var(--sheet-half);border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;transform:translateY(102%);transition:transform .22s ease,height .22s ease;box-shadow:0 -8px 24px rgba(0,0,0,.3)}
-  #peek.on{transform:none} #peek.ib-hide{transform:translateY(102%)!important} #peek[data-sheet="peek"]{height:var(--sheet-peek)} #peek[data-sheet="full"]{height:calc(100% - 0px);border-radius:0}
+  #peek.on{transform:none} #peek[data-sheet="peek"]{height:var(--sheet-peek)} #peek[data-sheet="full"]{height:calc(100% - 0px);border-radius:0}
   #peek .handle{padding:6px 14px 0;min-height:18px} #peek .ph{padding:6px 10px;flex-wrap:wrap;gap:6px} #peek .ph .id{width:100%;font-size:11px}
   #pk-size{display:inline-block!important} #peek[data-sheet="full"] #pk-size{transform:rotate(180deg)}
   #pbody{padding:10px 14px calc(60px + var(--sab))}
@@ -568,9 +464,8 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
   <span class="wordmark">Skygauge</span>
   <h1>Dispatch <span>Demo site · Thorold, ON</span></h1><span id="demo-badge" title="Everything here is sample data. Your changes stay in this browser tab and reset when you reload.">Demo · resets on reload</span>
   <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="map">Viewer</button>
-    <button role="tab" aria-selected="false" data-tab="wo">Jobs<b id="tab-open"></b></button>
-    <button role="tab" aria-selected="false" data-tab="inbox">Inbox<b id="tab-inbox"></b></button>
+    <button role="tab" aria-selected="true" data-tab="wo">Jobs<b id="tab-open"></b></button>
+    <button role="tab" aria-selected="false" data-tab="map">Map</button>
     <button role="tab" aria-selected="false" data-tab="auto" aria-haspopup="menu">Automations<b id="tab-auto" style="color:var(--accent)"></b> <span aria-hidden="true" style="font-size:10px;opacity:.7">▾</span></button>
   </div>
   <div id="search"><input id="q" type="search" placeholder="Search jobs…" autocomplete="off" aria-label="Search"></div>
@@ -620,20 +515,12 @@ section.ps h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color
       <span class="sp"></span>
       <button class="btn" id="b-props">Properties</button>
       <button class="btn" id="b-export">Export JSON</button>
-      <button class="btn primary" id="b-new">＋ New</button>
+      <button class="btn primary" id="b-new">＋ New job</button>
     </div>
     <div id="views"></div>
   </div>
 
   <div class="screen" id="view-auto" hidden><div id="auto-root"></div></div>
-
-  <div class="screen" id="view-inbox" hidden>
-    <div class="ib-list" id="ib-list">
-      <div class="ib-filters" id="ib-filters"><button class="chipbtn" data-f="all" aria-selected="true">All</button><button class="chipbtn" data-f="unread">Unread<b id="ib-unread-n"></b></button><button class="chipbtn" data-f="mine">Mine</button><button class="chipbtn" data-f="job" id="ib-jobf">Job ▾</button><span class="sp"></span><button class="btn sm" id="ib-sim" hidden title="Write an inbound email into the database exactly as the mail service will">Test: receive an email…</button></div>
-      <div id="ib-rows"></div>
-    </div>
-    <div class="ib-thread" id="ib-thread"></div>
-  </div>
 
   <aside id="peek" aria-label="Job">
     <div class="handle" id="pk-handle"><i></i></div>
@@ -764,8 +651,8 @@ function onDbError(e,p){ console.error("db",p,e); if(String(e.code||e).includes(
    ===================================================================== */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const P=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const S = { note:null, user:null, admin:false, allow:DEFAULT_ALLOWLIST, schema:null, site:null, wos:[], assets:[], members:[], open:null, tab:"map", view:"board", sub:"wo", q:"", legendOff:new Set(), hidden:{board:new Set(),table:new Set()}, sort:null, unsub:[] };
-const LSK = { key:"sgdemo_gmaps_key", email:"sgdemo_email_for_link", view:"sgdemo_view", draft:"sgdemo_new_job" };   // demo: own keys, never the production app's cached key/view (same github.io origin)
+const S = { note:null, user:null, admin:false, allow:DEFAULT_ALLOWLIST, schema:null, site:null, wos:[], assets:[], members:[], open:null, tab:"wo", view:"board", sub:"wo", q:"", legendOff:new Set(), hidden:{board:new Set(),table:new Set()}, sort:null, unsub:[] };
+const LSK = { key:"sgdemo_gmaps_key", email:"sgdemo_email_for_link", view:"sgdemo_view" };   // demo: own keys, never the production app's cached key/view (same github.io origin)
 const domainOf = e => String(e||"").toLowerCase().split("@")[1]||"";
 
 function gateHTML(kind, extra=""){
@@ -895,7 +782,7 @@ function startApp(){
   }));
   watchMail();
   if(typeof startAuto==="function") try{ startAuto(); }catch(e){ console.error("automations did not start",e); }
-  if(!booted){ booted=true; wireUI(); const id=(PARAMS.get("wo")||PARAMS.get("job")||"").replace(/^WO-/,"J-"); const tid=PARAMS.get("thread"); if(tid) setTimeout(()=>openThread(tid),900); else if(id) setTimeout(()=>openWO(id),600); }
+  if(!booted){ booted=true; wireUI(); const id=(PARAMS.get("wo")||PARAMS.get("job")||"").replace(/^WO-/,"J-"); if(id) setTimeout(()=>openWO(id),600); }
 }
 const initials = n => (n||"?").split(/[\s@._]+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join("");
 function saveView(){ try{ localStorage.setItem(LSK.view,JSON.stringify({ view:S.view, hb:[...S.hidden.board], ht:[...S.hidden.table], sort:S.sort })); }catch{} }
@@ -928,7 +815,7 @@ async function createWO(init={}){
   const id=`J-${yy}-${String(seq).padStart(3,"0")}`;
   const st=init.statusId||defaultStatus("todo")?.id;
   const w={ seq, title:init.title||"", statusId:st, values:init.values||{}, location:init.location||{points:[],height:0,closed:false}, created:now(), createdBy:userRef(), edited:now(), editedBy:userRef(), trashed:false, draft:!!init.draft, completedAt:status(st)?.group==="complete"?now():null };
-  for(const k of ["equipment","reason","outcome"]) if(init[k]) w[k]=init[k];   // the Job brief (new-job dialog)
+  for(const k of ["equipment","reason","outcome"]) if(init[k]) w[k]=init[k];   // the Job brief
   if(init.links) w.links=init.links; if(init.enabling) w.enabling=init.enabling; if(init.holdReason) w.holdReason=init.holdReason; if(init.series) w.series=init.series;
   await DB.set(WO_COL+"/"+id,w);
   if(!init.draft&&!init.quiet) log(id,"created the job");
@@ -958,15 +845,16 @@ async function setStatus(id,sid,opts={}){
   if(nowDone&&!wasDone) patch.completedAt=now(); if(!nowDone&&wasDone) patch.completedAt=null;
   Object.assign(w,patch); refreshWOOverlay(w); renderAll();
   await flashSaved($("#pbody [data-status]")||$(`#views tr[data-id="${id}"] [data-pid="status"]`),()=>DB.update(WO_COL+"/"+id,patch)); log(id,`changed Status from ${from} to ${to}`);
-  if((w.values?.people||[]).some(p=>p.email)) { toast(`Status → ${P(to)} · <button class="link" id="st-mail">Email the people on this job</button>`); $("#st-mail")?.addEventListener("click",()=>newThreadFrom(id,{kind:"status"},{ body:`${id} · ${w.title||"Untitled"} is now ${to}.` })); }
+  if((w.values?.people||[]).some(p=>p.email&&p.email.toLowerCase()!==meEmail())) { toast(`Status → ${P(to)} · <button class="link" id="st-mail">Notify the people on this job</button>`); $("#st-mail")?.addEventListener("click",()=>notifyStatus(id)); }
   if(typeof linksAfterStatus==="function") linksAfterStatus(w,prevSid,sid,wasDone,nowDone);
   if(typeof autoEvent==="function") autoEvent("status",w,{ sid, prevSid, wasDone, nowDone });
 }
 async function setValue(id,pid,v){
   const w=W(id); if(!w) return; const p=prop(pid); if(!p) return;
-  const before=describe(p,w.values?.[pid]); w.values??={}; w.values[pid]=v; renderAll();
+  const prev=w.values?.[pid], before=describe(p,prev); w.values??={}; w.values[pid]=v; renderAll();
   await flashSaved($(`#pbody .pv[data-edit="${pid}"]`)||$(`#views tr[data-id="${id}"] [data-pid="${pid}"]`),()=>DB.update(WO_COL+"/"+id,{ ["values."+pid]:v, ...stamp() }));
   const after=describe(p,v); if(before!==after) log(id,`set ${p.name} to ${after||"empty"}${before?` (was ${before})`:""}`);
+  if(pid==="people"&&typeof peopleChanged==="function") peopleChanged(w,prev,v).catch(console.error);   // added → emailed, removed in time → not
   if(before!==after&&typeof autoEvent==="function") autoEvent("changed",w,{ pid });
 }
 /* Location = ordered points. 1 → pin, 2 → line, 3+ → area (height m). Legacy pin/area docs are read through pts(). */
@@ -1071,7 +959,7 @@ function openPop(anchor, html, opts={}){
   return el;
 }
 document.addEventListener("pointerdown",e=>{ if(POP&&!POP.contains(e.target)) closePop(); },true);
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(JW) return;   /* the new-job dialog handles its own Escape */ if(document.activeElement?.id==="q"){ document.activeElement.blur(); return; } if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ document.activeElement?.blur?.(); closeNote(true); return; } if(S.open&&!S.woView) closePeek(); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if(document.activeElement?.id==="q"){ document.activeElement.blur(); return; } if(POP){ closePop(); e.stopPropagation(); return; } if($("#cam")){ closeCamera(); return; } if(VW){ closeViewer(); return; } if(V.draw&&(V.draw.moving||V.draw.sel!=null)){ $("#mode-exit").click(); return; } if(V.placing){ $("#mode-exit").click(); return; } if(V.draw){ $("#mode-exit").click(); return; } if(S.note){ document.activeElement?.blur?.(); closeNote(true); return; } if(S.open&&!S.woView) closePeek(); } });
 
 /* =====================================================================
    VALUE RENDERERS (record page, table cell, board card)
@@ -1369,7 +1257,7 @@ function renderRecord(){
     ${basicsHTML(w)}
     ${propsHTML(w)}
     ${briefHTML(w)}
-    ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span class="hint">Not placed yet</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Mark job area</button>`}</div>${mailStripHTML(w)}`
+    ${editLoc!==w.id?`<div class="strip"><span class="lab">Job area</span><span class="val">${P0.length?areaTxt:`<span class="hint">Not placed yet</span>`}</span>${P0.length?`<button class="btn sm teal" id="l-edit">Edit</button>`:`<button class="btn sm teal" id="l-add">＋ Place on map</button>`}</div>`
     :`<section class="ps"><h3 style="cursor:default">Job area <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">${areaTxt}</span></h3><div class="locbox editing">
       ${P0.length?`<div class="ptlist">${P0.map((p,i)=>`<div class="ptrow ${V.draw?.sel===i?"sel":""}" data-i="${i}"><span class="ptn">${i+1}</span><span class="mono">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><button class="btn sm" data-mv="${i}" title="Click the model to move this point">Move</button><button class="btn sm" data-rm="${i}" title="Remove this point">✕</button></div>`).join("")}</div>`:`<div class="hint">${isMobile()?"Tap":"Click"} the model: one point, more for a line, then point ① to close an area.</div>`}
       <div class="acts">${locKindW(w)==="area"?`<label class="hint" style="display:flex;align-items:center;gap:4px">Height <input class="in mono" id="l-h" type="number" min="0" value="${locHeight(w)}" style="width:64px;padding:2px 6px"> m <span class="hint">(0 = flat)</span></label>`:""}
@@ -1377,9 +1265,9 @@ function renderRecord(){
     ${typeof linksStripHTML==="function"?linksStripHTML(w):""}
     ${typeof autoStripHTML==="function"?autoStripHTML(w):""}
     ${notesHTML()}
-    ${mailSectionHTML(w)}
+    ${noticesHTML(w)}
     <section class="ps"><h3 id="act-h">${showAct?"▾":"▸"} Activity <span class="mono" style="font-weight:400" id="act-n">${ACT.length}</span></h3><div id="act" ${showAct?"":"hidden"}></div></section>`;
-  renderActivity(); wireNotes(); wireMailSection(w); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
+  renderActivity(); wireNotes(); wireNotices(); if(typeof wireLinks==="function") wireLinks(w); syncPinOverlays();
   const t=$("#ptitle"); const fit=()=>{ t.style.height="auto"; t.style.height=t.scrollHeight+"px"; }; fit(); t.oninput=fit;
   t.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); t.blur(); } if(e.key==="Escape"){ t.value=w.title||""; fit(); t.blur(); e.stopPropagation(); } };
   t.onblur=()=>setTitle(w.id,t.value.trim());
@@ -1450,13 +1338,13 @@ function recordMenu(anchor){
 /* =====================================================================
    VIEWS — Board, Table, Trash + register + top bar
    ===================================================================== */
-function filtered(links=true){ const q=S.q.trim().toLowerCase(); return live().filter(w=>(!q||textOf(w).includes(q))&&(!links||typeof lkPass!=="function"||lkPass(w))); }   // the Waiting/Ready filter belongs to the Jobs tab; the Viewer list only follows the search
+function filtered(links=true){ const q=S.q.trim().toLowerCase(); return live().filter(w=>(!q||textOf(w).includes(q))&&(!links||typeof lkPass!=="function"||lkPass(w))); }   // the Waiting/Ready filter belongs to the Jobs tab; the Map list only follows the search
 function renderAll(){
   if(!S.schema) return;
   const open=live().filter(isOpen); $("#tab-open").textContent=open.length||"";
   $("#m-records").textContent=`${S.assets.length} assets · ${live().length} jobs · ${open.length} open`;
   renderTree(); renderLegend(); regSummary();
-  if(S.tab==="wo") renderViews(); if(S.tab==="inbox") renderInbox();
+  if(S.tab==="wo") renderViews();
   if(S.open) renderRecord();
 }
 function renderViews(){
@@ -1468,15 +1356,15 @@ function renderViews(){
 function cardHTML(w){
   const vis=props().filter(p=>(S.schema.cardProps||[]).includes(p.id)&&!S.hidden.board.has(p.id));
   const bits=vis.map(p=>{ const v=w.values?.[p.id]; return isEmpty(v)&&!p.system?"":renderValue(p,v,w,true); }).filter(Boolean);
-  const nph=w.photoCount??(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(!pts(w).length) bits.push(`<span class="hint" style="color:var(--crit)">⚠ no job area</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
+  const nph=w.photoCount??(w.values?.photos||[]).length; if(nph&&!(S.schema.cardProps||[]).includes("photos")) bits.push(`<span class="hint">📷 ${nph}</span>`); if(w.noteCount) bits.push(`<span class="hint">✎ ${w.noteCount}</span>`); if(typeof linkCardBits==="function") bits.unshift(...linkCardBits(w)); if(typeof autoCardBits==="function") bits.unshift(...autoCardBits(w));
   return `<div class="kcard ${S.open===w.id?"hl":""}" draggable="true" data-id="${P(w.id)}"><div class="t">${P(w.title||"Untitled")}</div><div class="m"><span class="id">${P(w.id)}</span>${bits.join("")}</div></div>`;
 }
 function renderBoard(rows){
   const cols=statuses().map(o=>({ o, ws:rows.filter(w=>w.statusId===o.id) }));
-  $("#views").innerHTML=`<div class="kanban">${cols.map(({o,ws})=>`<div class="kcol" data-s="${P(o.id)}"><h3 style="border-bottom-color:${col(o.color).map}">${pill(o.name,o.color,"st dot")}<span class="c">${ws.length}</span></h3><div class="kcards">${ws.map(cardHTML).join("")||`<div class="kempty">No jobs</div>`}</div><button class="kadd" data-new="${P(o.id)}">＋ New</button></div>`).join("")}<div style="flex:0 0 200px"><button class="kadd" id="k-edit-status" style="color:var(--ink-3)">＋ Edit statuses</button></div></div>`;
+  $("#views").innerHTML=`<div class="kanban">${cols.map(({o,ws})=>`<div class="kcol" data-s="${P(o.id)}"><h3 style="border-bottom-color:${col(o.color).map}">${pill(o.name,o.color,"st dot")}<span class="c">${ws.length}</span></h3><button class="kadd top" data-new="${P(o.id)}">＋ New job</button><div class="kcards">${ws.map(cardHTML).join("")||`<div class="kempty">No jobs</div>`}</div></div>`).join("")}<div style="flex:0 0 200px"><button class="kadd" id="k-edit-status" style="color:var(--ink-3)">＋ Edit statuses</button></div></div>`;
   $$("#views .kcard").forEach(c=>{ c.onclick=()=>openWO(c.dataset.id); c.ondragstart=e=>{ e.dataTransfer.setData("text/plain",c.dataset.id); c.classList.add("drag"); }; c.ondragend=()=>c.classList.remove("drag"); });
   $$("#views .kcol").forEach(k=>{ k.ondragover=e=>{ e.preventDefault(); k.classList.add("over"); }; k.ondragleave=()=>k.classList.remove("over"); k.ondrop=e=>{ e.preventDefault(); k.classList.remove("over"); const id=e.dataTransfer.getData("text/plain"); if(id) setStatus(id,k.dataset.s); }; });
-  $$("#views [data-new]").forEach(b=>b.onclick=()=>startCreate({ statusId:b.dataset.new }));
+  $$("#views [data-new]").forEach(b=>b.onclick=()=>startCreate({ statusId:b.dataset.new },b));
   $("#k-edit-status").onclick=e=>statusEditor(e.currentTarget);
 }
 function sortRows(rows){
@@ -1517,13 +1405,13 @@ function propsToggle(anchor){
   draw();
 }
 
-/* ---------- left register (Viewer tab) ---------- */
+/* ---------- left register (Map tab) ---------- */
 function renderTree(){
   const q=S.q.trim().toLowerCase();
   if(S.sub==="wo"){
     const rows=filtered(false);
     $("#tree").innerHTML=["todo","progress","complete"].map(g=>{ const ws=rows.filter(w=>status(w.statusId)?.group===g); if(!ws.length) return ""; return `<div class="eyebrow" style="padding:8px 8px 2px">${GROUPS[g]} · ${ws.length}</div>${ws.map(w=>`<div class="it ${S.open===w.id?"sel":""}" data-wo="${P(w.id)}"><span class="tag">${P(w.id.slice(-3))}</span><span class="n" title="${P(w.title)}">${P(w.title||"Untitled")}</span><i style="width:8px;height:8px;border-radius:50%;background:${col(status(w.statusId)?.color).map};flex:none"></i></div>`).join("")}`; }).join("")||`<div class="kempty">No jobs yet.<br><button class="link" id="tree-new">Create the first one</button></div>`;
-    $("#tree-new")?.addEventListener("click",()=>startCreate());
+    $("#tree-new")?.addEventListener("click",e=>startCreate({},e.currentTarget));
   } else {
     const as=S.assets.filter(a=>!q||(a.tag+" "+a.name).toLowerCase().includes(q));
     const areas=[...new Set(as.map(a=>a.area||"Other"))];
@@ -1533,7 +1421,7 @@ function renderTree(){
 $("#tree").addEventListener("click",e=>{ const it=e.target.closest(".it"); if(!it) return; if(it.dataset.wo) enterWOView(it.dataset.wo); else if(it.dataset.asset) assetEditor(asset(it.dataset.asset),it); });
 
 /* ---------- tabs, search, user menu, admin, export ---------- */
-function setTab(t){ S.tab=t; document.body.dataset.tab=t; $$("#bar [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t)); $("#view-map").hidden=t!=="map"; $("#view-wo").hidden=t!=="wo"; $("#view-inbox").hidden=t!=="inbox"; const va=$("#view-auto"); if(va) va.hidden=t!=="auto"; $("#peek").classList.toggle("ib-hide",t==="inbox"); renderAll(); if(t==="inbox") renderInbox(); if(t==="auto"&&typeof renderAuto==="function") renderAuto(); }
+function setTab(t){ S.tab=t; document.body.dataset.tab=t; $$("#bar [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t)); $("#view-map").hidden=t!=="map"; $("#view-wo").hidden=t!=="wo"; const va=$("#view-auto"); if(va) va.hidden=t!=="auto"; renderAll(); if(t==="auto"&&typeof renderAuto==="function") renderAuto(); }
 const isMobile=()=>matchMedia("(max-width:860px)").matches;
 let dragMoved=false;
 function dragSheet(handle,sheet,onRelease){
@@ -1548,7 +1436,7 @@ function toggleSheet(){ const pk=$("#peek"); const s=pk.dataset.sheet||"half"; s
 function regSummary(){ const open=live().filter(isOpen).length; const el=$("#reg-sum"); if(el) el.textContent=`${live().length} jobs · ${open} open · ${S.assets.length} assets`; }
 function wireUI(){
   $("#reg-handle").onclick=e=>{ if(e.target.closest("#reg-new-mini")||dragMoved) return; $("#reg").classList.toggle("open"); };
-  $("#reg-new-mini").onclick=e=>{ e.stopPropagation(); $("#new-wo-map").click(); };
+  $("#reg-new-mini").onclick=e=>{ e.stopPropagation(); startCreate({},e.currentTarget); };
   $("#pk-handle").onclick=()=>{ if(!dragMoved) toggleSheet(); }; $("#pk-size").onclick=toggleSheet;
   // drag the sheets up and down; release snaps to the nearest size
   dragSheet($("#reg-handle"),$("#reg"),h=>{ $("#reg").classList.toggle("open",h>innerHeight*0.28); });
@@ -1560,10 +1448,8 @@ function wireUI(){
   $$("#reg .sub button").forEach(b=>b.onclick=()=>{ S.sub=b.dataset.sub; $$("#reg .sub button").forEach(x=>x.setAttribute("aria-selected",x===b)); renderTree(); });
   $$("#viewsw button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; saveView(); renderViews(); });
   $("#q").oninput=e=>{ S.q=e.target.value; renderAll(); };
-  $$("#ib-filters [data-f]").forEach(b=>b.onclick=e=>{ if(b.dataset.f==="job"){ jobFilterMenu(b); return; } IB.f=b.dataset.f; IB.job=null; renderInbox(); });
-  $("#ib-sim").onclick=e=>simInbound(e.currentTarget,null);
-  $("#b-new").onclick=()=>startCreate();
-  $("#new-wo-map").onclick=()=>startCreate();
+  $("#b-new").onclick=e=>startCreate({},e.currentTarget);
+  $("#new-wo-map").onclick=e=>startCreate({},e.currentTarget);
   $("#b-props").onclick=e=>propsToggle(e.currentTarget);
   $("#b-export").onclick=exportJSON;
   $("#pk-close").onclick=closePeek; $("#pk-more").onclick=e=>recordMenu(e.currentTarget); $("#pk-fly").onclick=()=>{ const w=W(S.open); if(w) enterWOView(w.id); };
@@ -1573,18 +1459,17 @@ function wireUI(){
   $("#new-asset").onclick=e=>assetEditor(null,e.currentTarget);
   document.addEventListener("pointerdown",e=>{ // click outside the peek closes it (V11) — not on popovers, map or toolbar buttons
     if(!S.open||S.woView) return; const pk=$("#peek"); const tg=e.target.isConnected?e.target:document.elementFromPoint(e.clientX,e.clientY); if(!tg) return;   // the editor that just closed may have re-rendered what was clicked
-    if(pk.contains(tg)||tg.closest(".pop,.kcard,.it,.tbl,#bar,#mode,#hud,#legend,gmp-map-3d,.toast,#viewer,#cam,#draw-acts,#job-wizard")) return; closePeek(); },true);
+    if(pk.contains(tg)||tg.closest(".pop,.kcard,.it,.tbl,#bar,#mode,#hud,#legend,gmp-map-3d,.toast,#viewer,#cam,#draw-acts")) return; closePeek(); },true);
   window.addEventListener("keydown",e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){ e.preventDefault(); $("#q").focus(); } });
   $("#keySave").onclick=async()=>{ const k=$("#keyInput").value.trim(); if(!/^AIza[0-9A-Za-z_\-]{20,}$/.test(k)){ $("#keyErr").textContent="That doesn't look like a Google Maps key (they start with AIza)."; return; } if(S.admin){ try{ await DB.set("config/maps",{ key:k, updated:now(), updatedBy:S.user.email }); }catch(e){ $("#keyErr").textContent="Could not save the key: "+(e.message||e); return; } } try{ localStorage.setItem(LSK.key,k); }catch{} location.reload(); };
   $("#keyInput").onkeydown=e=>{ if(e.key==="Enter") $("#keySave").click(); };
   setTab(S.tab);
 }
-function jobFilterMenu(anchor){ const el=openPop(anchor,`<div class="mi" data-j="">All jobs</div><div class="hr"></div>${live().filter(w=>jobThreads(w.id).length).map(w=>`<div class="mi" data-j="${P(w.id)}"><span class="mono" style="margin-right:6px">${P(w.id)}</span>${P(w.title||"Untitled")}<span class="r">${jobThreads(w.id).length}</span></div>`).join("")||`<div class="hint" style="padding:6px 8px">No job has threads yet.</div>`}`,{width:300,noFocus:true}); el.onclick=e=>{ const j=e.target.closest("[data-j]"); if(!j) return; closePop(); if(j.dataset.j){ IB.f="job"; IB.job=j.dataset.j; } else { IB.f="all"; IB.job=null; } renderInbox(); }; }
 function userMenu(anchor){
   const el=openPop(anchor,`<div class="fr" style="flex-direction:column;align-items:flex-start;gap:0"><b>${P(S.user.name)}</b><span class="hint">${P(S.user.email)}${S.admin?" · Admin":""}</span></div><div class="hr"></div>
     ${S.admin?`<div class="mi" data-a="admin">Who can enter…</div>`:""}<div class="mi" data-a="members">Members<span class="r">${S.members.length}</span></div>${S.admin?`<div class="mi" data-a="key">Change the shared Google Maps key</div>`:""}${S.admin&&!MOCK?`<div class="mi" data-a="mail">Email sending<span class="r">${MAILCFG?.enabled?"On":"Off"}</span></div>`:""}<div class="mi" data-a="theme">Toggle dark mode</div><div class="hr"></div><div class="mi" data-a="out">Sign out</div>`,{width:240,noFocus:true});
   el.onclick=e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return;
-    if(a==="mail"){ const on=!MAILCFG?.enabled; if(on&&!confirm("Turn email sending on? Messages people write in Dispatch, and automation emails, will go out by email through the mail service. Anything queued while it was off is sent now.")) return; closePop(); DB.set("config/mail",{ enabled:on, updated:now(), updatedBy:S.user.email }).then(()=>toast(on?"Email sending is on.":"Email sending is off — new messages wait in Dispatch until it is on again.")); return; }
+    if(a==="mail"){ const on=!MAILCFG?.enabled; if(on&&!confirm("Turn email sending on? Dispatch's notification emails (people added to a job, status updates, automations) go out through the mail service. Anything queued while it was off is sent now.")) return; closePop(); DB.set("config/mail",{ enabled:on, updated:now(), updatedBy:S.user.email }).then(()=>toast(on?"Email sending is on.":"Email sending is off — notifications wait in Dispatch until it is on again.")); return; }
     if(a==="admin") adminPanel(anchor); if(a==="members") membersPanel(anchor);
     if(a==="key"){ try{ localStorage.removeItem(LSK.key); }catch{} DB.del("config/maps").then(()=>location.reload()); }
     if(a==="theme"){ const r=document.documentElement; const dark=matchMedia("(prefers-color-scheme: dark)").matches; const cur=r.dataset.theme||(dark?"dark":"light"); r.dataset.theme=cur==="dark"?"light":"dark"; closePop(); }
@@ -1606,7 +1491,7 @@ function membersPanel(anchor){ openPop(anchor,`<div class="sec">Members who have
    subcollections, plus config, schema, site and members. Photos are included as their stored data URLs, so the file can be large. */
 async function backupJSON(progress=()=>{}){
   const dump=async col=>{ const rows=await DB.list(col); const out=[]; for(const r of rows){ const d={ ...r }; for(const sub of ["activity","notes","photos","photofull","comments","blocks"]){ try{ const x=await DB.list(col+"/"+r.id+"/"+sub); if(x.length) d["_"+sub]=x; }catch{} } out.push(d); progress(col.split("/").pop(),out.length,rows.length); } return out; };
-  const out={ format:"skygauge-dispatch-backup", version:2, exported:now(), exportedBy:S.user.email, config:{ allowlist:await DB.get("config/allowlist"), maps:await DB.get("config/maps") }, schema:await DB.get("workspace/schema"), site:await DB.get("workspace/site"), counters:await DB.get("workspace/counters"), members:await DB.list("workspace/main/members"), assets:await DB.list(AS_COL), jobs:await dump(WO_COL), workorders:await dump(OLD_WO_COL).catch(()=>[]), threads:await (async()=>{ const ts=await DB.list(MAIL_COL).catch(()=>[]); for(const t of ts){ try{ t._messages=await DB.list(MAIL_COL+"/"+t.id+"/messages"); }catch{} } return ts; })(), automations:await (async()=>{ const as=await DB.list(AU_COL).catch(()=>[]); for(const a of as){ try{ a._runs=await DB.list(AU_COL+"/"+a.id+"/runs"); }catch{} } return as; })() };
+  const out={ format:"skygauge-dispatch-backup", version:2, exported:now(), exportedBy:S.user.email, config:{ allowlist:await DB.get("config/allowlist"), maps:await DB.get("config/maps") }, schema:await DB.get("workspace/schema"), site:await DB.get("workspace/site"), counters:await DB.get("workspace/counters"), members:await DB.list("workspace/main/members"), assets:await DB.list(AS_COL), jobs:await dump(WO_COL), workorders:await dump(OLD_WO_COL).catch(()=>[]), notifications:await DB.list("workspace/main/notifications").catch(()=>[]), threads:await (async()=>{ const ts=await DB.list("workspace/main/threads").catch(()=>[]); for(const t of ts){ try{ t._messages=await DB.list("workspace/main/threads/"+t.id+"/messages"); }catch{} } return ts; })(),   /* threads: email kept before 13 Oct 2026 */ automations:await (async()=>{ const as=await DB.list(AU_COL).catch(()=>[]); for(const a of as){ try{ a._runs=await DB.list(AU_COL+"/"+a.id+"/runs"); }catch{} } return as; })() };
   const blob=new Blob([JSON.stringify(out)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`dispatch-backup-${now().replace(/[:.]/g,"-").slice(0,19)}.json`; document.body.append(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
   return { jobs:out.jobs.length, workorders:out.workorders.length, bytes:blob.size };
 }
@@ -1660,7 +1545,7 @@ function sceneSchedule(){ if(SCENE.pending) return; SCENE.pending=true; requestA
 function sceneKnown(){ const k=new Set(); const add=x=>{ if(x) k.add(x); };
   Object.values(OV.wo).forEach(o=>{ if(o.hidden) return; if(!o.pinHidden) add(o.m); add(o.area); add(o.line); add(o.box); (o.labels||[]).forEach(add); }); add(OV.site); (OV.draw||[]).forEach(add);
   if(typeof PTH!=="undefined") PTH.forEach(add); if(typeof PINOV!=="undefined") Object.values(PINOV).forEach(a=>a.forEach(add)); if(typeof PHOV!=="undefined") Object.values(PHOV).forEach(o=>{ add(o.m); (o.sight||[]).forEach(add); });
-  if(typeof LKOV!=="undefined") LKOV.els.forEach(add); if(typeof JW_MAP!=="undefined") JW_MAP.forEach(add);
+  if(typeof LKOV!=="undefined") LKOV.els.forEach(add);
   Object.values(POOL.free).forEach(l=>l.forEach(add));
   return k; }
 function sceneChildren(){ if(!map) return []; const c=map.children; return Array.isArray(c)?c.slice():[...c].filter(el=>/^GMP-/i.test(el.tagName||"")); }
@@ -1775,7 +1660,7 @@ function drawSite(){ if(!map) return; killEl(OV.site); const B=BOUNDARY(); const
 function syncAssetOverlays(){ /* assets carry no location (register only) */ }
 const rgb = hex => { const n=parseInt(hex.slice(1),16); return `${n>>16},${(n>>8)&255},${n&255}`; };
 function woColor(w){ return col(status(w.statusId)?.color).map; }
-function syncOverlays(){ if(!map||!lib) return; if(JW?.home){ jwParkJobs(); jwDrawMap(); return; }   /* the map is in the new-job dialog: the other jobs stay parked */ Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
+function syncOverlays(){ if(!map||!lib) return; Object.keys(OV.wo).forEach(id=>{ const w=W(id); if(!w||w.trashed||!pts(w).length){ const o=OV.wo[id]; killAll([o.m,o.area,o.line,o.box,...(o.labels||[])]); delete OV.wo[id]; mapRedraw(); } }); live().forEach(w=>{ if(OV.wo[w.id]) refreshWOOverlay(w); else addWOOverlay(w); }); renderLegend(); if(typeof syncLinkOverlays==="function") syncLinkOverlays(); }
 /* Points stay where they were clicked on the model (roof, platform, shell) instead of dropping to the ground: each point
    stores the surface altitude `ground` from the click, and overlays use ABSOLUTE altitude from it. Legacy points without
    it fall back to RELATIVE_TO_MESH, which also sits on the surface. */
@@ -1832,7 +1717,6 @@ function resetMode(){ if(S.woView&&S.open){ woMode(); return; } $("#site-view").
 $("#mode-exit").onclick=()=>{ const d=V.draw; if(d){ if(d.moving){ selCancelMove(); return; } if(d.sel!=null){ d.sel=null; renderDraw(); return; } if(d.live){ $("#draw-done").click(); return; } selCancel(); return; } V.placing=null; placePin?.remove(); placePin=null; map?.classList.remove("placing"); selPt=null; resetMode(); syncPointHandles(); orbitSync(); };
 function onMapClick(e){
   if(!e.position) return; const p={ lat:e.position.lat, lng:e.position.lng, ground:Math.round((e.position.altitude||0)*10)/10 }; previewCheck(p);
-  if(JW?.home){ jwMapClick(p); return; }   // the map is in the new-job dialog: the click places its spot
   if(V.draw){ const d=V.draw; if(PV.overBox) return; if(!d.site&&!inPoly(p,BOUNDARY())){ toast("Outside the site boundary.",true); return; }
     if(d.moving&&d.sel!=null){ d.pts[d.sel]={ ...d.pts[d.sel], ...p }; d.moving=false; selChanged(); return; }   // stays selected: the box comes back on the moved point
     if(PV.seg){ selInsertAt(p,PV.seg.i); return; }
@@ -2022,7 +1906,7 @@ function installLock(){ return;
   el.addEventListener("dblclick",()=>{ const w=W(S.open); if(w) flyWO(w); });
 }
 
-/* New jobs: the four-step dialog in p16newjob.js (startCreate). */
+/* New jobs: p16newjob.js (startCreate) — a name, then the job page; on the Map tab it goes straight to placing. */
 
 
 /* =====================================================================
@@ -2146,14 +2030,6 @@ async function deletePhoto(woId,pid){
   const w=W(woId); if(w&&prop("photos")) setValue(woId,"photos",(w.values?.photos||[]).filter(f=>f.id!==pid)); bumpPhotoCount(woId,-1); log(woId,"deleted a photo"); closeViewer(); renderRecord();
 }
 function bumpPhotoCount(woId,d){ const w=W(woId); if(!w) return; const n=Math.max(0,(w.photoCount??(w.values?.photos||[]).length)+d); w.photoCount=n; DB.update(WO_COL+"/"+woId,{ photoCount:n }).catch(()=>{}); }
-/* the full-size photo with its drawings burned in (for email); null when the full photo is not available */
-async function photoWithMarks(woId,p){ const full=await getFull(woId,p.id); if(!full) return null;
-  const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=full; }).catch(()=>null); if(!img) return null;
-  const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight; const g=c.getContext("2d"); g.drawImage(img,0,0); const W=c.width, H=c.height;
-  for(const m of (p.marks||[])){ const pts=(m.pts||[]).map(([x,y])=>[x*W,y*H]); if(!pts.length) continue; g.lineCap="round"; g.lineJoin="round";
-    if(m.type==="point"){ const [x,y]=pts[0]; const r=Math.max(10,W*0.045/2); g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fillStyle=m.color; g.fill(); g.lineWidth=2; g.strokeStyle="#0B0F1F"; g.stroke(); const n=markN(m); if(n){ g.fillStyle="#0B0F1F"; g.font=`700 ${Math.round(r*1.1)}px sans-serif`; g.textAlign="center"; g.textBaseline="middle"; g.fillText(n,x,y); } }
-    else { g.beginPath(); pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); g.lineWidth=Math.max(4,W/400); g.strokeStyle=m.color; g.stroke(); } }
-  return c.toDataURL("image/jpeg",0.82); }
 async function getFull(woId,pid){ if(fullCache.has(pid)) return fullCache.get(pid); const d=await DB.get(WO_COL+"/"+woId+"/photofull/"+pid); const u=d?.data||null; if(u) fullCache.set(pid,u); return u; }
 
 /* ---------- photos live in the Notes section now (Photos filter; ＋ Photo adds one) ---------- */
@@ -2494,7 +2370,7 @@ function renderNoteView(w){
   const p=n.kind==="photo"?PH.find(x=>x.id===n.photoId):null; const kids=childrenOf(n.id); const depth=depthOf(n.id);
   $("#pk-id").textContent=w.id; const showFiles=n.kind==="file"||(n.files||[]).length>0||depth>=NOTE_DEPTH;
   $("#pbody").innerHTML=`<div class="nview">
-    <div class="ctx"><span class="tag">Note</span><span class="lvl">${[1,2,3].map(l=>`<s class="${l<=depth?"on":""}"></s>`).join("")}</span><span class="crumbs">${crumbs.map(c=>c.here?`<b>${P(c.label)}</b>`:`<a href="#" data-crumb="${c.id||""}">${P(c.label)}</a><span class="sep">›</span>`).join("")}</span><button class="btn sm" id="nv-mail" title="Start an email thread about this note">✉ Email</button><button class="btn sm teal" id="nv-back" title="Back (Esc)">‹ ${depth>1?"Back":"Back to job"}</button></div>
+    <div class="ctx"><span class="tag">Note</span><span class="lvl">${[1,2,3].map(l=>`<s class="${l<=depth?"on":""}"></s>`).join("")}</span><span class="crumbs">${crumbs.map(c=>c.here?`<b>${P(c.label)}</b>`:`<a href="#" data-crumb="${c.id||""}">${P(c.label)}</a><span class="sep">›</span>`).join("")}</span><button class="btn sm teal" id="nv-back" title="Back (Esc)">‹ ${depth>1?"Back":"Back to job"}</button></div>
     <div class="nhead"><span class="kico big">${KIND_ICON[n.kind]}</span><input class="ntitle-in" id="nv-title" placeholder="${P(noteTitle(n))}" value="${P(n.title||"")}"><span class="chip soft">${n.kind==="model"?"On model":n.kind==="photo"?"Photo":n.kind==="file"?"Files":"Text"}</span></div>
     <textarea class="ntext big" id="nv-text" rows="2" placeholder="${n.kind==="text"?"Write the note…":"Add text to this note…"}">${P(n.text||"")}</textarea>
     ${n.kind==="model"?`<section class="ps"><h3 style="cursor:default">Location</h3><div class="strip" id="nv-loc"><span class="lab">Shape</span><span class="val">${NOTE_LABEL[noteShape(n)]} · ${notePts(n).length} point${notePts(n).length===1?"":"s"}</span><button class="btn sm teal" id="nv-move">${noteShape(n)==="pin"?"Move":"Edit"}</button></div></section>`:""}
@@ -2508,7 +2384,7 @@ function renderNoteView(w){
   </div>`;
   if(S.woView) woMode();
   $$("#pbody [data-crumb]").forEach(a=>a.onclick=e=>{ e.preventDefault(); const id=a.dataset.crumb; if(!id){ S.note=null; document.body.classList.remove("note-view"); selPin=null; highlightPhoto(null); renderRecord(); syncPinOverlays(); } else openNote(id); });
-  $("#nv-back").onclick=()=>closeNote(true); $("#nv-mail").onclick=()=>newThreadFrom(w.id,{ kind:"note", noteId:n.id });
+  $("#nv-back").onclick=()=>closeNote(true);
   const ti=$("#nv-title"); ti.onblur=()=>{ if(ti.value.trim()!==((N(n.id)||n).title||"")) updateNote(w.id,n.id,{ title:ti.value.trim() },ti,`renamed a note to “${ti.value.trim().slice(0,60)}”`); }; ti.onkeydown=e=>{ if(e.key==="Enter") ti.blur(); };
   const tx=$("#nv-text"); const grow=()=>{ tx.style.height="auto"; tx.style.height=Math.max(56,tx.scrollHeight)+"px"; }; grow(); tx.oninput=grow; tx.onblur=()=>{ if(tx.value.trim()!==((N(n.id)||n).text||"")) updateNote(w.id,n.id,{ text:tx.value.trim() },tx,tx.value.trim()?`wrote in “${noteTitle(n).slice(0,40)}”: “${tx.value.trim().slice(0,80)}${tx.value.trim().length>80?"…":""}”`:`cleared the text of “${noteTitle(n).slice(0,40)}”`); };
   $("#nv-move")?.addEventListener("click",()=>drawNote(w.id,n.id));
@@ -2559,221 +2435,74 @@ if(MOCK) window.__notes={ get NT(){ return NT; }, canPlace, moveNote, tree:()=>t
   pins:()=>Object.entries(PINOV).map(([id,parts])=>{ const m=parts[0]; const t=(m?.children||[]).find(c=>c instanceof HTMLTemplateElement); return { id, title:m?.title||"", text:t?.content.querySelector("text")?.textContent||"" }; }) };   // test harness only
 
 /* =====================================================================
-   MAIL — email threads attached to jobs. The platform is a participant in email, not a replacement for it.
-   workspace/main/threads/{tid}: { jobId, n, addr, subject, about:{kind:"job"|"note"|"status", noteId?, label},
-       participants:[{email,name,uid?}], created, createdBy, last:{t,from,snippet}, count, readBy:{uid:iso} }
-   workspace/main/threads/{tid}/messages/{mid}: { dir:"in"|"out", from:{email,name}, to:[..], cc:[..], t, subject,
-       text, quote?, attachments:[{id,name,size,type,url,noteId?}], extracted:{po:[{value,src,applied?}]},
-       status:"queued"|"sent"|"received"|"failed", messageId?, inReplyTo?, by? }
-   Routing is the address: j-26-008@mail.skygauge.co → new thread in J-26-008; j-26-008-t2@ → thread 2. The mail
-   service (functions/) writes inbound messages here in exactly the shape this file writes them; nothing guesses.
+   NOTIFICATIONS — Dispatch emails people when something needs them; it does not receive email. Per-job addresses, email
+   threads and the Inbox were taken out on 13 Oct 2026 (Nikita). Replies go to a person (the job's lead), never into Dispatch.
+   workspace/main/notifications/{nid}: { jobId, kind:"assigned"|"status"|"auto", subject, text, to:[{email,name}], fromName,
+       replyTo:{email,name}|null, attachments:[{id,name,size,type,url}], link, t, by, auto?,
+       status:"scheduled"|"queued"|"sending"|"sent"|"failed"|"cancelled", sendAt?,  — the mail service adds sentAt, error, notSentTo, notAttached }
+   The app writes "scheduled" (a hold, cancellable until sendAt) or "queued"; the mail service (mail-service/) sends what is queued.
    ===================================================================== */
-const MAIL_COL="workspace/main/threads", MAIL_DOMAIN=window.SG_MAIL_DOMAIN||"mail.skygauge.co";
-let MAILDENIED=false; let TH=[], thUnsub=null, MSG=[], msgUnsub=null, msgThread=null, IB={ f:"all", job:null, sel:null, compose:null }, MAILCFG=null;
-const jobAddr = id => `${String(id).toLowerCase()}@${MAIL_DOMAIN}`;
-const threadAddr = (id,n) => `${String(id).toLowerCase()}-t${n}@${MAIL_DOMAIN}`;
-const T = tid => TH.find(t=>t.id===tid);
-const jobThreads = id => TH.filter(t=>t.jobId===id).sort((a,b)=>(b.last?.t||b.created||"").localeCompare(a.last?.t||a.created||""));
-const meEmail = () => S.user?.email||"";
-function isUnread(t){ if(!t.last) return false; if((t.last.from?.email||"").toLowerCase()===meEmail()) return false; const r=t.readBy?.[S.user.uid]; return !r||r<t.last.t; }
-function unreadCount(){ return TH.filter(t=>W(t.jobId)&&!W(t.jobId).trashed&&isUnread(t)).length; }
-function isMine(t){ return (t.participants||[]).some(p=>(p.email||"").toLowerCase()===meEmail()); }
-function onPlatform(email){ email=(email||"").toLowerCase(); return email===meEmail()||S.members.some(m=>(m.email||"").toLowerCase()===email); }
+const NOTE_COL="workspace/main/notifications", ASSIGN_HOLD=2;   // minutes: someone tagged by mistake can be removed before the email goes
+let NTF=[], MAILCFG=null;
+const meEmail = () => (S.user?.email||"").toLowerCase();
+const jobNotices = id => NTF.filter(n=>n.jobId===id).sort((a,b)=>String(b.t||"").localeCompare(String(a.t||"")));
+const leadOf = w => (w?.values?.people||[]).find(p=>p.lead&&p.email);
 function nameOf(p){ if(!p) return ""; if(p.name) return p.name; const m=S.members.find(m=>(m.email||"").toLowerCase()===(p.email||"").toLowerCase()); return m?.name||p.email||""; }
-function parseAddrs(s){ return String(s||"").split(/[,;\s]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).map(email=>({ email, name:nameOf({email})||"" })); }
-function aboutLabel(t){ const a=t.about||{kind:"job"}; if(a.kind==="auto") return a.label?`sent by automation · ${a.label}`:"sent by automation"; if(a.kind==="note") return a.label?`about note · ${a.label}`:"about a note"; if(a.kind==="status") return "about a status change"; return "about the job"; }
 function snippet(s,n=90){ return String(s||"").replace(/\s+/g," ").trim().slice(0,n); }
 
-/* ---------- subscriptions ---------- */
-function watchMail(){ thUnsub?.(); thUnsub=DB.watchCol(MAIL_COL,rows=>{ TH=rows; if(IB.sel&&!T(IB.sel)) closeThread(); if(IB.sel&&S.tab==="inbox"&&document.visibilityState!=="hidden") markRead(IB.sel); renderMailBadge(); if(S.tab==="inbox") renderInbox(); if(S.open&&!S.note) renderMailSection(); },e=>{ console.warn("mail threads",e); MAILDENIED=true; if(S.tab==="inbox") renderInbox(); });
-  S.unsub.push(()=>{ thUnsub?.(); thUnsub=null; msgUnsub?.(); msgUnsub=null; });
-  S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; if(S.tab==="inbox") renderInbox(); },e=>{ console.warn("config/mail",e); MAILCFG=null; }));
-  if(S.admin) S.unsub.push(DB.watchCol("workspace/main/mail_undelivered",rows=>{ UNDEL=rows.sort((a,b)=>String(b.t).localeCompare(String(a.t))); if(S.tab==="inbox") renderInbox(); },()=>{ UNDEL=[]; })); }
-let UNDEL=[];
-function undeliveredMenu(anchor){ openPop(anchor,`<div class="sec">Email that could not be filed · ${UNDEL.length}</div>${UNDEL.slice(0,30).map(u=>`<div class="mi" style="flex-direction:column;align-items:flex-start;gap:0"><b>${P(u.subject||"(no subject)")}</b><span class="hint">${P(u.from?.email||"")} → ${P((u.to||[]).join(", "))} · ${P(fmtDate(u.t,true))}</span><span class="hint">${P(u.why||"")}${u.auth==="fail"?" · sender not verified":""}</span></div>`).join("")}<div class="hint" style="padding:6px 8px">Sent to an address that is not an open job. Senders from your own domains got a short reply; others did not.</div>`,{width:360,noFocus:true}); }
-function watchMessages(tid){ if(msgThread===tid) return; msgUnsub?.(); MSG=[]; msgThread=tid; if(!tid) return;
-  msgUnsub=DB.watchCol(MAIL_COL+"/"+tid+"/messages",rows=>{ MSG=rows.sort((a,b)=>(a.t||"").localeCompare(b.t||"")); if(IB.sel===tid&&S.tab==="inbox") renderThreadPane(); }); }
-function renderMailBadge(){ const n=unreadCount(); const b=$("#tab-inbox"); if(b) b.textContent=n||""; const u=$("#ib-unread-n"); if(u) u.textContent=n||""; }
+function watchMail(){ S.unsub.push(DB.watchCol(NOTE_COL,rows=>{ NTF=rows; renderNotices(); },e=>{ console.warn("notifications",e); NTF=[]; }));
+  S.unsub.push(DB.watchDoc("config/mail",d=>{ MAILCFG=d; renderNotices(); },e=>{ console.warn("config/mail",e); MAILCFG=null; })); }
 
-/* ---------- thread creation ---------- */
-async function createThread(jobId,opts={}){
-  const w=W(jobId); if(!w) return null;
-  const floor=Math.max(0,...jobThreads(jobId).map(t=>t.n||0)); const n=DB.nextThreadNo?await DB.nextThreadNo(WO_COL+"/"+jobId,floor):floor+1;
-  const me={ email:meEmail(), name:S.user.name, uid:S.user.uid };
-  const parts=[me,...(opts.participants||[])].filter((p,i,a)=>a.findIndex(x=>x.email===p.email)===i);
-  const t={ jobId, n, addr:threadAddr(jobId,n), subject:opts.subject||`${jobId} · ${w.title||"Untitled"}`, about:opts.about||{kind:"job"}, participants:parts, created:now(), createdBy:userRef(), last:null, count:0, readBy:{ [S.user.uid]:now() } };
-  const tid=await DB.add(MAIL_COL,t);
-  log(jobId,`started an email thread “${t.subject}”`);
-  return tid;
+/* One email. hold (minutes) > 0 → "scheduled", cancellable until it ends. Null when nobody on `to` has an address. */
+async function notify(w,{ kind, subject, text, to, hold=0, attachments=[], fromName, by, auto }){
+  const rcp=(to||[]).filter(p=>p?.email).map(p=>({ email:String(p.email).toLowerCase(), name:p.name||"" })).filter((p,i,a)=>a.findIndex(x=>x.email===p.email)===i);
+  if(!w||!rcp.length) return null;
+  const lead=leadOf(w), le=lead?.email.toLowerCase(), onlyLead=rcp.length===1&&rcp[0].email===le;   // the lead emailed alone: replies go to whoever sent it
+  const replyTo=lead&&!onlyLead?{ email:le, name:lead.name||"" }:!auto&&meEmail()?{ email:meEmail(), name:S.user.name||"" }:null;
+  const n={ jobId:w.id, kind, subject, text, to:rcp, fromName:fromName||S.user?.name||"", replyTo, attachments, link:location.origin+location.pathname+"?job="+w.id, t:now(), by:by||{ ...userRef(), email:meEmail() }, status:hold>0?"scheduled":"queued", ...(hold>0?{ sendAt:new Date(Date.now()+hold*60000).toISOString() }:{}), ...(auto?{ auto }:{}) };
+  const nid=await DB.add(NOTE_COL,n);
+  return { nid, ...n, names:rcp.map(p=>p.name||p.email).join(", ") };
 }
-/* Open the Inbox on a thread; state-preserving — the job stays open behind it and Back returns to it. */
-function openThread(tid,composeOpts){ IB.sel=tid; IB.compose=composeOpts||null; document.body.classList.add("ib-open"); if(S.tab!=="inbox") setTab("inbox"); else renderInbox(); watchMessages(tid); markRead(tid); const t=T(tid); if(t){ try{ const u=new URL(location.href); u.searchParams.set("job",t.jobId); u.searchParams.set("thread",tid); history.replaceState(null,"",u); }catch{} } }
-function closeThread(){ IB.sel=null; IB.compose=null; document.body.classList.remove("ib-open"); msgUnsub?.(); msgUnsub=null; msgThread=null; MSG=[]; renderInbox(); try{ const u=new URL(location.href); u.searchParams.delete("thread"); history.replaceState(null,"",u); }catch{} }
-const READING=new Set();
-function markRead(tid){ const t=T(tid); if(!t||!isUnread(t)||READING.has(tid)) return; const at=t.last?.t&&t.last.t>now()?t.last.t:now();   /* a message stamped by a clock ahead of ours would stay "unread" and loop */ t.readBy={ ...(t.readBy||{}), [S.user.uid]:at }; READING.add(tid); DB.update(MAIL_COL+"/"+tid,{ ["readBy."+S.user.uid]:at },QUIET).catch(()=>{}).finally(()=>READING.delete(tid)); renderMailBadge(); }
-/* Start a thread from a job, a note, or a status change and land in the compose box. */
-async function newThreadFrom(jobId,about,extra={}){ const w=W(jobId); if(!w) return; let subject=`${jobId} · ${w.title||"Untitled"}`; const att=[];
-  if(about?.kind==="note"){ const n=N(about.noteId); if(n){ about.label=noteTitle(n); subject=`${jobId} · ${noteTitle(n)}`; if(n.kind==="photo"){ const p=PH.find(x=>x.id===n.photoId); if(p) att.push({ id:uid(), name:`${noteTitle(n)}.jpg`, type:"image/jpeg", url:(await photoWithMarks(jobId,p))||p.thumb, noteId:n.id, marks:(p.marks||[]).length }); } (n.files||[]).forEach(f=>att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id })); } }
-  if(about?.kind==="status") subject=`${jobId} · ${w.title||"Untitled"} — now ${status(w.statusId)?.name||""}`;
-  const people=(w.values?.people||[]).map(p=>({ email:(p.email||"").toLowerCase(), name:p.name||"" })).filter(p=>p.email&&p.email!==meEmail());
-  const tid=await createThread(jobId,{ subject, about, participants:people });
-  if(tid) openThread(tid,{ to:people.map(p=>p.email).join(", "), attachments:att, body:extra.body||"" });
-}
+async function releaseNotice(n){ if(n.status==="scheduled") await DB.update(NOTE_COL+"/"+n.id,{ status:"queued" }); }
+async function cancelNotice(nid,quiet){ const n=NTF.find(x=>x.id===nid)||await DB.get(NOTE_COL+"/"+nid).catch(()=>null);
+  if(!n||n.status!=="scheduled"){ if(!quiet) toast(n?.status==="cancelled"?"That email was already cancelled.":"Too late — that email has already gone."); return false; }
+  try{ await DB.update(NOTE_COL+"/"+nid,{ status:"cancelled" },QUIET); }catch(e){ if(!quiet) toast("Too late — that email is already on its way."); return false; }   /* the mail service took it a moment ago */
+  log(n.jobId,`cancelled the email “${n.subject}”`); if(!quiet) toast("Email cancelled — it was not sent."); return true; }
 
-/* ---------- inbound: the same routine the mail service runs. Exposed in mock mode and to the admin "Test: receive" form. ----------
-   msg: { to:[addr], cc:[addr], from:{email,name}, subject, text, quote?, attachments:[{name,size,type,url}], messageId?, inReplyTo? } */
-function routeAddress(addrs){ for(const a of addrs||[]){ const m=String(a).toLowerCase().match(/^(j-\d{2}-\d{3,})(?:-t(\d+))?@/); if(m) return { jobId:m[1].toUpperCase(), n:m[2]?+m[2]:null }; } return null; }
-const PO_RX=[/\b(45\d{8})\b/g, /\b(?:P\.?\s?O\b\.?|purchase\s+order\b)(?:\s*(?:#|no\.?|num(?:ber)?\.?|:|-)){0,2}\s*(?:is\s+)?(?!(?:19|20)\d\d\b)(?=[A-Z0-9-]*\d)([A-Z0-9][A-Z0-9-]{3,})/gi];
-function extractPO(text){ const out=[]; const seen=new Set(); for(const rx of PO_RX){ rx.lastIndex=0; let m; while((m=rx.exec(text||""))){ const v=m[1].toUpperCase(); if(!seen.has(v)){ seen.add(v); out.push({ value:v, src:snippet(text.slice(Math.max(0,m.index-30),m.index+m[0].length+20),80) }); } } } return out; }
-async function receiveMail(msg){
-  const r=routeAddress([...(msg.to||[]),...(msg.cc||[])]); if(!r) throw new Error("No job address on the message");
-  const w=W(r.jobId); if(!w) throw new Error(`Unknown job ${r.jobId}`);
-  let t=r.n!=null?jobThreads(r.jobId).find(x=>x.n===r.n):null;
-  if(!t&&msg.inReplyTo){ t=TH.find(x=>x.jobId===r.jobId&&x.lastMessageId===msg.inReplyTo)||null; }
-  const from={ email:(msg.from?.email||"").toLowerCase(), name:msg.from?.name||"" };
-  const others=[...(msg.to||[]),...(msg.cc||[])].map(a=>String(a).toLowerCase()).filter(a=>!a.endsWith("@"+MAIL_DOMAIN)).map(email=>({ email, name:nameOf({email}) }));
-  let tid;
-  if(!t){ const n=Math.max(0,...jobThreads(r.jobId).map(x=>x.n||0))+1; const th={ jobId:r.jobId, n, addr:threadAddr(r.jobId,n), subject:msg.subject||"(no subject)", about:{kind:"job"}, participants:[from,...others].filter((p,i,a)=>p.email&&a.findIndex(x=>x.email===p.email)===i), created:now(), createdBy:{ name:from.name||from.email, email:from.email }, last:null, count:0, readBy:{} }; tid=await DB.add(MAIL_COL,th); t={ id:tid, ...th }; TH.push(t); }
-  else tid=t.id;
-  const text=String(msg.text||""); const extracted={ po:extractPO(text+"\n"+(msg.quote||"")) };
-  const m={ dir:"in", from, to:(msg.to||[]).map(a=>({email:String(a).toLowerCase()})), cc:(msg.cc||[]).map(a=>({email:String(a).toLowerCase()})), t:msg.t||now(), subject:msg.subject||t.subject, text, quote:msg.quote||"", attachments:(msg.attachments||[]).map(a=>({ id:uid(), name:a.name||"file", size:a.size||0, type:a.type||"", url:a.url||"" })), extracted, status:"received", messageId:msg.messageId||("<"+uid()+"@"+MAIL_DOMAIN+">"), inReplyTo:msg.inReplyTo||"" };
-  await DB.add(MAIL_COL+"/"+tid+"/messages",m);
-  const parts=[...(t.participants||[]),from,...others].filter((p,i,a)=>p.email&&a.findIndex(x=>x.email===p.email)===i);
-  await DB.update(MAIL_COL+"/"+tid,{ last:{ t:m.t, from, snippet:snippet(text) }, count:(t.count||0)+1, participants:parts, lastMessageId:m.messageId });
-  // everything lands in the job: activity, files, people
-  await DB.add(WO_COL+"/"+r.jobId+"/activity",{ t:m.t, by:{ name:from.name||from.email, email:from.email }, text:`replied by email · “${snippet(m.subject,60)}”${m.attachments.length?` · ${m.attachments.length} attachment${m.attachments.length===1?"":"s"}`:""}` }).catch(()=>{});
-  if(m.attachments.length&&m.attachments.some(a=>a.url)) await DB.add(WO_COL+"/"+r.jobId+"/notes",{ kind:"file", parent:null, title:m.attachments.length===1?m.attachments[0].name:`${m.attachments.length} files from email`, text:`From ${from.name||from.email} · “${snippet(m.subject,60)}”`, files:m.attachments.filter(a=>a.url).map(a=>({ ...a, t:m.t, by:from.name||from.email })), threadId:tid, t:m.t, by:from.name||from.email }).catch(()=>{});
-  await mergePeople(r.jobId,parts);
-  return { tid, extracted };
+/* People added to a job hear about it; someone removed before the hold ends is not emailed. `auto`: the rule that tagged them. */
+async function peopleChanged(w,before,after,auto){
+  const em=p=>String(p?.email||"").toLowerCase(); const was=new Set((before||[]).map(em)), is=new Set((after||[]).map(em));
+  for(const p of after||[]){ const e=em(p); if(e&&!was.has(e)&&e!==meEmail()) await notifyAdded(w,p,auto).catch(console.error); }
+  for(const e of was) if(e&&!is.has(e)) for(const n of NTF.filter(n=>n.jobId===w.id&&n.kind==="assigned"&&n.status==="scheduled"&&n.to.some(t=>t.email===e))) await cancelNotice(n.id,true);
 }
-async function mergePeople(jobId,parts){ const w=W(jobId); const p=prop("people"); if(!w||!p||p.type!=="person") return; const cur=w.values?.people||[]; const add=parts.filter(x=>x.email&&x.email!==meEmail()&&!cur.some(c=>(c.email||"").toLowerCase()===x.email)).map(x=>({ email:x.email, name:x.name||"" })); if(!add.length) return; const next=[...cur,...add]; w.values={ ...(w.values||{}), people:next }; await DB.update(WO_COL+"/"+jobId,{ "values.people":next, ...stamp() }).catch(()=>{}); }
-if(MOCK||PARAMS.has("mailtest")) window.__mail={ receive:receiveMail, extractPO, routeAddress };   // test hook: not in a signed-in build by default
-if(MOCK) window.__t={ createWO, createThread, W, T, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, openThread, sendMessage, extractPO, routeAddress, unreadCount, get TH(){ return TH; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
+async function notifyAdded(w,p,auto){
+  const lead=leadOf(w), d=w.values?.deadline?.start;
+  const text=[`${auto?`The automation “${auto.name}”`:S.user.name||meEmail()} added you to ${w.id} · ${w.title||"Untitled"}.`, "",
+    `Status: ${status(w.statusId)?.name||""}`, ...(d?[`Due: ${fmtDate(d)}`]:[]), ...(lead&&lead.email.toLowerCase()!==String(p.email).toLowerCase()?[`Lead: ${nameOf(lead)}`]:[]),
+    ...(w.reason?["",`Why: ${w.reason}`]:[]), ...(w.outcome?[`Done when: ${w.outcome}`]:[])].join("\n");
+  const r=await notify(w,{ kind:"assigned", subject:`You're on ${w.id} · ${w.title||"Untitled"}`, text, to:[p], hold:ASSIGN_HOLD, ...(auto?{ fromName:"Dispatch automation", by:AUTO_BY(auto), auto:auto.id }:{}) });
+  if(r) log(w.id,`will email ${r.names} that they were added`);
+}
+/* After a status change, one click tells everyone else on the job. */
+async function notifyStatus(id){ const w=W(id); if(!w) return; const st=status(w.statusId)?.name||"";
+  const r=await notify(w,{ kind:"status", subject:`${w.id} · ${w.title||"Untitled"} is now ${st}`, text:`${S.user.name||meEmail()} changed ${w.id} · ${w.title||"Untitled"} to ${st}.`, to:(w.values?.people||[]).filter(p=>p.email&&p.email.toLowerCase()!==meEmail()) });
+  if(!r){ toast("Nobody else on this job has an email address."); return; }
+  log(id,`emailed ${r.names} · “${r.subject}”`); toast(`Emailed ${P(r.names)}${MAILCFG?.enabled?"":window.DEMO?" · the demo does not send email":" · it goes out when email sending is on"}`); }
 
-/* ---------- outbound ---------- */
-async function sendMessage(tid,{to,cc,body,attachments}){
-  const t=T(tid); if(!t) return; const w=W(t.jobId);
-  const toL=parseAddrs(to), ccL=parseAddrs(cc);
-  if(!toL.length){ toast("Add at least one recipient.",true); return; }
-  if(!body.trim()&&!(attachments||[]).length){ toast("Write something first.",true); return; }
-  const link=location.origin+location.pathname+"?job="+t.jobId+"&view=ro";
-  // a marked photo arrives as a data URL (up to ~800 KB); inline it would push the message past Firestore's 1 MiB — store the file and keep its address
-  const atts=[]; for(const a of attachments||[]){ const id=a.id||uid(); let url=a.url||"", size=a.size||0;
-    if(/^data:/i.test(url)&&ST?.upload){ try{ const blob=await (await fetch(url)).blob(); size=blob.size; const up=await ST.upload(`sites/${SITE_ID}/jobs/${t.jobId}/mail/${id}_${String(a.name||"file").replace(/[^\w.\-]+/g,"_")}`,new File([blob],a.name||"file",{ type:blob.type||a.type||"application/octet-stream" })); url=up.url; }catch(e){ throw new Error(`could not store ${a.name||"the attachment"} (${e?.message||e})`); } }
-    atts.push({ id, name:a.name, size, type:a.type||"", url, noteId:a.noteId||"" }); }
-  const m={ dir:"out", from:{ email:meEmail(), name:S.user.name, uid:S.user.uid }, to:toL, cc:[...ccL,{ email:t.addr }], t:now(), subject:t.subject, text:body.trim(), quote:"", attachments:atts, extracted:{po:[]}, status:"queued", link, by:userRef() };
-  await DB.add(MAIL_COL+"/"+tid+"/messages",m);
-  const parts=[...(t.participants||[]),...toL,...ccL].filter((p,i,a)=>p.email&&a.findIndex(x=>x.email===p.email)===i);
-  await DB.update(MAIL_COL+"/"+tid,{ last:{ t:m.t, from:m.from, snippet:snippet(m.text) }, count:(t.count||0)+1, participants:parts, ["readBy."+S.user.uid]:m.t });
-  log(t.jobId,`emailed ${toL.map(x=>x.name||x.email).join(", ")} · “${snippet(t.subject,60)}”`);
-  await mergePeople(t.jobId,parts);
-  if(!MAILCFG?.enabled) toast("Queued — it sends as soon as the mail service is connected.");
-}
-async function applyPO(tid,mid,value){ const t=T(tid); if(!t) return; let p=props().find(x=>x.type==="text"&&/^(po|p\.o\.|purchase order)/i.test(x.name)); if(!p){ p={ id:"po", name:"PO #", type:"text" }; S.schema.props.push(p); await saveSchema(); }
-  const w=W(t.jobId); if(!w) return; w.values={ ...(w.values||{}), [p.id]:value }; await DB.update(WO_COL+"/"+t.jobId,{ ["values."+p.id]:value, ...stamp() }); log(t.jobId,`set ${p.name} to ${value} from an email`);
-  const m=MSG.find(x=>x.id===mid); if(m){ const po=(m.extracted?.po||[]).map(x=>x.value===value?{ ...x, applied:true }:x); await DB.update(MAIL_COL+"/"+tid+"/messages/"+mid,{ "extracted.po":po }); } toast(`${p.name} set to ${value}`); }
+/* ---------- job panel: Emails ---------- */
+function noticeState(n){ const at=s=>new Date(s).toLocaleTimeString([],{ hour:"numeric", minute:"2-digit" });
+  return n.status==="scheduled"?`sends at ${at(n.sendAt)}`:n.status==="queued"?(MAILCFG?.enabled?"sending":window.DEMO?"not sent · the demo does not send email":"waiting · email sending is off")
+    :n.status==="sending"?"sending":n.status==="sent"?`sent ${fmtDate(n.sentAt||n.t,true)}`:n.status==="cancelled"?"cancelled, not sent":n.status==="failed"?`not sent${n.error?` · ${n.error}`:""}`:n.status; }
+let showAllNotices=null;   // the job whose full list is open
+function noticesHTML(w){ const ns=jobNotices(w.id), list=showAllNotices===w.id?ns:ns.slice(0,4);
+  return `<section class="ps" id="notices"><h3 style="cursor:default">Emails sent <span class="mono" style="font-weight:400">${ns.length||""}</span></h3>
+    ${ns.length?list.map(n=>`<div class="ntf"><div class="t"><b>${P(n.subject)}</b><span>to ${P(n.to.map(nameOf).join(", "))} · <span class="st ${P(n.status)}">${P(noticeState(n))}</span>${n.notSentTo?.length?` · not sent to ${P(n.notSentTo.join(", "))}`:""}</span></div>${n.status==="scheduled"?`<button class="btn sm" data-ncancel="${P(n.id)}">Cancel</button>`:""}</div>`).join("")
+      +(ns.length>list.length?`<button class="link" id="ntf-all">Show all ${ns.length}</button>`:"")
+      :`<div class="hint">Dispatch emails people when they are added to this job, when you tell them about a status change, and when an automation says so. Replies go to the job's lead.</div>`}</section>`; }
+function wireNotices(){ $$("#notices [data-ncancel]").forEach(b=>b.onclick=()=>cancelNotice(b.dataset.ncancel)); $("#ntf-all")?.addEventListener("click",()=>{ showAllNotices=S.open; renderNotices(); }); }
+function renderNotices(){ const w=S.open&&!S.note?W(S.open):null; const el=$("#notices"); if(!w||!el) return; const tmp=document.createElement("div"); tmp.innerHTML=noticesHTML(w); el.replaceWith(tmp.firstElementChild); wireNotices(); }
 
-/* ---------- Inbox tab ---------- */
-function renderInbox(){ if(S.tab!=="inbox") return; renderMailBadge(); renderThreadList(); renderThreadPane(); const sim=$("#ib-sim"); if(sim) sim.hidden=!(S.admin||MOCK); }
-function inboxRows(){ const q=S.q.trim().toLowerCase(); return TH.filter(t=>{ const w=W(t.jobId); if(!w||w.trashed) return false; if(IB.f==="unread"&&!isUnread(t)) return false; if(IB.f==="mine"&&!isMine(t)) return false; if(IB.f==="job"&&IB.job&&t.jobId!==IB.job) return false; if(q&&!(t.subject+" "+(t.participants||[]).map(p=>p.name+" "+p.email).join(" ")+" "+t.jobId+" "+(w.title||"")).toLowerCase().includes(q)) return false; return true; }); }
-function renderThreadList(){
-  $$("#ib-filters [data-f]").forEach(b=>b.setAttribute("aria-selected",b.dataset.f===IB.f)); const jf=$("#ib-jobf"); if(jf) jf.textContent=IB.f==="job"&&IB.job?`${IB.job} ▾`:"Job ▾";
-  const rows=inboxRows(); const byJob=new Map(); rows.forEach(t=>{ if(!byJob.has(t.jobId)) byJob.set(t.jobId,[]); byJob.get(t.jobId).push(t); });
-  const jobs=[...byJob.entries()].map(([id,ts])=>({ id, ts:ts.sort((a,b)=>(b.last?.t||b.created||"").localeCompare(a.last?.t||a.created||"")) })).sort((a,b)=>(b.ts[0].last?.t||b.ts[0].created||"").localeCompare(a.ts[0].last?.t||a.ts[0].created||""));
-  const when=t=>{ const s=t.last?.t||t.created; if(!s) return ""; const d=new Date(s); const today=new Date(); return d.toDateString()===today.toDateString()?d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}):(Date.now()-d<6*86400000?d.toLocaleDateString(undefined,{weekday:"short"}):fmtDate(s)); };
-  const ul=$("#ib-undel"); if(!ul&&S.admin&&UNDEL.length){ const b=document.createElement("button"); b.id="ib-undel"; b.className="btn sm"; b.onclick=e=>undeliveredMenu(e.currentTarget); $("#ib-filters")?.append(b); } const ub=$("#ib-undel"); if(ub){ ub.hidden=!(S.admin&&UNDEL.length); ub.textContent=`${UNDEL.length} not filed`; ub.title="Email sent to an address that is not an open job"; }
-  if(MAILDENIED&&!TH.length){ $("#ib-rows").innerHTML=`<div class="ib-empty"><b>The database rules don’t allow email threads yet.</b><br>Paste <span class="mono">firestore.rules.snippet</span> from the mail-service folder into Firebase → Firestore → Rules and publish. Everything else works meanwhile.</div>`; return; }
-  $("#ib-rows").innerHTML=jobs.length?jobs.map(({id,ts})=>`<div class="ib-grp" data-job="${P(id)}" title="Open the job"><span class="jid">${P(id)}</span><span class="jt">${P(W(id)?.title||"Untitled")}</span></div>${ts.map(t=>`<div class="ib-row ${isUnread(t)?"unread":""} ${IB.sel===t.id?"sel":""}" data-tid="${P(t.id)}"><span class="u"></span><div class="s"><b>${P(t.subject)}</b><span class="re">${P(aboutLabel(t))}${t.count?` · ${t.count} message${t.count===1?"":"s"}`:""}</span><span>${t.last?`${P(nameOf(t.last.from).split(" ")[0]||"")}: ${P(t.last.snippet||"")}`:`Started by ${P(t.createdBy?.name||"")} · nothing sent yet`}</span></div><span class="w">${P(when(t))}</span></div>`).join("")}`).join("")
-    :`<div class="ib-empty">${TH.length?"Nothing matches this filter.":`<b>No email threads yet.</b><br>Every job has an address — <span class="mono">j-26-008@${MAIL_DOMAIN}</span> — and every thread inside it has one too. CC it from Outlook, or forward a message to it, and the mail shows up here, inside the job.<br><br>Or open a job and press <b>＋ New thread</b>.`}</div>`;
-  $$("#ib-rows .ib-row").forEach(r=>r.onclick=()=>openThread(r.dataset.tid));
-  $$("#ib-rows .ib-grp").forEach(g=>g.onclick=()=>enterWOView(g.dataset.job));
-}
-let paneDirty=false, SENDING=false;
-function renderThreadPane(){
-  const box=$("#ib-thread"); const t=IB.sel?T(IB.sel):null;
-  if(t&&box.contains(document.activeElement)&&document.activeElement.closest("#ib-compose")){ paneDirty=true; const ml=box.querySelector("#ib-msgs"); if(ml) ml.innerHTML=messagesHTML(t); return; }   // someone is typing: refresh only the messages
-  paneDirty=false;
-  if(!t){ box.innerHTML=`<div class="ib-blank"><div><b>Pick a thread</b><br>or CC a job address from Outlook and it appears here.<br><span class="hint">${MAILCFG?.enabled?"Mail service connected.":"Mail service not connected yet — outgoing messages queue; nothing is received until it is."}</span></div></div>`; return; }
-  const w=W(t.jobId); if(!w){ box.innerHTML=""; return; }
-  const P0=pts(w); const areaTxt=P0.length?shapeLabel(locShape(w)):"no job area"; const lastNote=NT.length&&ntJob===w.id?NT[NT.length-1]:null;
-  const parts=(t.participants||[]);
-  const me=meEmail(); const others=parts.filter(p=>p.email!==me);
-  const c=IB.compose||{}; const toDefault=c.to!=null?c.to:others.map(p=>p.email).join(", ");
-  const newTo=parseAddrs(toDefault).filter(p=>!parts.some(x=>x.email===p.email));
-  box.innerHTML=`<div class="ib-jobcard"><span class="area"></span><span class="jid">${P(t.jobId)}</span><span class="jt">${P(w.title||"Untitled")}</span>${statusPill(w)}<span class="last">${P(areaTxt)}${lastNote?` · last note · ${P(noteTitle(lastNote))}`:""}</span><span class="sp"></span><button class="btn sm" id="ib-back-list" title="All threads">‹ Threads</button><button class="btn sm teal" id="ib-back">Open job</button></div>
-    <div class="ib-head"><h3>${P(t.subject)}</h3><span class="chip soft">${t.count||0} message${t.count===1?"":"s"}</span><button class="btn sm" id="ib-more">···</button></div>
-    <div class="ib-about">Thread ${t.n} · ${P(aboutLabel(t))}${t.about?.kind==="note"&&t.about.noteId?` <a href="#" data-gonote="${P(t.about.noteId)}">open the note</a>`:""} · started by ${P(t.createdBy?.name||t.createdBy?.email||"")} · <span class="addr">${P(t.addr)} <button class="btn sm ghost" data-copy="${P(t.addr)}">Copy</button></span></div>
-    <div class="ib-parts"><span class="lab">People</span>${parts.map(p=>`<span class="pchip"><span class="avatar sm">${P(initials(nameOf(p)))}</span>${P(nameOf(p))}<span class="st ${onPlatform(p.email)?"on":""}">· ${onPlatform(p.email)?"on platform":"email"}</span></span>`).join("")}</div>
-    <div class="ib-msgs" id="ib-msgs">${messagesHTML(t)}</div>
-    <div class="compose" id="ib-compose"><div class="from">Reply as <b>${P(S.user.name)} ‹${P(me)}›</b>${MAILCFG?.enabled?" · via your mailbox":" · queued until the mail service is connected"} · CC <span class="mono">${P(t.addr)}</span> is added automatically</div>
-      <div class="row"><span class="lab">To</span><input id="c-to" placeholder="name@company.com, …" value="${P(toDefault)}"></div>
-      <div class="row"><span class="lab">CC</span><input id="c-cc" placeholder="optional" value="${P(c.cc||"")}"></div>
-      <textarea id="c-body" placeholder="Write a reply…">${P(c.body||"")}</textarea>
-      <div class="catt" id="c-att">${(c.attachments||[]).map(a=>`<span class="file"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.marks?` <span class="sz">✎${a.marks}</span>`:""}<button class="btn sm ghost" data-rmatt="${a.id}" title="Remove">✕</button></span>`).join("")}</div>
-      <div class="foot"><button class="btn sm" id="c-attnote">Attach a note or photo</button><span class="sp"></span><span class="hint" id="c-hint">${newTo.length?`${newTo.map(p=>P(p.email)).join(", ")} ${newTo.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."}</span><button class="btn teal" id="c-send">Send</button></div></div>`;
-  box.querySelectorAll("#ib-compose input,#ib-compose textarea").forEach(el=>el.addEventListener("blur",()=>{ if(paneDirty) setTimeout(()=>{ if(SENDING) return; if(!box.contains(document.activeElement)||!document.activeElement.closest("#ib-compose")) renderThreadPane(); },50); }));   // not while a send is in flight: the rebuild would re-enable Send
-  $("#ib-back").onclick=()=>{ enterWOView(t.jobId); }; $("#ib-back-list").onclick=closeThread;
-  $("#ib-more").onclick=e=>threadMenu(t,e.currentTarget);
-  // message controls are delegated: the message list is rebuilt under a typing user without a full render
-  box.onclick=async e=>{ const cp=e.target.closest("[data-copy]"); if(cp){ try{ await navigator.clipboard.writeText(cp.dataset.copy); toast("Address copied"); }catch{ prompt("Copy this address",cp.dataset.copy); } return; }
-    const g=e.target.closest("[data-gonote]"); if(g){ e.preventDefault(); enterWOView(t.jobId); setTimeout(()=>openNote(g.dataset.gonote),300); return; }
-    const po=e.target.closest("[data-po]"); if(po){ applyPO(t.id,po.dataset.mid,po.dataset.po); return; }
-    const ig=e.target.closest("[data-ignorepo]"); if(ig){ const m=MSG.find(x=>x.id===ig.dataset.mid); if(!m) return; const list=(m.extracted?.po||[]).map(x=>x.value===ig.dataset.ignorepo?{ ...x, ignored:true }:x); await DB.update(MAIL_COL+"/"+t.id+"/messages/"+m.id,{ "extracted.po":list }); return; }
-    const q=e.target.closest(".qtog"); if(q) q.closest(".msg").classList.toggle("showq"); };
-  const keep=()=>{ IB.compose={ to:$("#c-to").value, cc:$("#c-cc").value, body:$("#c-body").value, attachments:c.attachments||[] }; };
-  ["#c-to","#c-cc","#c-body"].forEach(s=>{ const el=$(s); el.oninput=()=>{ keep(); if(s==="#c-to"){ const nt=parseAddrs(el.value).filter(p=>!parts.some(x=>x.email===p.email)); $("#c-hint").textContent=nt.length?`${nt.map(p=>p.email).join(", ")} ${nt.length===1?"is":"are"} new here → they get this thread by email, not other threads or the job itself.`:"The message ends with a link to this job (it opens for Dispatch users)."; } }; });
-  $$("#c-att [data-rmatt]").forEach(b=>b.onclick=()=>{ keep(); IB.compose.attachments=IB.compose.attachments.filter(a=>a.id!==b.dataset.rmatt); renderThreadPane(); });
-  $("#c-attnote").onclick=e=>{ keep(); attachPicker(t,e.currentTarget); };
-  $("#c-send").onclick=async()=>{ if(SENDING) return; keep(); const draft=IB.compose; const b=$("#c-send"); b.disabled=true; SENDING=true; IB.compose=null;   // one send per click, whatever re-renders meanwhile
-    try{ await sendMessage(t.id,draft); }catch(err){ IB.compose=draft; toast("Could not send: "+(err.message||err),true); } finally{ SENDING=false; } renderThreadPane(); };
-  if(c.focus!==false&&IB.compose&&!MSG.length) $("#c-body").focus();
-  const msgs=$("#ib-thread .ib-msgs"); if(msgs&&MSG.length&&!IB.compose) box.scrollTop=box.scrollHeight;
-}
-function messagesHTML(t){ return MSG.length?MSG.map(m=>msgHTML(t,m)).join(""):`<div class="hint" style="padding:6px 0">Nothing in this thread yet. Anything sent to <span class="mono">${P(t.addr)}</span> lands here.</div>`; }
-function msgHTML(t,m){
-  const mine=(m.from?.email||"").toLowerCase()===meEmail();
-  const po=(m.extracted?.po||[]).filter(x=>!x.ignored);
-  const via=m.dir==="out"?(m.status==="scheduled"?`automation · sends ${fmtDate(m.sendAt,true)}`:m.status==="cancelled"?"automation · cancelled, not sent":m.status==="queued"?"sent from Dispatch · queued":m.status==="failed"?`sent from Dispatch · failed${m.error?" — "+m.error:""}`:m.status==="sending"?"sent from Dispatch · sending…":"sent from Dispatch"):(m.from?.email||"")+" · via email";
-  return `<div class="msg ${mine?"mine":""} ${m.status==="queued"?"queued":""}"><div class="h"><span class="avatar sm">${P(initials(nameOf(m.from)))}</span><b>${P(nameOf(m.from))}</b><span class="via">${P(via)}</span>${m.unverified?`<span class="st failed" title="${m.auth==="fail"?"This email failed the sender check (or looks like spam), so it may not be from who it says. No PO number is offered from it.":"Dispatch could not confirm this email came from "+P((m.from?.email||"").split("@")[1]||"the sender")+" (mail sent through other systems, or forwarded, often looks like this). Check before acting on it."}">${m.auth==="fail"?"sender check failed":"sender not verified"}</span>`:""}${["queued","failed","scheduled","cancelled","sending"].includes(m.status)?`<span class="st ${m.status}">${m.status}</span>`:""}${m.status==="scheduled"?`<button class="btn sm" data-au-cancel="${t.id}" data-mid="${m.id}">Cancel email</button>`:""}<span class="t" title="${P(fmtDate(m.t,true))}">${P(fmtDate(m.t,true))}</span></div>
-    ${m.to?.length&&m.dir==="out"?`<div class="h" style="border-bottom:1px solid var(--line);color:var(--ink-3)">to ${m.to.map(x=>P(nameOf(x))).join(", ")}${m.cc?.filter(x=>!String(x.email).endsWith("@"+MAIL_DOMAIN)).length?` · cc ${m.cc.filter(x=>!String(x.email).endsWith("@"+MAIL_DOMAIN)).map(x=>P(nameOf(x))).join(", ")}`:""}</div>`:""}
-    <div class="b">${P(m.text||"")}${m.link?`\n\n<span class="hint">↳ Link to job ${P(t.jobId)} (opens for Dispatch users)</span>`:""}${m.notSentTo?.length?`\n<span class="hint">Not sent to ${P(m.notSentTo.join(", "))}</span>`:""}${m.notAttached?.length?`\n<span class="hint">Not attached (too large or unavailable): ${P(m.notAttached.join(", "))}</span>`:""}${m.dropped?.length?`\n<span class="hint">Not kept: ${P(m.dropped.map(d=>d.name).join(", "))} — too large</span>`:""}</div>
-    ${po.map(x=>`<div class="ext ${x.applied?"done":""}"><span class="k">${x.applied?"Set":"Found"}</span><span class="v">PO ${P(x.value)}</span><span class="why">${x.applied?"on the job":"in this message"}${x.src?` · “…${P(x.src)}…”`:""}</span><span class="sp"></span>${x.applied?"":`<button class="btn sm teal" data-po="${P(x.value)}" data-mid="${m.id}">Set as job PO #</button><button class="btn sm ghost" data-ignorepo="${P(x.value)}" data-mid="${m.id}">Ignore</button>`}</div>`).join("")}
-    ${m.quote?`<button class="qtog">▸ quoted text</button><div class="q">${P(m.quote)}</div>`:""}
-    ${m.attachments?.length?`<div class="att">${m.attachments.map(a=>`<a class="file" href="${/^(https?:\/\/|data:image\/|data:application\/pdf)/i.test(a.url||"")?P(a.url):"#"}" target="_blank" rel="noopener"><span class="ic">${/image/.test(a.type)?"IMG":/pdf/.test(a.type)?"PDF":"FILE"}</span>${P(a.name)}${a.size?` <span class="sz">${fmtBytes(a.size)}</span>`:""}${m.dir==="in"?` <span class="to">→ in job Files</span>`:a.noteId?` <span class="to">from a note</span>`:""}</a>`).join("")}</div>`:""}</div>`;
-}
-function threadMenu(t,anchor){ const el=openPop(anchor,`<div class="mi" data-a="job">Open job ${t.jobId}</div><div class="mi" data-a="copy">Copy thread address</div><div class="mi" data-a="copyjob">Copy job address</div><div class="hr"></div><div class="mi" data-a="rename">Rename thread…</div>${S.admin||MOCK?`<div class="mi" data-a="sim">Test: receive a reply here…</div>`:""}`,{width:240,noFocus:true});
-  el.onclick=async e=>{ const a=e.target.closest("[data-a]")?.dataset.a; if(!a) return; closePop();
-    if(a==="job") enterWOView(t.jobId);
-    if(a==="copy"||a==="copyjob"){ const v=a==="copy"?t.addr:jobAddr(t.jobId); try{ await navigator.clipboard.writeText(v); toast("Address copied"); }catch{ prompt("Copy this address",v); } }
-    if(a==="rename"){ const s=prompt("Thread subject",t.subject); if(s&&s.trim()&&s.trim()!==t.subject) await DB.update(MAIL_COL+"/"+t.id,{ subject:s.trim() }); }
-    if(a==="sim") simInbound(anchor,t); }; }
-async function attachPicker(t,anchor){ const w=W(t.jobId); if(!w) return;
-  const el=openPop(anchor,`<div class="hint" style="padding:6px 8px">Loading…</div>`,{width:320,noFocus:true});
-  // this job's notes and photos, read once here; the open job's own lists stay untouched (they may belong to another job)
-  let notes=NT, photos=PH; if(ntJob!==w.id){ try{ [notes,photos]=await Promise.all([DB.list(WO_COL+"/"+w.id+"/notes"),DB.list(WO_COL+"/"+w.id+"/photos")]); photos.forEach(unpackMarks); }catch(e){ notes=[]; photos=[]; } if(POP!==el) return; }
-  const NX=id=>notes.find(n=>n.id===id); const title=n=>n.title||(n.kind==="photo"?"Photo":n.kind==="file"?(n.files?.[0]?.name||"Files"):n.kind==="model"?"On model":"Note");
-  const draw=()=>{ const items=notes.map(n=>{ const p=n.kind==="photo"?photos.find(x=>x.id===n.photoId):null; return { n, p, files:n.files||[] }; }).filter(x=>x.p||x.files.length);
-    el.innerHTML=`<div class="sec">Attach from this job</div>${items.length?items.map(({n,p,files})=>`<div class="mi" data-n="${P(n.id)}">${KIND_ICON[n.kind]||""} ${P(title(n))}<span class="r">${p?`photo${p.marks?.length?` · ✎${p.marks.length}`:""}`:`${files.length} file${files.length===1?"":"s"}`}</span></div>`).join(""):`<div class="hint" style="padding:6px 8px">No photos or files on this job yet.</div>`}`;
-    el.querySelectorAll("[data-n]").forEach(mi=>mi.onclick=async()=>{ const n=NX(mi.dataset.n); if(!n) return; const att=IB.compose?.attachments||[]; if(n.kind==="photo"){ const p=photos.find(x=>x.id===n.photoId); if(p&&!att.some(a=>a.noteId===n.id)){ const url=await photoWithMarks(w.id,p)||p.thumb; att.push({ id:uid(), name:`${title(n)}.jpg`, type:"image/jpeg", url, noteId:n.id, marks:(p.marks||[]).length }); } } (n.files||[]).forEach(f=>{ if(!att.some(a=>a.id===f.id)) att.push({ id:f.id, name:f.name, size:f.size||0, type:f.type||"", url:f.url, noteId:n.id }); }); IB.compose={ ...(IB.compose||{}), attachments:att, focus:false }; closePop(); renderThreadPane(); }); };
-  draw(); }
-/* Admin/test only: write an inbound message exactly as the mail service would. Lets the flow be exercised before DNS and the function exist. */
-function simInbound(anchor,t){ const jobs=live(); const el=openPop(anchor,`<div class="sec">Simulate an inbound email</div>
-    <div class="fr"><input class="in" id="si-to" placeholder="to address" value="${P(t?t.addr:jobs[0]?jobAddr(jobs[0].id):"")}"></div>
-    <div class="fr"><input class="in" id="si-from" placeholder="from (name <email>)" value="Dave Moreau <dave.moreau@arcelormittal.com>"></div>
-    <div class="fr"><input class="in" id="si-subj" placeholder="subject" value="${P(t?"Re: "+t.subject:"FW: PO 4500218871 – roof survey")}"></div>
-    <div class="fr"><textarea class="in" id="si-text" rows="4" placeholder="body">${P(t?"Confirmed, see you Monday.":"PO is through, please confirm the mobilization date.\n\n---------- Forwarded message ----------\nFrom: procurement@example.com\nSubject: Purchase Order 4500218871")}</textarea></div>
-    <div class="fr"><label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="si-att"> attach a sample PDF</label><span class="sp" style="flex:1"></span><button class="btn sm teal" id="si-go">Receive</button></div>`,{width:360,noFocus:true});
-  el.querySelector("#si-go").onclick=async()=>{ const fm=el.querySelector("#si-from").value.trim(); const mm=fm.match(/^(.*?)\s*<([^>]+)>$/); const from=mm?{ name:mm[1].trim(), email:mm[2].trim() }:{ name:"", email:fm }; const raw=el.querySelector("#si-text").value; const [text,...q]=raw.split(/\n-{3,}.*\n/); try{ const r=await receiveMail({ to:[el.querySelector("#si-to").value.trim()], from, subject:el.querySelector("#si-subj").value.trim(), text:text.trim(), quote:q.join("\n").trim(), attachments:el.querySelector("#si-att").checked?[{ name:"PO_4500218871.pdf", size:212*1024, type:"application/pdf", url:"data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjEgMCBvYmoKPDwvVHlwZS9DYXRhbG9nL1BhZ2VzIDIgMCBSPj4KZW5kb2JqCjIgMCBvYmoKPDwvVHlwZS9QYWdlcy9LaWRzW10vQ291bnQgMD4+CmVuZG9iagp0cmFpbGVyCjw8L1Jvb3QgMSAwIFI+Pg==" }]:[] }); closePop(); toast(`Received into ${T(r.tid)?.jobId||""}${r.extracted.po.length?` · found PO ${r.extracted.po[0].value}`:""}`); if(S.tab==="inbox") openThread(r.tid); }catch(err){ toast(err.message||String(err),true); } }; }
-
-/* ---------- job panel: Email section ---------- */
-function mailStripHTML(w){ return `<div class="strip" id="mailstrip"><span class="lab">Email</span><span class="val mono" style="font-size:12px">${P(jobAddr(w.id))}</span><button class="btn sm" data-copy="${P(jobAddr(w.id))}" title="Copy — CC this from Outlook and the mail lands in this job">Copy</button></div>`; }
-function mailSectionHTML(w){ const ts=jobThreads(w.id); const un=ts.filter(isUnread).length;
-  return `<section class="ps" id="mail"><h3 style="cursor:default">Email <span class="mono" style="font-weight:400">${ts.length}${un?` · ${un} unread`:""}</span><button class="btn sm teal" id="m-new" style="margin-left:auto">＋ New thread</button></h3>
-    ${ts.length?ts.map(t=>`<div class="thr" data-tid="${P(t.id)}"><span class="u ${isUnread(t)?"":"z"}"></span><div class="t"><b>${P(t.subject)}</b><span>${t.last?`${P(nameOf(t.last.from))} · `:""}${t.count||0} message${t.count===1?"":"s"}${t.last?` · ${P(rel(t.last.t))}`:""} · ${P(aboutLabel(t))}</span></div><span class="n">t${t.n}</span><span class="go">›</span></div>`).join(""):`<div class="hint">No threads. CC <span class="mono">${P(jobAddr(w.id))}</span> from Outlook, forward a message to it, or start one here.</div>`}</section>`; }
-function wireMailSection(w){ $$("#pbody [data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Address copied — CC it from Outlook"); }catch{ prompt("Copy this address",b.dataset.copy); } });
-  $("#m-new")?.addEventListener("click",()=>newThreadFrom(w.id,{kind:"job"}));
-  $$("#pbody .thr").forEach(r=>r.onclick=()=>openThread(r.dataset.tid)); }
-function renderMailSection(){ const w=W(S.open); const el=$("#mail"); if(!w||!el||S.note) return; const tmp=document.createElement("div"); tmp.innerHTML=mailSectionHTML(w); el.replaceWith(tmp.firstElementChild); wireMailSection(w); }
+if(MOCK) window.__t={ createWO, W, props, now, userRef, enterWOView, exitWOView, openNote, closeNote, trashWO, restoreWO, purgeWO, drawNote, notify, cancelNotice, notifyStatus, get NTF(){ return NTF; }, get OV(){ return OV; }, get map(){ return map; }, get POOL(){ return POOL; }, backupJSON, renderValue, sortRows, addPhoto, setPhotoParent:id=>{ pendingPhotoParent=id||null; } };   // test harness only
 
 /* =====================================================================
    LINKS — "waits on" between jobs, enabling work (scaffold, insulation, isolation…), hold reasons
@@ -2838,7 +2567,7 @@ async function markReady(id,ready=true){
   else if(ready&&status(e.statusId)?.group==="todo"){ await setStatus(id,defaultStatus("progress")?.id); }
   const freed=before.filter(d=>!isBlocked(W(d)));
   freed.forEach(d=>{ log(d,`is ready to start — ${id} ${k.ready.toLowerCase()}`); if(typeof autoEvent==="function") autoEvent("ready",W(d)); });
-  const again=blocksOf(e).filter(isBlocked).map(d=>d.id).filter(d=>!before.includes(d)); again.forEach(d=>{ log(d,`is waiting again — ${id} is no longer ${k.ready.toLowerCase()}`); if(typeof cancelEmail==="function") TH.filter(t=>t.jobId===d&&t.pending&&t.about?.kind==="auto"&&AUX(t.about.auto)?.rule?.trigger?.type==="ready").forEach(t=>cancelEmail(t.id,t.pending.mid)); });
+  const again=blocksOf(e).filter(isBlocked).map(d=>d.id).filter(d=>!before.includes(d)); again.forEach(d=>{ log(d,`is waiting again — ${id} is no longer ${k.ready.toLowerCase()}`); NTF.filter(n=>n.jobId===d&&n.status==="scheduled"&&n.kind==="auto"&&AUX(n.auto)?.rule?.trigger?.type==="ready").forEach(n=>cancelNotice(n.id)); });
   if(freed.length) toast(`${freed.join(", ")} ${freed.length===1?"is":"are"} ready to start`);
 }
 async function markRestored(id){
@@ -2853,7 +2582,7 @@ function linksAfterStatus(w,prevSid,sid,wasDone,nowDone){
   const prevName=status(prevSid)?.name||"", grp=status(sid)?.group;
   const relBefore=wasDone||!!w.enabling?.ready, relNow=nowDone||!!w.enabling?.ready; const msgs=[];
   if(!relBefore&&relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&!blockersOf(d).length){ log(d.id,`is ready to start — ${w.id} is complete`); msgs.push(`${d.id} is ready to start`); if(typeof autoEvent==="function") autoEvent("ready",d); } });
-  if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1){ log(d.id,`is waiting again — ${w.id} was reopened`); if(typeof cancelEmail==="function") TH.filter(t=>t.jobId===d.id&&t.pending&&t.about?.kind==="auto"&&AUX(t.about.auto)?.rule?.trigger?.type==="ready").forEach(t=>cancelEmail(t.id,t.pending.mid)); } });
+  if(relBefore&&!relNow) blocksOf(w).forEach(d=>{ if(isOpen(d)&&blockersOf(d).length===1){ log(d.id,`is waiting again — ${w.id} was reopened`); NTF.filter(n=>n.jobId===d.id&&n.status==="scheduled"&&n.kind==="auto"&&AUX(n.auto)?.rule?.trigger?.type==="ready").forEach(n=>cancelNotice(n.id)); } });
   if(nowDone&&!wasDone){
     waitsOnIds(w).map(W).forEach(e=>{ if(restoreDue(e)){ log(e.id,`restore due: ${enKind(e).restore} — every job it enabled is complete`); msgs.push(`${e.id}: ${enKind(e).restore} is due`); if(typeof autoEvent==="function") autoEvent("restore",e); } });
     if(w.enabling?.ready&&!w.enabling.restored&&enKind(w).restore){ w.enabling={ ...w.enabling, restored:true, restoredAt:now(), restoredBy:userRef() }; DB.update(WO_COL+"/"+w.id,{ enabling:w.enabling }).catch(console.error); }
@@ -3006,7 +2735,7 @@ if(MOCK) window.__links={ linkJobs, unlinkJobs, addEnabling, markReady, markRest
        rule:{ trigger:{type,to?,days?}, conds:[{type:"prop",pid,value}], actions:[{type,...}] } }
    workspace/main/automations/{id}/runs/{rid}: { t, job, did, result }
    Everything an automation does is written to the job's Activity as "Automation", the job panel says in advance what
-   will fire, and its emails wait (hold minutes) in the thread as "scheduled" so they can be cancelled.
+   will fire, and its emails wait (hold minutes) as "scheduled" notifications so they can be cancelled (src/p10.js).
    Where it runs: in whichever browser has Dispatch open (the demo; one user). A server scheduler is needed before this
    can be trusted at a real site, where nobody may have the app open at 06:00.
    ===================================================================== */
@@ -3026,7 +2755,7 @@ const personLabel=p=>p?.name||p?.email||"";
 function startAuto(){
   auUnsub.forEach(f=>{ try{ f(); }catch{} });
   auUnsub=[
-    DB.watchCol(AU_COL,rows=>{ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
+    DB.watchCol(AU_COL,rows=>{ rows.forEach(a=>{ if(a.rule?.actions) a.rule.actions=a.rule.actions.filter(x=>x.type!=="cc"); });   /* "add to the job's email threads" left with the threads (13 Oct 2026) */ AU=rows.sort((a,b)=>(a.order??99)-(b.order??99)||String(a.name).localeCompare(String(b.name))); AU_LOADED=true; AU_DENIED=false; renderAutoBadge(); if(S.tab==="auto") renderAuto(); if(S.open&&!S.note) renderRecord(); if(S.tab==="wo") renderViews(); },e=>{ console.warn("automations",e); AU_DENIED=true; if(S.tab==="auto") renderAuto(); }),
   ];
   S.unsub.push(()=>{ auUnsub.forEach(f=>{ try{ f(); }catch{} }); auUnsub=[]; clearInterval(auTimer); AU_LOADED=false; auRunsUnsub?.(); auRunsUnsub=null; });
   clearInterval(auTimer); auTimer=setInterval(()=>autoTick().catch(console.error),60000); setTimeout(()=>autoTick().catch(console.error),2500);
@@ -3064,7 +2793,6 @@ function whenPhrase(t){ if(t.type==="status") return `When it moves to ${statusW
 const WHAT={ results:"the results, photos and files", ready:"a ready-to-start notice", restore:"a restore request", reminder:"a deadline reminder", note:"a note" };
 function actText(x){ switch(x.type){
   case "tag": return `Tag ${personLabel(x.person)}`;
-  case "cc": return `Add ${personLabel(x.person)} to the job's email threads`;
   case "email": return `Email ${x.to==="people"?"the people on the job":personLabel(x.person)} ${WHAT[x.what]||""}${x.hold?` · wait ${x.hold} min so it can be cancelled`:""}`;
   case "permit": return `Add permit: ${x.value}`;
   case "addopt": return `Add ${prop(x.pid)?.name||x.pid}: ${x.value}`;
@@ -3073,7 +2801,6 @@ function actText(x){ switch(x.type){
   default: return x.type; } }
 function actPhrase(x){ switch(x.type){
   case "tag": return `${personLabel(x.person)} is tagged`;
-  case "cc": return `${personLabel(x.person)} joins the email threads`;
   case "email": return `${x.to==="people"?"the people on it get":personLabel(x.person)+" gets"} ${WHAT[x.what]||"an email"}`;
   case "permit": return `permit “${x.value}” is added`;
   case "addopt": return `${prop(x.pid)?.name||x.pid} gets “${x.value}”`;
@@ -3124,14 +2851,12 @@ async function runRule(a,w,ctx={}){ const did=[], mails=[];
   for(const x of a.rule.actions||[]){ if(x.type==="ask") continue; const r=await doAction(a,x,W(w.id)||w,ctx); if(!r) continue; if(r.mail) mails.push(r.mail); did.push(r.text); }
   if(!did.length) return;
   await recordRun(a,w,did.join(" · "));
-  if(mails.length){ const m=mails[0], held=mails.filter(x=>x.hold>0); if(!held.length) toast(`${P(m.names)} ${mails.length>1?"and others ":""}${mails.length>1?"were":"was"} sent ${P(WHAT[m.what]||"an email")}`); else { toast(`${P(m.names)} ${mails.length>1?"and others ":""}will get ${P(WHAT[m.what]||"an email")} in ${m.hold} min · <button class="link" id="au-cancel">Cancel email</button>`); $("#au-cancel")?.addEventListener("click",()=>held.forEach(x=>cancelEmail(x.tid,x.mid))); } }
+  if(mails.length){ const m=mails[0], held=mails.filter(x=>x.hold>0); if(!held.length) toast(`${P(m.names)} ${mails.length>1?"and others ":""}${mails.length>1?"were":"was"} sent ${P(WHAT[m.what]||"an email")}`); else { toast(`${P(m.names)} ${mails.length>1?"and others ":""}will get ${P(WHAT[m.what]||"an email")} in ${m.hold} min · <button class="link" id="au-cancel">Cancel email</button>`); $("#au-cancel")?.addEventListener("click",()=>held.forEach(x=>cancelNotice(x.nid))); } }
   return did; }
 async function doAction(a,x,w){
   const path=WO_COL+"/"+w.id;
   if(x.type==="tag"){ const ppl=(w.values?.people||[]); const em=(x.person?.email||"").toLowerCase(); if(!em||ppl.some(p=>(p.email||"").toLowerCase()===em)||(w.untagged||[]).includes(em)) return null;   // someone removed by hand stays removed
-    const nv=[...ppl,{ email:em, name:x.person.name||"", auto:a.id, autoName:a.name }]; w.values??={}; w.values.people=nv; await DB.update(path,{ "values.people":nv }); auLog(w,a,`tagged ${personLabel(x.person)} (${a.name})`); return { text:`tagged ${personLabel(x.person)}` }; }
-  if(x.type==="cc"){ if((w.untagged||[]).includes((x.person?.email||"").toLowerCase())) return null; let n=0; for(const t of jobThreads(w.id)){ if((t.participants||[]).some(p=>(p.email||"").toLowerCase()===x.person.email.toLowerCase())) continue; await DB.update(MAIL_COL+"/"+t.id,{ participants:[...(t.participants||[]),{ email:x.person.email.toLowerCase(), name:x.person.name||"" }] }); n++; }
-    if(!n) return null; auLog(w,a,`added ${personLabel(x.person)} to ${n} email thread${n===1?"":"s"}`); return { text:`added ${personLabel(x.person)} to ${n} thread${n===1?"":"s"}` }; }
+    const nv=[...ppl,{ email:em, name:x.person.name||"", auto:a.id, autoName:a.name }]; w.values??={}; w.values.people=nv; await DB.update(path,{ "values.people":nv }); auLog(w,a,`tagged ${personLabel(x.person)} (${a.name})`); peopleChanged(w,ppl,nv,a).catch(console.error); return { text:`tagged ${personLabel(x.person)}` }; }
   if(x.type==="permit"){ let o=optByName("permits",x.value); if(!o){ const p=prop("permits"); if(!p) return null; o={ id:uid(), name:x.value, color:"red" }; p.options.push(o); await saveSchema(); }
     const cur=w.values?.permits||[]; if(cur.includes(o.id)) return null; const nv=[...cur,o.id]; w.values??={}; w.values.permits=nv; await DB.update(path,{ "values.permits":nv }); auLog(w,a,`added permit ${x.value} (${a.name})`); return { text:`added permit ${x.value}` }; }
   if(x.type==="addopt"){ const p=prop(x.pid); if(!p) return null; let o=optByName(x.pid,x.value); if(!o) return null; const cur=p.type==="select"?[]:(w.values?.[x.pid]||[]); if(p.type==="select"?w.values?.[x.pid]===o.id:cur.includes(o.id)) return null; const nv=p.type==="select"?o.id:[...cur,o.id]; w.values??={}; w.values[x.pid]=nv; await DB.update(path,{ ["values."+x.pid]:nv }); auLog(w,a,`set ${p.name} to include ${x.value} (${a.name})`); return { text:`added ${p.name} ${x.value}` }; }
@@ -3144,23 +2869,15 @@ function emailBody(what,w,x,a,files=[]){ const st=status(w.statusId)?.name||""; 
   if(what==="restore"){ const k=enKind(w); return { subject:`${k?.restore||"Restore"} due · ${w.id}`, text:`${w.title||"Untitled"} (${w.id}): every job it enabled is complete (${blocksOf(w).map(d=>d.id).join(", ")}).\n\nPlease book: ${k?.restore||"the restore step"}.`, attachments:[] }; }
   if(what==="reminder"){ const d=w.values?.deadline?.start; return { subject:`Due ${fmtDate(d)} · ${w.id} · ${w.title||"Untitled"}`, text:`${w.id} · ${w.title||"Untitled"} is due ${fmtDate(d)} (${daysUntil(d)<=0?"today or overdue":"in "+daysUntil(d)+" day"+(daysUntil(d)===1?"":"s")}) and is ${st}.`, attachments:[] }; }
   return { subject:`${w.id} · ${w.title||"Untitled"}`, text:x.text||`${w.title||"Untitled"} (${w.id}) is now ${st}.\n\nOpen the job for the details, notes and activity.`, attachments:[] }; }
-/* every file attached to a note of the job (the file notes, inbound mail attachments) */
+/* every file attached to a note of the job */
 async function jobFiles(id){ try{ const ns=(ntJob===id&&NT.length)?NT:await DB.list(WO_COL+"/"+id+"/notes"); const out=[]; ns.forEach(n=>(n.files||[]).forEach(f=>{ if(f?.url&&!out.some(x=>x.id===f.id)) out.push(f); })); return out.slice(0,20); }catch{ return []; } }
 async function queueEmail(a,w,x){
-  const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email).map(p=>({ email:p.email.toLowerCase(), name:p.name||"" }));
+  const to=(x.to==="people"?(w.values?.people||[]):[x.person]).filter(p=>p?.email);
   if(!to.length) return null;
   const files=x.what==="results"?await jobFiles(w.id):[];
-  const b=emailBody(x.what,w,x,a,files); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5; const at=new Date(Date.now()+hold*60000).toISOString();
-  const floor=Math.max(0,...jobThreads(w.id).map(t=>t.n||0)); const n=DB.nextThreadNo?await DB.nextThreadNo(WO_COL+"/"+w.id,floor):floor+1; const from={ email:jobAddr(w.id), name:"Dispatch automation" };
-  const t={ jobId:w.id, n, addr:threadAddr(w.id,n), subject:b.subject, about:{ kind:"auto", label:a.name, auto:a.id }, participants:to, created:now(), createdBy:AUTO_BY(a), last:{ t:now(), from, snippet:snippet(b.text) }, count:1, readBy:{} };
-  const tid=await DB.add(MAIL_COL,t);
-  const mid=await DB.add(MAIL_COL+"/"+tid+"/messages",{ dir:"out", from, to, cc:[{ email:t.addr }], t:now(), subject:b.subject, text:b.text, quote:"", attachments:b.attachments, extracted:{po:[]}, status:hold>0?"scheduled":"queued", sendAt:at, auto:a.id, link:location.origin+location.pathname+"?job="+w.id+"&view=ro" });
-  if(hold>0) await DB.update(MAIL_COL+"/"+tid,{ pending:{ mid, at } });
-  return { tid, mid, at, hold, names:to.map(personLabel).join(", ") }; }
-async function releaseEmail(t){ if(!t.pending) return; await DB.update(MAIL_COL+"/"+t.id+"/messages/"+t.pending.mid,{ status:"queued" }); await DB.update(MAIL_COL+"/"+t.id,{ pending:null }); }
-async function cancelEmail(tid,mid){ const t=T(tid); const msg=await DB.get(MAIL_COL+"/"+tid+"/messages/"+mid).catch(()=>null); if(msg&&msg.status!=="scheduled"){ toast(msg.status==="cancelled"?"That email was already cancelled.":"Too late — that email has already gone."); return false; }
-  try{ await DB.update(MAIL_COL+"/"+tid+"/messages/"+mid,{ status:"cancelled" },QUIET); }catch(e){ toast("Too late — that email is already on its way."); return false; }   /* the mail service took it a moment ago */
-  await DB.update(MAIL_COL+"/"+tid,{ pending:null, last:{ ...(t?.last||{}), snippet:"Cancelled before sending" } }); if(t) log(t.jobId,`cancelled the automated email “${t.subject}”`); toast("Email cancelled — it was not sent."); }
+  const b=emailBody(x.what,w,x,a,files); const why=segText(a.text||[]).trim(); if(why) b.text+=`\n\n— Sent by the rule: “${why}”`; const hold=x.hold??5;
+  const r=await notify(w,{ kind:"auto", subject:b.subject, text:b.text, to, hold, attachments:b.attachments, fromName:"Dispatch automation", by:AUTO_BY(a), auto:a.id });
+  return r&&{ nid:r.nid, at:r.sendAt||r.t, hold, names:to.map(personLabel).join(", ") }; }
 
 /* the rule that asks before a status change (hot work check): resolves true to go ahead */
 async function autoBeforeStatus(w,sid){
@@ -3202,7 +2919,7 @@ async function fireClaimed(a,s,tpl,occ,manual,missed,missTxt,open,st){
   return id; }
 async function autoTick(){ if(AU_BUSY||!S.schema||!S.jobsLoaded||!AU_LOADED) return; AU_BUSY=true;   // never before the jobs are in: an "after completion" schedule would see no series and fire again
   try{
-    for(const t of TH) if(t.pending?.at&&t.pending.at<=now()){ try{ if(!MAILCFG?.enabled) await releaseEmail(t); }catch(e){ console.error("release",e); } }
+    if(!MAILCFG?.enabled) for(const n of NTF) if(n.status==="scheduled"&&n.sendAt<=now()){ try{ await releaseNotice(n); }catch(e){ console.error("release",e); } }   // with email sending on, the mail service releases them
     for(const a of AU){ if(!a.on) continue;
       try{
         if(a.kind==="schedule"){ if(!a.schedule?.template?.from) continue; const f=nextFire(a); if(f&&f<=new Date()) await fireSchedule(a,false); }
@@ -3284,7 +3001,7 @@ function compileRule(segs){
   const conds=[], actions=[]; const what=trigger.type==="status"&&(status(trigger.to)?.group==="complete"||trigger.to==="complete")?"results":trigger.type==="ready"?"ready":trigger.type==="restore"?"restore":trigger.type==="deadline"?"reminder":"note";
   const hold=/\b(right away|immediately|straight away|at once|without waiting|instantly)\b/.test(s)?0:(m=s.match(/wait(?:ing)?\s*(\d+)\s*min/))?+m[1]:trigger.type==="deadline"?0:5;
   toks.forEach((t,i)=>{ const v=lastVerb(before(i));
-    if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); if(/include|loop|cc/.test(v.w)) actions.push({ type:"cc", person:{ name:t.name||"", email:t.email } }); }
+    if(t.k==="person"){ if(v?.kind==="tag"){ actions.push({ type:"tag", person:{ name:t.name||"", email:t.email } }); }
       else actions.push({ type:"email", to:"person", person:{ name:t.name||"", email:t.email }, what, hold }); }
     else if(t.k==="opt"){ const lead=before(i).slice(-40); const clause=before(i).slice(-200).split(/[,.;]/).pop(); const which=/\b(when|whenever|if|once|that|which|where|whose)\b.*\b(gets?|getting|requires?|requiring|needs?|needing|has|have|having|includes?|got)\b(?:(?!\b(?:add|adds|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b).)*$/.test(clause); if(!which&&v?.kind==="add"&&/\b(add|adds|require|requires|need|needs|get|gets|give|gives|set|sets|mark|marks|attach|attaches|apply|applies)\b[^⟦]*$/.test(lead)) actions.push(t.pid==="permits"?{ type:"permit", value:t.value }:{ type:"addopt", pid:t.pid, value:t.value }); else conds.push({ type:"prop", pid:t.pid, value:t.value }); }
     else if(t.k==="job") note.push(`${t.id} is ignored here: rules apply to every job that matches.`); });
@@ -3430,10 +3147,9 @@ function tryPicker(a,anchor){ jobPicker(anchor,`Try “${a.name}” on…`,w=>{ 
   openPop(anchor,`<div class="sec">${P(w.id)} · ${P(w.title||"Untitled")}</div><div style="padding:4px 8px 8px">${ok?`<b>It applies.</b> ${P(whenPhrase(r.trigger))}: ${P(acts)}.`:`<b>It doesn't apply</b> because ${miss.map(c=>P(condText(c).replace(" includes "," doesn't include "))).join(" and ")}.`}<div class="hint" style="margin-top:6px">Nothing was changed — this is a preview.</div></div>`,{width:320,noFocus:true}); }); }
 
 /* ---------- wiring outside the tab ---------- */
-document.addEventListener("click",e=>{ const o=e.target.closest("[data-au-open]"); if(o){ e.preventDefault(); openAuto(o.dataset.auOpen); return; }
-  const c=e.target.closest("[data-au-cancel]"); if(c){ e.preventDefault(); cancelEmail(c.dataset.auCancel,c.dataset.mid); } });
+document.addEventListener("click",e=>{ const o=e.target.closest("[data-au-open]"); if(o){ e.preventDefault(); openAuto(o.dataset.auOpen); } });
 
-if(MOCK) window.__auto={ get AU(){ return AU; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), cancelEmail, compileRule, compileSchedule, segText, nextOcc, renameOptionInRules, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
+if(MOCK) window.__auto={ get AU(){ return AU; }, tick:autoTick, fire:(id,m=true)=>fireSchedule(AUX(id),m), nextFire:id=>nextFire(AUX(id)), rulesFor:id=>rulesFor(W(id)).map(a=>a.id), cancelNotice, compileRule, compileSchedule, segText, nextOcc, renameOptionInRules, api:{ setStatus, setValue, openWO, closePeek, props, pts, get S(){ return S; } } };
 
 (()=>{ const st=document.createElement("style"); st.textContent=`
 #view-auto{overflow:auto;background:var(--ground)}
@@ -3487,199 +3203,36 @@ button.au-occ{cursor:pointer}.au-occ.done{background:#CFEBD9;border-color:#CFEBD
 .aub{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}.aub.rep{background:#CFE1FB;color:#0D3A73;font-weight:500}.aub.rule{border:1px solid var(--line);color:var(--ink-2)}
 .austrip .val b{font-weight:600;color:var(--ink)}
 .act .aubadge{display:inline-flex;align-items:center;gap:3px;background:#E3D6FA;color:#331466;border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:600}
-.msg .st.scheduled{color:var(--accent)}.msg .st.cancelled{color:var(--ink-3)}
+
 @media (max-width:860px){ .au-body{grid-template-columns:minmax(0,1fr)} .au-detail{position:static} }`; document.head.append(st); })();
 
 /* =====================================================================
-   NEW JOB (6 Oct 2026): one dialog, four steps — Who → What → Where → Why. Only the name is required.
-   Nothing is written until Create job. The unfinished draft lives in this tab's sessionStorage (LSK.draft): it survives a
-   reload, other tabs never see it. The Where step borrows the real map (#canvas-wrap moves into the dialog, JW.home set; the dialog grows to the
-   window and the map fills it) and parks every other job's overlay while it is there; the location is optional (only a
-   half-drawn area blocks Continue); handing the map back clears JW.home first, then redraws them (syncOverlays). The lead is a flag on one
-   tagged person ({ …, lead:true }); equipment / reason / outcome are fields on the job (the Job brief on the panel).
+   NEW JOB — a name is all it takes (13 Oct 2026, Nikita: a job need not have a place). Every "＋ New job" button asks for
+   the name; Enter creates the job and opens its page, where people, lead, due date, why and "Place on map" already live.
+   On the Map tab the new job starts ready to be placed: click the model, or Esc to leave it unplaced.
+   This replaced the four-step Who → What → Where → Why dialog (6 Oct), and its drafts.
    ===================================================================== */
-let JW=null; const JW_MAP=[];
-const JW_STEPS=[{ name:"Who", detail:"People" },{ name:"What", detail:"The work" },{ name:"Where", detail:"Location" },{ name:"Why", detail:"The outcome" }];
-const JW_OWN=["asset","worktype","deadline","reference","people"];   // their own fields; every other editable property sits under More details
-const JW_MORE_TYPES=["multi","select","text","url","number","date","checkbox"];
-const JW_EXAMPLES={
-  reason:[["Follow-up to a finding","Follow-up to a finding: corrosion was reported at the last walkdown and needs to be measured."],["Scheduled inspection","Scheduled inspection: due under the site inspection plan."],["Before a shutdown","Needed before the next shutdown so repairs can be planned and materials ordered."],["Safety concern","Operations raised a safety concern; confirm whether the area is safe to use."]],
-  outcome:[["Thickness report","A thickness report with readings, marked-up photos, and any areas below minimum."],["Repair decision","A clear decision: repair now, monitor, or no action, with the reason."],["Work completed","The work is done, checked, and signed off, with before-and-after photos."],["Findings and next steps","Findings marked on the model, each with a recommended next step."]] };
-const jwKey = x => (x.email||x.uid||"").toLowerCase();
-const jwRec = x => { const m=S.members.find(mm=>(x.uid&&mm.id===x.uid)||(x.email&&(mm.email||"").toLowerCase()===x.email.toLowerCase())); return m?{ uid:m.id, name:m.name, email:m.email }:{ email:(x.email||"").toLowerCase(), ...(x.name?{ name:x.name }:{}) }; };
-const jwLead = d => d.people.some(x=>jwKey(x)===d.lead)?d.lead:(d.people[0]?jwKey(d.people[0]):"");
-const jwMe = x => (x.uid&&x.uid===S.user?.uid)||(!!x.email&&x.email.toLowerCase()===(S.user?.email||"").toLowerCase());
-function jwDefault(init={}){ return { step:0, init, people:[], lead:"", title:init.title||"", asset:"", deadline:"", equipment:"", methods:[], scope:"", more:{}, reason:"", outcome:"", location:{ points:[], height:0, closed:false }, mode:"pin" }; }
-function jwHas(d){ return !!(d.title.trim()||d.people.length||d.asset||d.deadline||d.equipment.trim()||d.methods.length||d.scope.trim()||Object.values(d.more).some(v=>!isEmpty(v)&&v!==false)||d.reason.trim()||d.outcome.trim()||d.location.points.length); }
-function jwDraft(){ try{ return JSON.parse(sessionStorage.getItem(LSK.draft)||"null"); }catch{ return null; } }
-function jwSave(){ if(!JW) return; const has=jwHas(JW.data);
-  try{ if(has) sessionStorage.setItem(LSK.draft,JSON.stringify(JW.data)); else sessionStorage.removeItem(LSK.draft); $("#jw-saved").textContent=has?"Draft saved in this tab":""; }catch{ $("#jw-saved").textContent=has?"Draft kept while open":""; }
-  $("#jw-discard").hidden=!has; jwButtons(); }
-/* "Resume draft" on the New job buttons while this tab holds one */
-function jwButtons(){ const d=jwDraft(), tip=d?`Resume “${(d.title||"").trim()||"Untitled job"}” · step ${(d.step||0)+1} of 4`:"";
-  ["#b-new","#new-wo-map"].forEach(s=>{ const b=$(s); if(!b) return; b.dataset.label??=b.textContent; b.textContent=d?"Resume draft":b.dataset.label; b.title=tip; b.classList.toggle("has-draft",!!d); });
-  const m=$("#reg-new-mini"); if(m){ m.dataset.label??=m.getAttribute("aria-label")||"New job"; m.setAttribute("aria-label",d?"Resume draft":m.dataset.label); m.title=tip; m.classList.toggle("has-draft",!!d); } }
-
-/* ---------- Who ---------- */
-function jwPeople(){ if(!JW) return; const d=JW.data, q=($("#jw-q")?.value||"").trim().toLowerCase(), lead=jwLead(d);
-  const known=knownPeople(); d.people.forEach(x=>{ if(!known.some(k=>jwKey(k)===jwKey(x))) known.push(x); });   // someone added by email stays listed
-  const list=known.filter(x=>!q||((x.name||"")+" "+(x.email||"")).toLowerCase().includes(q));
-  const isEmail=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q)&&!known.some(x=>(x.email||"").toLowerCase()===q);
-  const card=(x,i)=>{ const k=jwKey(x), sel=d.people.some(p=>jwKey(p)===k), nm=nameOf(x);
-    return `<div class="jw-person${sel?" sel":""}"><button type="button" class="jw-pmain" data-jw-person="${P(k)}" aria-pressed="${sel}"><span class="avatar jw-av t${i%3}">${P(initials(nm))}</span><span class="jw-pname"><b>${P(nm)}${jwMe(x)?' <small>You</small>':""}</b>${x.email&&nm!==x.email?`<span>${P(x.email)}</span>`:""}</span></button>${sel?`<label class="jw-leadpill"><input type="radio" name="jw-lead" value="${P(k)}" ${k===lead?"checked":""} aria-label="Job lead: ${P(nm)}"><span class="on">Lead</span><span class="off">Make lead</span></label>`:""}<span class="jw-tick" aria-hidden="true">${sel?"✓":"+"}</span></div>`; };
-  $("#jw-people").innerHTML=list.map(card).join("")
-    +(isEmail?`<div class="jw-person"><button type="button" class="jw-pmain" data-jw-email="${P(q)}"><span class="avatar jw-av">✉</span><span class="jw-pname"><b>Add ${P(q)}</b><span>Not on any job yet</span></span></button><span class="jw-tick" aria-hidden="true">+</span></div>`:"")
-    ||`<p class="jw-none">${q?"No match. Type a full email address to add someone new.":"No people yet. Type an email address to add someone."}</p>`;
-  jwReview(); }
-function jwToggle(k){ const d=JW.data; if(d.people.some(x=>jwKey(x)===k)) d.people=d.people.filter(x=>jwKey(x)!==k); else { const x=knownPeople().find(p=>jwKey(p)===k); if(x) d.people.push(jwRec(x)); }
-  d.lead=jwLead(d); jwPeople(); jwSave(); $(`[data-jw-person="${CSS.escape(k)}"]`)?.focus(); }
-
-/* ---------- What: the other editable properties of this site, collapsed ---------- */
-const jwMoreProps = () => props().filter(p=>!p.system&&!JW_OWN.includes(p.id)&&JW_MORE_TYPES.includes(p.type));
-function jwChips(p,sel,name){ const t=p.type==="select"?"radio":"checkbox"; return `<div class="jw-chips">${(p.options||[]).map(o=>`<label class="jw-chip"><input type="${t}" name="${P(name)}" value="${P(o.id)}" ${sel.includes(o.id)?"checked":""}><span>${P(o.name)}</span></label>`).join("")}</div>`; }
-function jwMoreField(p){ const v=JW.data.more[p.id], id="jw-m-"+p.id;
-  if(p.type==="multi"||p.type==="select") return `<fieldset class="jw-fs"><legend>${P(p.name)}</legend>${jwChips(p,p.type==="select"?(v?[v]:[]):(v||[]),"more:"+p.id)}</fieldset>`;
-  if(p.type==="checkbox") return `<label class="jw-checkrow"><input type="checkbox" data-jw-more="${P(p.id)}" ${v?"checked":""}> ${P(p.name)}</label>`;
-  if(p.type==="date") return `<label class="jw-label" for="${id}">${P(p.name)}</label><input id="${id}" type="date" data-jw-more="${P(p.id)}" value="${P(v?.start||"")}">`;
-  return `<label class="jw-label" for="${id}">${P(p.name)}</label><input id="${id}" type="${p.type==="number"?"number":p.type==="url"?"url":"text"}" data-jw-more="${P(p.id)}" value="${P(v??"")}">`; }
-function jwMoreValue(p,el){ if(p.type==="checkbox") return el.checked||null; if(p.type==="date") return el.value?{ start:el.value, end:null, time:null }:null; if(p.type==="number") return el.value===""?null:+el.value; return el.value.trim()||null; }
-
-/* ---------- the summary beside the form (on phones: before Create only) ---------- */
-function jwWhere(d){ const n=d.location.points.length; return !n?"Not placed yet":d.location.closed?`Area · ${n} corners`:d.mode==="area"?`Area · ${n} ${n===1?"corner":"corners"} so far`:"Pin on the model"; }
-function jwReview(){ if(!JW) return; const d=JW.data, ppl=d.people, lead=ppl.find(x=>jwKey(x)===jwLead(d)), a=d.asset?asset(d.asset):null;
-  const methods=(prop("worktype")?.options||[]).filter(o=>d.methods.includes(o.id)).map(o=>o.name);
-  const row=(i,label,main,sub)=>`<div class="jw-row"><div><span>${label}</span>${JW.step!==i?`<button type="button" data-jw-go="${i}">Edit</button>`:""}</div><strong>${P(main)}</strong>${sub?`<small>${P(sub)}</small>`:""}</div>`;
-  const whatSub=[a?methods.join(" · "):"",(a||methods.length)?d.equipment.trim():"",d.deadline?"Due "+fmtDate(d.deadline):""].filter(Boolean).join(" · ");
-  $("#jw-summary").innerHTML=`<span class="jw-cap">Job preview</span><h3>${P(d.title.trim()||"Your next job")}</h3><p class="jw-intro">One place for the people, the work and the result.</p>`
-    +row(0,"Who",ppl.length?ppl.map(x=>nameOf(x).split(/[\s@]/)[0]).join(", "):"Assign later",lead?nameOf(lead)+" · job lead":"")
-    +row(1,"What",a?`${a.tag}${a.name?" · "+a.name:""}`:methods.join(" · ")||d.equipment.trim()||"Details to follow",whatSub)
-    +row(2,"Where",jwWhere(d),"")
-    +row(3,"Why",d.outcome.trim()||"Define a clear result",d.reason.trim()?"Why: "+d.reason.trim():"")
-    +`<p class="jw-note">${JW.step===3?"Ready when you are. Every detail stays editable on the job.":"Nothing is added to your jobs until you choose Create job."}</p>`;
-  const ts=$("#jw-team"), sig=JSON.stringify([ppl.map(jwKey),jwLead(d)]);
-  if(ts&&JW.teamSig!==sig){ JW.teamSig=sig; ts.innerHTML=ppl.length?`<span class="jw-stack">${ppl.slice(0,5).map(x=>`<span class="avatar jw-av">${P(initials(nameOf(x)))}</span>`).join("")}</span><span><b>${ppl.length} ${ppl.length===1?"person":"people"} · ${P(nameOf(lead))} leads</b><small>${ppl.length>1?"Change the lead with Make lead on a card. ":""}Everyone selected is tagged on the job.</small></span>`:`<span><b>No one assigned yet</b><small>You can assign people later. Continue when you’re ready.</small></span>`; }
-  $("#jw-count").textContent=`Step ${JW.step+1} of 4`; }
-
-/* ---------- steps ---------- */
-function jwError(msg,field){ $("#jw-error").textContent=msg; field?.focus(); }
-function jwValid(step){ const d=JW.data;
-  if(step===1&&!d.title.trim()){ jwError("Give the job a name before continuing.",$("#jw-title")); return false; }
-  if(step===2){ const n=d.location.points.length; if(d.mode==="area"&&n&&n<3){ jwError("An area needs at least three corners. Add another, or Clear to place it later."); return false; } }   // nothing placed is fine: the location can come later
-  return true; }
-function jwGo(step){ if(!JW||JW.busy) return;
-  for(let i=0;i<step;i++) if(!jwValid(i)){ if(i!==JW.step){ jwGo(i); jwValid(i); } return; }
-  if(JW.step===2&&step!==2) jwDetachMap();
-  const dlg=JW.dialog; JW.step=step; JW.data.step=step; dlg.classList.toggle("jw-mapstep",step===2);
-  dlg.querySelectorAll("[data-jw-panel]").forEach(el=>el.hidden=+el.dataset.jwPanel!==step);
-  dlg.querySelectorAll(".jw-steps [data-jw-go]").forEach((el,i)=>{ el.setAttribute("aria-current",i===step?"step":"false"); el.classList.toggle("done",i<step); el.querySelector(".jw-n").textContent=i<step?"✓":i+1; });
-  $("#jw-back").hidden=step===0; $("#jw-next").innerHTML=step===3?"Create job":`Continue<span class="jw-to"> to ${JW_STEPS[step+1].name.toLowerCase()}</span> →`;
-  $("#jw-error").textContent=""; $("#jw-main").scrollTop=0; jwReview(); jwSave();
-  if(step===2&&!JW.home) jwAttachMap();
-  requestAnimationFrame(()=>JW?.dialog.querySelector(`[data-jw-panel="${step}"] h2`)?.focus()); }
-
-/* ---------- Where: the real map, borrowed ---------- */
-function jwParkJobs(){ Object.values(OV.wo).forEach(o=>killAll([o.m,o.area,o.line,o.box,...(o.labels||[])])); OV.wo={}; leaveJobScene(); }
-function jwAttachMap(){ const wrap=$("#canvas-wrap"); JW.home={ parent:wrap.parentNode, next:wrap.nextSibling }; $("#jw-map-mount").append(wrap); document.body.classList.add("jw-map");
-  jwParkJobs(); JW.sig=null; jwDrawMap(); requestAnimationFrame(()=>{ if(JW?.step===2) jwFit(); }); }
-function jwDetachMap(){ if(!JW) return; killAll(JW_MAP); JW_MAP.length=0; JW.sig=null;
-  if(JW.home){ const wrap=$("#canvas-wrap"), h=JW.home; h.parent.insertBefore(wrap,h.next); JW.home=null; }
-  document.body.classList.remove("jw-map"); if(map) map.style.cursor=""; syncOverlays(); }
-function jwFit(){ if(!map||JW?.step!==2) return; const p=JW.data.location.points; if(!p.length){ fly(siteCam(),900); return; }
-  const e=extentM(bbox(p)); fly({ center:{ ...centroid(p), altitude:minGround(p) }, range:Math.max(180,Math.max(e.ns,e.ew)*3), tilt:55, heading:map.heading??-15 },900); }
-function jwDrawMap(){ if(!JW||JW.step!==2) return; const d=JW.data, p=d.location.points, n=p.length;
-  $("#jw-status").textContent=!n?(d.mode==="area"?"Click at least three corners on the model to outline the work area — or continue and place it later from the job.":"Click the model to place a pin — or continue and place it later from the job."):d.mode==="area"?`${n} ${n===1?"corner":"corners"} placed${n<3?" · add another corner":" · area ready"}`:"Pin placed · click the model to move it.";
-  $("#jw-undo").disabled=!n; $("#jw-clear").disabled=!n;
-  JW.dialog.querySelectorAll("[data-jw-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.jwMode===d.mode));
-  if(!map||!lib) return; map.style.cursor="crosshair";
-  const sig=JSON.stringify([p,d.mode]); if(JW.sig===sig) return; JW.sig=sig; killAll(JW_MAP); JW_MAP.length=0;
-  const mode=surf(p), push=el=>{ if(el) JW_MAP.push(el); };
-  if(n>1){ const closed=d.mode==="area"&&n>=3; push(mk3(closed?"pg":"pl",{ altitudeMode:mode, path:[...p,...(closed?[p[0]]:[])].map(a=>atSurf(a,0.9,mode)), strokeColor:"#FF6A00", strokeWidth:4, fillColor:"rgba(255,106,0,0.22)" })); }
-  p.forEach((a,i)=>push(mk3("m",{ position:atSurf(a,1.5,mode), altitudeMode:mode, tpl:pinTemplate("#FF6A00",1.1,"#fff",n>1?i+1:undefined).tpl }))); }
-function jwMapClick(p){ if(!JW||JW.step!==2) return; if(!inPoly(p,BOUNDARY())){ jwError("Choose a spot inside the site boundary."); return; }
-  const d=JW.data; if(d.mode==="pin") d.location.points=[p]; else d.location.points.push(p); d.location.closed=d.mode==="area"&&d.location.points.length>=3;
-  $("#jw-error").textContent=""; jwDrawMap(); jwReview(); jwSave(); }
-
-/* ---------- open / close / discard / create ---------- */
-function jwShut(){ const dlg=JW.dialog; jwDetachMap(); JW=null; dlg.close(); dlg.remove(); }
-function jwClose(){ if(!JW||JW.busy) return; jwSave(); jwShut(); }
-function jwDiscard(){ if(!JW||JW.busy) return; const snap=structuredClone(JW.data); try{ sessionStorage.removeItem(LSK.draft); }catch{} jwShut(); startCreate();
-  if(!JW) return; $("#jw-saved").innerHTML='Draft discarded <button type="button" id="jw-undo-discard">Undo</button>';
-  $("#jw-undo-discard").onclick=()=>{ jwShut(); startCreate(snap.init||{},snap); }; }
-async function jwCreate(){
-  if(!JW||JW.busy) return;   // a second click while the first save is running does nothing
-  if(!jwValid(1)){ jwGo(1); jwValid(1); return; } if(!jwValid(2)){ jwGo(2); jwValid(2); return; }
-  const d=JW.data, lead=jwLead(d), values={ ...(d.init.values||{}) }, wp=prop("worktype");
-  if(d.people.length) values.people=d.people.map(x=>({ ...jwRec(x), ...(jwKey(x)===lead?{ lead:true }:{}) }));
-  if(d.asset&&prop("asset")) values.asset=[d.asset];
-  if(d.methods.length&&wp) values.worktype=wp.type==="select"?d.methods[0]:d.methods;
-  if(d.deadline&&prop("deadline")) values.deadline={ start:d.deadline, end:null, time:null };
-  if(d.scope.trim()&&prop("reference")) values.reference=d.scope.trim();
-  for(const [pid,v] of Object.entries(d.more)) if(prop(pid)&&!isEmpty(v)&&v!==false) values[pid]=v;
-  const location=structuredClone(d.location);
-  JW.busy=true; $("#jw-next").disabled=true; $("#jw-next").textContent="Creating job…";
-  let id; try{ id=await createWO({ ...d.init, title:d.title.trim(), values, location, equipment:d.equipment.trim(), reason:d.reason.trim(), outcome:d.outcome.trim(), quiet:true }); }
-  catch(e){ JW.busy=false; $("#jw-next").disabled=false; $("#jw-next").textContent="Create job"; jwError("The job could not be saved — "+(e?.message||e)+". Your draft is still here; try again."); return; }
-  try{ sessionStorage.removeItem(LSK.draft); }catch{}
-  JW.busy=false; jwShut(); jwButtons();
-  log(id,"created the job"+(location.points.length?` · ${shapeLabel(locShape({ location }))}`:""));
+let NJ_BUSY=false;
+function startCreate(init={},anchor){
+  const st=init.statusId?status(init.statusId)?.name:"";
+  const el=openPop(anchor||(S.tab==="map"?$("#new-wo-map"):$("#b-new")),`<div class="sec">New job${st?` · ${P(st)}`:""}</div>
+    <form class="nj" id="nj"><input class="in" id="nj-title" placeholder="What needs doing?" aria-label="Job name" maxlength="200" autocomplete="off"><button class="btn primary sm" id="nj-go">Create</button></form>
+    <div class="hint nj-hint">Everything else goes on the job page${S.tab==="map"&&map?"; you place it on the model next":""}.</div>`,{ width:340 });
+  const inp=el.querySelector("#nj-title"), go=el.querySelector("#nj-go"); inp.focus();
+  el.querySelector("#nj").onsubmit=async e=>{ e.preventDefault(); const title=inp.value.trim(); if(!title){ inp.focus(); return; } if(NJ_BUSY) return;   // a second Enter while the first save runs does nothing
+    NJ_BUSY=true; go.disabled=true; let id;
+    try{ id=await createWO({ ...init, title }); }
+    catch(err){ toast("Could not create the job: "+(err?.message||err),true); go.disabled=false; return; }
+    finally{ NJ_BUSY=false; }
+    closePop(); await openCreated(id); };
+}
+async function openCreated(id){
   for(let i=0;i<40&&!W(id);i++) await new Promise(r=>setTimeout(r,25));   // the snapshot that brings the new job in
   const w=W(id); if(!w) return;
   if(S.legendOff.has(w.statusId)){ S.legendOff.delete(w.statusId); renderLegend(); live().forEach(applyLegendTo); }   // a new job in a hidden status: switch that status on so it does not vanish
-  if(map&&S.tab==="map"&&pts(w).length) enterWOView(id); else openWO(id);
+  if(S.tab==="map"&&map){ editLoc=id; enterWOView(id); addPoints(id); renderRecord(); }
+  else openWO(id);
   toast(`${P(id)} created`); }
-/* Every "New job" button lands here. A draft in this tab is resumed (a column's status preset still applies). */
-async function startCreate(init={},restore=null){
-  if(JW) return; closePop(); if(S.woView) exitWOView(); else if(S.open) closePeek();
-  let data=jwDefault(init); const saved=restore||jwDraft(); if(saved) data={ ...data, ...saved, init:{ ...(saved.init||{}), ...init } };
-  data.more={ ...(data.more||{}) }; delete data.skip;   // drafts saved before 6 Oct had an "Add location later" tick
-  const dlg=document.createElement("dialog"); dlg.id="job-wizard"; dlg.setAttribute("aria-labelledby","jw-h");
-  JW={ dialog:dlg, data, step:0, busy:false, home:null, sig:null, teamSig:null };
-  const ap=prop("asset"), wp=prop("worktype"), dp=prop("deadline"), rp=prop("reference"), more=jwMoreProps(), d=data;
-  const ex=f=>`<div class="jw-ex" data-for="${f}"><span>Examples</span>${JW_EXAMPLES[f].map(([l,t])=>`<button type="button" data-jw-example="${P(t)}" title="${P(t)}">${P(l)}</button>`).join("")}</div>`;
-  dlg.innerHTML=`<header class="jw-head"><div><span class="jw-cap">Jobs</span><h1 id="jw-h">New job</h1></div><span id="jw-saved"></span><button type="button" class="jw-x" id="jw-x" aria-label="Save draft and close">×</button></header>
-  <nav class="jw-steps" aria-label="Steps">${JW_STEPS.map((s,i)=>`<button type="button" data-jw-go="${i}"><span class="jw-n">${i+1}</span><span><b>${s.name}</b><small>${s.detail}</small></span></button>`).join("")}</nav>
-  <div class="jw-body"><main id="jw-main">
-  <section data-jw-panel="0"><div class="jw-hero"><span class="jw-cap">01 · People</span><h2 tabindex="-1">Who’s doing the work?</h2><p>Choose the people involved and give one of them the lead.</p></div>
-    <input id="jw-q" type="search" placeholder="Find someone — name or email" aria-label="Find people" autocomplete="off"><div id="jw-people"></div><div id="jw-team" class="jw-team"></div></section>
-  <section data-jw-panel="1" hidden><div class="jw-hero"><span class="jw-cap">02 · The work</span><h2 tabindex="-1">What needs to happen?</h2><p>A clear name and scope help everyone arrive prepared.</p></div>
-    <label class="jw-label" for="jw-title">Job name <small>Required</small></label><input id="jw-title" data-jw-field="title" maxlength="200" autocomplete="off" value="${P(d.title)}" placeholder="e.g. Tank T-1 shell UT survey">
-    <div class="jw-grid">${ap?`<div><label class="jw-label" for="jw-asset">${P(ap.name)} <small>Optional</small></label><select id="jw-asset" data-jw-field="asset"><option value="">Choose an asset</option>${S.assets.map(a=>`<option value="${P(a.tag)}" ${d.asset===a.tag?"selected":""}>${P(a.tag)}${a.name?" · "+P(a.name):""}</option>`).join("")}</select></div>`:""}${dp?`<div><label class="jw-label" for="jw-due">Due date <small>Optional</small></label><input id="jw-due" type="date" data-jw-field="deadline" value="${P(d.deadline)}"></div>`:""}</div>
-    <label class="jw-label" for="jw-equip">Equipment needed <small>Optional</small></label><input id="jw-equip" data-jw-field="equipment" autocomplete="off" value="${P(d.equipment)}" placeholder="e.g. Drone, UT probe, rope access kit">
-    ${wp?`<fieldset class="jw-fs"><legend>${P(wp.name)} <small>Select any that apply</small></legend>${jwChips(wp,d.methods,"methods")}</fieldset>`:""}
-    ${rp?`<label class="jw-label" for="jw-scope">${P(rp.name)} <small>Optional</small></label><textarea id="jw-scope" data-jw-field="scope" rows="3" placeholder="Scope: what should the team inspect, measure, or complete?">${P(d.scope)}</textarea>`:""}
-    ${more.length?`<details class="jw-more"${more.some(p=>!isEmpty(d.more[p.id]))?" open":""}><summary>More details <span>${P(more.map(p=>p.name).join(" · "))}</span></summary>${more.map(jwMoreField).join("")}</details>`:""}</section>
-  <section data-jw-panel="2" hidden><div class="jw-hero jw-mhero"><div><span class="jw-cap">03 · Location</span><h2 tabindex="-1">Where is the work?</h2></div>
-    <div class="jw-tools"><div class="jw-modes" role="group" aria-label="Location type"><button type="button" data-jw-mode="pin">Pin</button><button type="button" data-jw-mode="area">Area</button></div><button type="button" id="jw-undo">Undo</button><button type="button" id="jw-clear">Clear</button></div></div>
-    <div id="jw-map-mount"></div><p id="jw-status" role="status"></p></section>
-  <section data-jw-panel="3" hidden><div class="jw-hero"><span class="jw-cap">04 · The outcome</span><h2 tabindex="-1">What will this job achieve?</h2><p>Give the team the context and a clear finish line.</p></div>
-    <label class="jw-label" for="jw-reason">Why does this job exist? <small>Optional</small></label><textarea id="jw-reason" data-jw-field="reason" rows="3" placeholder="e.g. Corrosion was flagged at the last walkdown. We need the condition before the next shutdown.">${P(d.reason)}</textarea>${ex("reason")}
-    <label class="jw-label" for="jw-outcome">What does done look like? <small>Optional</small></label><textarea id="jw-outcome" data-jw-field="outcome" rows="3" placeholder="e.g. A thickness report with marked-up photos and a recommendation on repairs.">${P(d.outcome)}</textarea>${ex("outcome")}</section>
-  </main><aside id="jw-summary" aria-label="Job preview"></aside></div>
-  <footer class="jw-foot"><div><span id="jw-count"></span><button type="button" id="jw-close">Save &amp; close</button><button type="button" id="jw-discard" hidden>Discard draft</button></div><p id="jw-error" role="alert"></p><button type="button" class="btn" id="jw-back" hidden>← Back</button><button type="button" class="btn primary" id="jw-next"></button></footer>`;
-  document.body.append(dlg);
-  dlg.oncancel=e=>{ e.preventDefault(); jwClose(); };   // Escape keeps the draft
-  $("#jw-x").onclick=$("#jw-close").onclick=jwClose; $("#jw-discard").onclick=jwDiscard;
-  $("#jw-back").onclick=()=>jwGo(JW.step-1); $("#jw-next").onclick=()=>JW.step===3?jwCreate():jwGo(JW.step+1);
-  $("#jw-q").oninput=jwPeople; $("#jw-q").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); dlg.querySelector("[data-jw-email]")?.click(); } };
-  dlg.addEventListener("input",e=>{ const f=e.target.dataset.jwField; if(f){ data[f]=e.target.value; $("#jw-error").textContent=""; jwReview(); jwSave(); return; }
-    const m=e.target.dataset.jwMore; if(m&&e.target.type!=="checkbox"){ data.more[m]=jwMoreValue(prop(m),e.target); jwSave(); } });
-  dlg.addEventListener("change",e=>{ const t=e.target;
-    if(t.dataset.jwField){ data[t.dataset.jwField]=t.value; jwReview(); jwSave(); }
-    if(t.name==="jw-lead"){ data.lead=t.value; jwReview(); jwSave(); }
-    if(t.name==="methods"){ data.methods=[...dlg.querySelectorAll('input[name="methods"]:checked')].map(x=>x.value); jwReview(); jwSave(); }
-    if(t.name?.startsWith("more:")){ const pid=t.name.slice(5), p=prop(pid), on=[...dlg.querySelectorAll(`input[name="${CSS.escape(t.name)}"]:checked`)].map(x=>x.value); data.more[pid]=p?.type==="select"?(on[0]||null):on; jwSave(); }
-    if(t.dataset.jwMore&&t.type==="checkbox"){ data.more[t.dataset.jwMore]=t.checked||null; jwSave(); } });
-  dlg.addEventListener("click",e=>{ const t=e.target;
-    const go=t.closest("[data-jw-go]"); if(go){ jwGo(+go.dataset.jwGo); return; }
-    const per=t.closest("[data-jw-person]"); if(per){ jwToggle(per.dataset.jwPerson); return; }
-    const em=t.closest("[data-jw-email]"); if(em){ data.people.push(jwRec({ email:em.dataset.jwEmail })); data.lead=jwLead(data); $("#jw-q").value=""; jwPeople(); jwSave(); $("#jw-q").focus(); return; }
-    const md=t.closest("[data-jw-mode]"); if(md){ const m=md.dataset.jwMode; if(m!==data.mode){ data.mode=m; if(m==="pin") data.location.points=data.location.points.slice(0,1); data.location.closed=m==="area"&&data.location.points.length>=3; } jwDrawMap(); jwReview(); jwSave(); return; }
-    const x=t.closest("[data-jw-example]"); if(x){ const f=x.closest(".jw-ex").dataset.for, ta=$("#jw-"+f), cur=ta.value.trimEnd(); ta.value=cur?cur+" "+x.dataset.jwExample:x.dataset.jwExample; data[f]=ta.value; $("#jw-error").textContent=""; jwReview(); jwSave(); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } });
-  $("#jw-undo").onclick=()=>{ data.location.points.pop(); data.location.closed=data.mode==="area"&&data.location.points.length>=3; jwDrawMap(); jwReview(); jwSave(); };
-  $("#jw-clear").onclick=()=>{ data.location={ points:[], height:0, closed:false }; jwDrawMap(); jwReview(); jwSave(); };
-  dlg.showModal(); jwPeople(); jwGo(Math.max(0,Math.min(3,data.step||0))); }
-jwButtons();
-if(window.__t) Object.defineProperty(window.__t,"JW_MAP",{ get:()=>JW_MAP });   // test harness (mock mode only)
 
 /* =====================================================================
    DEMO — public sandbox build. Every visitor gets the same sample site in their own browser (in-memory store, no
@@ -3777,16 +3330,6 @@ async function demoSeed(DB){
   await n("J-26-012","xing",{ kind:"model", title:"Road crossing — drainage", points:polyU([1208,1262],[1252,1262],[1252,1302],[1208,1302]), closed:true, height:0, text:"Ponding on both sides of the crossing after rain; ballast fouled.", t:ago(3) });
   for(const [jid,c] of Object.entries(nc)) await DB.update(WO_COL+"/"+jid,{ noteCount:c });
 
-  const th=async(tid,t,msgs)=>{ const last=msgs[msgs.length-1]; await DB.set(MAIL_COL+"/"+tid,{ ...t, count:msgs.length, last:{ t:last.t, from:last.from, snippet:last.text.slice(0,90) }, readBy:{}, lastMessageId:"<"+tid+"-"+msgs.length+"@demo>" });
-    for(const [i,m] of msgs.entries()) await DB.set(MAIL_COL+"/"+tid+"/messages/m"+i,{ to:[], cc:[], quote:"", attachments:[], extracted:{ po:[] }, status:m.dir==="out"?"sent":"received", messageId:"<"+tid+"-"+(i+1)+"@demo>", subject:t.subject, ...m }); };
-  await th("t1",{ jobId:"J-26-002", n:1, addr:"j-26-002-t1@mail.skygauge.co", subject:"FW: PO 4500218871 – Tank T-1 external inspection", about:{ kind:"job" }, participants:[dave,{ email:me.email, name:me.name }], created:ago(6,3), createdBy:dave },
-    [{ dir:"in", from:dave, t:ago(6,3), text:"PO is through. Please confirm the mobilization date and send the JHA before Friday.", quote:"---------- Forwarded message ----------\nFrom: procurement@example.com\nSubject: Purchase Order 4500218871", extracted:{ po:[{ value:"4500218871", src:"Subject: Purchase Order 4500218871", applied:true }] },
-       attachments:[{ id:"a1", name:"PO_4500218871.pdf", size:212000, type:"application/pdf", url:"" }] },
-     { dir:"out", from:{ email:me.email, name:me.name }, to:[dave], t:ago(6,1), text:"Confirmed for Monday, crew of two, 07:00 at the north gate. JHA attached.", link:"#" }]);
-  await th("t2",{ jobId:"J-26-002", n:2, addr:"j-26-002-t2@mail.skygauge.co", subject:"Re: Corrosion at nozzle N3", about:{ kind:"note", noteId:"nozzle", label:"Corrosion at nozzle N3" }, participants:[karen], created:ago(4,5), createdBy:karen },
-    [{ dir:"in", from:karen, t:ago(4,5), text:"That nozzle was re-gasketed in 2022. I've raised the flange repair as J-26-003; it can go once your report is in and ops drop the level." }]);
-  await th("t3",{ jobId:"J-26-004", n:1, addr:"j-26-004-t1@mail.skygauge.co", subject:"Clarifier outage window", about:{ kind:"job" }, participants:[marco], created:ago(1,2), createdBy:marco },
-    [{ dir:"in", from:marco, t:ago(1,2), text:"We can drain C-2 for four hours on the 14th. Does that work for the inspection crew?" }]);
 
   // ---------- automations: the six repeating jobs become schedules; six rules ----------
   const tplOf=n=>{ const j=J.find(x=>x.n===n); const v=structuredClone(j.values); delete v.deadline; return { from:ID(n), title:j.title, values:v, location:{ points:j.pts, height:j.height||0, closed:!!j.closed } }; };
@@ -3806,7 +3349,7 @@ async function demoSeed(DB){
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[[30,"J-26-011","created J-26-011"]] },
     { id:"s6", kind:"schedule", text:[T("Repeat "),JO(6),T(" 12 months after the last one is completed, created 45 days ahead, with its insulation removal.")], name:"Pipe bridge PR-3 CUI inspection", on:false, schedule:{ mode:"after", months:12, leadDays:45, ifOpen:"create", enabling:"insulation", lastDone:new Date(Date.now()-380*86400000).toISOString(), template:tplOf(6),
       history:[{ when:"last year", state:"done", label:"completed" }] }, runs:[] },
-    { id:"r1", kind:"rule", name:"Scaffold requests include Priya Nair", on:true, text:[T("Every "),OP("access","Scaffold"),T(" job includes "),PE(priya),T(" and loops her into the job's email.")],
+    { id:"r1", kind:"rule", name:"Scaffold requests include Priya Nair", on:true, text:[T("Every "),OP("access","Scaffold"),T(" job includes "),PE(priya),T(".")],
       runs:[[12,"J-26-013","tagged Priya Nair"],[12,"J-26-010","tagged Priya Nair"],[8,"J-26-006","tagged Priya Nair"]] },
     { id:"r2", kind:"rule", name:"UT results go to Karen Liu", on:true, text:[T("I want every "),OP("worktype","UT thickness"),T(" job to notify "),PE(karen),T(" when it's completed for her review.")], runs:[] },
     { id:"r3", kind:"rule", name:"Tell the crew when a job is ready to start", on:true, text:[T("When a job is ready to start, email the people on it.")], runs:[] },
@@ -3821,8 +3364,7 @@ async function demoSeed(DB){
   const autoBy=a=>({ uid:"automation", name:"Automation", email:"", auto:a, autoName:AUTO.find(x=>x.id===a).name });
   for(const [n,d] of [[13,12],[10,12],[6,8]]) await act(n,ago(d),"tagged Priya Nair (Scaffold requests include Priya Nair)",autoBy("r1"));
   await act(1,ago(9),"created this job from “Tank T-1 monthly external walkdown” (4th in the series)",autoBy("s1"));
-  await th("t4",{ jobId:"J-26-008", n:1, addr:"j-26-008-t1@mail.skygauge.co", subject:"Due tomorrow · J-26-008 · Pump P-402 mechanical seal replacement", about:{ kind:"auto", label:"Deadline reminders", auto:"r6" }, participants:[marco], created:ago(0.2), createdBy:autoBy("r6") },
-    [{ dir:"out", from:{ email:"j-26-008@mail.skygauge.co", name:"Dispatch automation" }, to:[marco], t:ago(0.2), text:"J-26-008 · Pump P-402 mechanical seal replacement is due tomorrow and is In progress.", auto:"r6" }]);
+  await DB.set(NOTE_COL+"/n1",{ jobId:"J-26-008", kind:"auto", subject:"Due tomorrow · J-26-008 · Pump P-402 mechanical seal replacement", text:"J-26-008 · Pump P-402 mechanical seal replacement is due tomorrow and is In progress.", to:[marco], fromName:"Dispatch automation", replyTo:null, attachments:[], link:"#", t:ago(0.2), by:autoBy("r6"), auto:"r6", status:"sent", sentAt:ago(0.2) });
   await act(8,ago(0.2),"will email Marco Bellini a deadline reminder (Deadline reminders)",autoBy("r6"));
 }
 
@@ -3837,7 +3379,7 @@ async function demoSeed(DB){
    • The Maps key is never part of the base file; it always comes from config.js.
    ===================================================================== */
 const AUTHOR = DEMO && PARAMS.has("author");
-const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/");
+const BASE_DROP = k => k==="config/maps" || k.startsWith("workspace/main/members/") || k.startsWith("workspace/main/threads/");   // threads: email before 13 Oct 2026
 function baseOf(DB){ const all=DB.dump(); const store={}; for(const [k,v] of Object.entries(all)) if(!BASE_DROP(k)) store[k]=v; return { v:1, savedAt:new Date().toISOString(), baseDay:localDay(new Date()), store }; }
 /* Times move by the time since the base was saved; due dates (plain days) move by whole calendar days, so a job due
    "tomorrow" when the base was saved is due tomorrow for every visitor, whatever the time of day or time zone. */
